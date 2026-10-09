@@ -7,12 +7,14 @@ import { usePathname } from "next/navigation";
 import { Search, Bell, User, Menu, Sun, Moon } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 
+import { useTheme } from "next-themes";
+
 interface DashboardNavbarProps {
   onToggleSidebar: () => void;
 }
 
 export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProps) {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
 
@@ -24,24 +26,14 @@ export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProp
   const displayName = user?.name || (userRole === "admin" ? "Alex Rivera" : "Valued Customer");
   const initial = displayName ? displayName.charAt(0).toUpperCase() : "U";
 
-  // Sync theme with document element on mount
   useEffect(() => {
     setMounted(true);
-    const isDark = document.documentElement.classList.contains("dark");
-    setIsDarkMode(isDark);
   }, []);
 
-  const toggleTheme = () => {
-    const nextDarkState = !isDarkMode;
-    setIsDarkMode(nextDarkState);
+  const isDark = (resolvedTheme || theme) === "dark";
 
-    if (nextDarkState) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
+  const toggleTheme = () => {
+    setTheme(isDark ? "light" : "dark");
   };
 
   return (
@@ -75,7 +67,7 @@ export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProp
             aria-label="Toggle Theme"
             className="w-9 h-9 rounded-xl border border-slate-200 dark:border-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
           >
-            {isDarkMode ? (
+            {isDark ? (
               <Sun className="w-4 h-4 text-amber-400 transition-transform hover:rotate-45" />
             ) : (
               <Moon className="w-4 h-4 text-sky-600 transition-transform hover:-rotate-12" />

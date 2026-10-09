@@ -285,7 +285,7 @@ export default function AdminSettingsClient({
                 <select
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-950 focus:border-sky-500 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:border-sky-500 focus:outline-none"
                 >
                   <option value="USD">USD ($) - US Dollar</option>
                   <option value="EUR">EUR (€) - Euro</option>
@@ -301,7 +301,7 @@ export default function AdminSettingsClient({
                 <select
                   value={timezone}
                   onChange={(e) => setTimezone(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-950 focus:border-sky-500 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:border-sky-500 focus:outline-none"
                 >
                   <option value="America/New_York">America/New_York (UTC-5)</option>
                   <option value="UTC">UTC (UTC+0)</option>

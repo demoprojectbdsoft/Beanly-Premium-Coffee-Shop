@@ -248,7 +248,7 @@ export default function CustomerSettingsClient({
                     <select
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-950 focus:border-sky-500 focus:outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:border-sky-500 focus:outline-none"
                     >
                       <option value="USD">USD ($) - US Dollar</option>
                       <option value="EUR">EUR (€) - Euro</option>
@@ -264,7 +264,7 @@ export default function CustomerSettingsClient({
                     <select
                       value={language}
                       onChange={(e) => setLanguage(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-950 focus:border-sky-500 focus:outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:border-sky-500 focus:outline-none"
                     >
                       <option value="en">English (US)</option>
                       <option value="es">Español</option>

@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "@heroui/styles"; 
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *)); 
+
 @theme {
   --font-sans: var(--font-open-sans), sans-serif;
   --font-poppins: var(--font-poppins), sans-serif;
@@ -10,6 +12,7 @@
 } 
 
 :root {
+  color-scheme: light;
   /* Soft UI blue gradient values */
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
@@ -18,10 +21,58 @@
   --success: oklch(0.65 0.15 155);
 }
 
+html.dark,
+:root.dark,
 .dark {
+  color-scheme: dark;
   --primary: #3b82f6;
   --primary-hover: #60a5fa;
   --primary-light: #1e3a8a;
+}
+
+/* Prevent OS/Browser dark mode from overriding app when in light mode */
+@media (prefers-color-scheme: dark) {
+  html:not(.dark),
+  :root:not(.dark) {
+    color-scheme: light;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  html.dark,
+  :root.dark {
+    color-scheme: dark;
+  }
+}
+
+/* Form controls & autofill styling to ensure text readability in both modes */
+input,
+textarea,
+select {
+  color: inherit;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: inherit;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+select option {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+.dark select option {
+  background-color: #0f172a;
+  color: #f8fafc;
 }
 
 /* ─── Hero Slider Animations ─────────────────────────────────────────── */
