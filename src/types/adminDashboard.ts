@@ -43,8 +43,11 @@ export interface TopProductItem {
   image: string;
   category: string;
   price: number;
+  investPrice?: number;
   unitsSold: number;
   revenue: number;
+  cost: number;
+  profit: number;
 }
 
 export interface AdminKPIs {
@@ -52,6 +55,17 @@ export interface AdminKPIs {
   deliverySuccessRate: number;
   totalProducts: number;
   totalTransactions: number;
+  totalProfit: number;
+  totalCost: number;
+  profitMargin: number;
+}
+
+export interface ProfitDataPoint {
+  label: string;       // Day / Week / Month label
+  revenue: number;
+  cost: number;
+  profit: number;
+  orders: number;
 }
 
 export interface RecentOrder {

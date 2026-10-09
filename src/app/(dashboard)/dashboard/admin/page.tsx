@@ -88,6 +88,10 @@ export default async function AdminDashboardPage() {
       topProducts={data.topProducts}
       recentOrders={data.recentOrders}
       kpis={data.kpis}
+      dailyProfitData={data.dailyProfitData}
+      weeklyProfitData={data.weeklyProfitData}
+      monthlyProfitData={data.monthlyProfitData}
+      yearlyProfitData={data.yearlyProfitData}
     />
   );
 }

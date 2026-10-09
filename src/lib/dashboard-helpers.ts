@@ -7,6 +7,7 @@ import {
   TopProductItem,
   AdminKPIs,
   RecentOrder,
+  ProfitDataPoint,
 } from "@/types/adminDashboard";
 import {
   SpendingDataPoint,
@@ -42,6 +43,16 @@ function getLastNMonths(n: number = 8): string[] {
     months.push(MONTH_NAMES[d.getMonth()]);
   }
   return months;
+}
+
+/**
+ * Returns the ISO week number (1-52) for a given date
+ */
+function getWeekNumber(d: Date): number {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -80,6 +91,7 @@ export interface RawProduct {
   title?: string;
   price?: number;
   originalPrice?: number;
+  investPrice?: number;   // cost/purchase price for profit tracking
   image?: string;
   rating?: number;
   reviewCount?: number;
@@ -162,8 +174,55 @@ export function aggregateAdminDashboard(
     Card: { count: 0, amount: 0 },
   };
 
-  // Product sales counter
-  const productSalesMap: Record<string, { title: string; image: string; category: string; price: number; unitsSold: number; revenue: number }> = {};
+  // Product sales counter (with cost/profit tracking)
+  const productSalesMap: Record<string, {
+    title: string; image: string; category: string;
+    price: number; investPrice?: number;
+    unitsSold: number; revenue: number; cost: number; profit: number;
+  }> = {};
+
+  // Build product lookup map for investPrice
+  const productMap: Record<string, RawProduct> = {};
+  rawProducts.forEach((p) => {
+    const pid = p._id?.toString() || p.id?.toString() || "";
+    if (pid) productMap[pid] = p;
+  });
+
+  // Profit time-series: daily (last 30 days), weekly (last 12 weeks), monthly (last 12 months), yearly (last 5 years)
+  const now = new Date();
+
+  // Daily map (last 30 days)
+  const dailyMap: Record<string, { revenue: number; cost: number; profit: number; orders: number }> = {};
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const key = `${d.getMonth() + 1}/${d.getDate()}`;
+    dailyMap[key] = { revenue: 0, cost: 0, profit: 0, orders: 0 };
+  }
+
+  // Weekly map (last 12 weeks)
+  const weeklyMap: Record<string, { revenue: number; cost: number; profit: number; orders: number }> = {};
+  for (let i = 11; i >= 0; i--) {
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - i * 7);
+    const key = `W${getWeekNumber(weekStart)}`;
+    weeklyMap[key] = { revenue: 0, cost: 0, profit: 0, orders: 0 };
+  }
+
+  // Monthly map (last 12 months)
+  const monthlyProfitMap: Record<string, { revenue: number; cost: number; profit: number; orders: number }> = {};
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = MONTH_NAMES[d.getMonth()];
+    monthlyProfitMap[key] = { revenue: 0, cost: 0, profit: 0, orders: 0 };
+  }
+
+  // Yearly map (last 5 years)
+  const yearlyMap: Record<string, { revenue: number; cost: number; profit: number; orders: number }> = {};
+  for (let i = 4; i >= 0; i--) {
+    const yr = String(now.getFullYear() - i);
+    yearlyMap[yr] = { revenue: 0, cost: 0, profit: 0, orders: 0 };
+  }
 
   orders.forEach((order) => {
     const amt = Number(order.totalAmount ?? 0);
@@ -224,7 +283,7 @@ export function aggregateAdminDashboard(
       }
     }
 
-    // Item sales
+    // Item sales (with cost/profit tracking)
     if (Array.isArray(order.items)) {
       order.items.forEach((item) => {
         const pid = typeof item.productId === "object" ? item.productId?._id || item.productId?.id : item.productId;
@@ -236,19 +295,91 @@ export function aggregateAdminDashboard(
             ? item.productId?.categoryId?.name || item.productId?.category?.name || "Electronics"
             : "Electronics";
 
+        // Try to get investPrice from populated productId or productMap
+        const populatedProd = typeof item.productId === "object" ? item.productId : null;
+        const investPriceRaw =
+          populatedProd?.investPrice ??
+          (pid ? productMap[String(pid)]?.investPrice : undefined);
+        const investPrice = investPriceRaw != null ? Number(investPriceRaw) : undefined;
+        const itemCost = investPrice != null ? investPrice * qty : 0;
+        const itemProfit = (itemPrice * qty) - itemCost;
+
         if (!productSalesMap[key]) {
           productSalesMap[key] = {
             title: item.title || "Product Item",
             image: item.image || "",
             category: prodCat,
             price: itemPrice,
+            investPrice,
             unitsSold: 0,
             revenue: 0,
+            cost: 0,
+            profit: 0,
           };
         }
         productSalesMap[key].unitsSold += qty;
         productSalesMap[key].revenue += qty * itemPrice;
+        productSalesMap[key].cost += itemCost;
+        productSalesMap[key].profit += itemProfit;
       });
+    }
+
+    // Profit time-series bucketing
+    if (order.createdAt && st !== "cancelled") {
+      const orderDate = new Date(order.createdAt);
+      if (!isNaN(orderDate.getTime())) {
+        const itemsRevenue = Array.isArray(order.items)
+          ? order.items.reduce((s, it) => s + Number(it.price ?? 0) * Number(it.quantity ?? 1), 0)
+          : Number(order.totalAmount ?? 0);
+        const itemsCost = Array.isArray(order.items)
+          ? order.items.reduce((s, it) => {
+              const pid = typeof it.productId === "object" ? it.productId?._id || it.productId?.id : it.productId;
+              const populatedProd = typeof it.productId === "object" ? it.productId : null;
+              const ip = populatedProd?.investPrice ?? (pid ? productMap[String(pid)]?.investPrice : undefined);
+              return s + (ip != null ? Number(ip) * Number(it.quantity ?? 1) : 0);
+            }, 0)
+          : 0;
+        const itemsProfit = itemsRevenue - itemsCost;
+
+        // Daily
+        const dayKey = `${orderDate.getMonth() + 1}/${orderDate.getDate()}`;
+        const cutoff30 = new Date(now); cutoff30.setDate(cutoff30.getDate() - 29);
+        if (orderDate >= cutoff30 && dailyMap[dayKey]) {
+          dailyMap[dayKey].revenue += itemsRevenue;
+          dailyMap[dayKey].cost += itemsCost;
+          dailyMap[dayKey].profit += itemsProfit;
+          dailyMap[dayKey].orders += 1;
+        }
+
+        // Weekly
+        const wk = `W${getWeekNumber(orderDate)}`;
+        const cutoff12w = new Date(now); cutoff12w.setDate(cutoff12w.getDate() - 83);
+        if (orderDate >= cutoff12w && weeklyMap[wk]) {
+          weeklyMap[wk].revenue += itemsRevenue;
+          weeklyMap[wk].cost += itemsCost;
+          weeklyMap[wk].profit += itemsProfit;
+          weeklyMap[wk].orders += 1;
+        }
+
+        // Monthly
+        const mKey = MONTH_NAMES[orderDate.getMonth()];
+        const cutoff12m = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+        if (orderDate >= cutoff12m && monthlyProfitMap[mKey] !== undefined) {
+          monthlyProfitMap[mKey].revenue += itemsRevenue;
+          monthlyProfitMap[mKey].cost += itemsCost;
+          monthlyProfitMap[mKey].profit += itemsProfit;
+          monthlyProfitMap[mKey].orders += 1;
+        }
+
+        // Yearly
+        const yrKey = String(orderDate.getFullYear());
+        if (yearlyMap[yrKey]) {
+          yearlyMap[yrKey].revenue += itemsRevenue;
+          yearlyMap[yrKey].cost += itemsCost;
+          yearlyMap[yrKey].profit += itemsProfit;
+          yearlyMap[yrKey].orders += 1;
+        }
+      }
     }
   });
 
@@ -318,7 +449,7 @@ export function aggregateAdminDashboard(
       color: PALETTE[idx % PALETTE.length],
     }));
 
-  // Top Products (Graph 5 / Cards)
+  // Top Products
   let topProducts: TopProductItem[] = Object.entries(productSalesMap)
     .map(([id, p]) => ({
       id,
@@ -326,8 +457,11 @@ export function aggregateAdminDashboard(
       image: p.image,
       category: p.category,
       price: p.price,
+      investPrice: p.investPrice,
       unitsSold: p.unitsSold,
-      revenue: p.revenue,
+      revenue: Math.round(p.revenue * 100) / 100,
+      cost: Math.round(p.cost * 100) / 100,
+      profit: Math.round(p.profit * 100) / 100,
     }))
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 5);
@@ -364,6 +498,47 @@ export function aggregateAdminDashboard(
     };
   });
 
+  // Profit time-series arrays
+  const dailyProfitData: ProfitDataPoint[] = Object.entries(dailyMap).map(([label, v]) => ({
+    label,
+    revenue: Math.round(v.revenue * 100) / 100,
+    cost: Math.round(v.cost * 100) / 100,
+    profit: Math.round(v.profit * 100) / 100,
+    orders: v.orders,
+  }));
+
+  const weeklyProfitData: ProfitDataPoint[] = Object.entries(weeklyMap).map(([label, v]) => ({
+    label,
+    revenue: Math.round(v.revenue * 100) / 100,
+    cost: Math.round(v.cost * 100) / 100,
+    profit: Math.round(v.profit * 100) / 100,
+    orders: v.orders,
+  }));
+
+  const monthlyProfitData: ProfitDataPoint[] = Object.entries(monthlyProfitMap).map(([label, v]) => ({
+    label,
+    revenue: Math.round(v.revenue * 100) / 100,
+    cost: Math.round(v.cost * 100) / 100,
+    profit: Math.round(v.profit * 100) / 100,
+    orders: v.orders,
+  }));
+
+  const yearlyProfitData: ProfitDataPoint[] = Object.entries(yearlyMap).map(([label, v]) => ({
+    label,
+    revenue: Math.round(v.revenue * 100) / 100,
+    cost: Math.round(v.cost * 100) / 100,
+    profit: Math.round(v.profit * 100) / 100,
+    orders: v.orders,
+  }));
+
+  // Overall profit / cost totals
+  const totalProfit = topProducts.reduce((s, p) => s + (p.profit || 0), 0) +
+    Object.values(productSalesMap)
+      .filter((_, i) => i >= 5)
+      .reduce((s, p) => s + (p.profit || 0), 0);
+  const totalCost = Object.values(productSalesMap).reduce((s, p) => s + (p.cost || 0), 0);
+  const profitMargin = totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 100 * 10) / 10 : 0;
+
   // Key Performance Indicators (KPIs)
   const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
   const deliverySuccessRate = orders.length > 0 ? Math.round((deliveredOrdersCount / orders.length) * 100) : 0;
@@ -373,6 +548,9 @@ export function aggregateAdminDashboard(
     deliverySuccessRate,
     totalProducts: products.length,
     totalTransactions: transactions.length || orders.length,
+    totalProfit: Math.round(totalProfit * 100) / 100,
+    totalCost: Math.round(totalCost * 100) / 100,
+    profitMargin,
   };
 
   // Stat Cards
@@ -383,6 +561,13 @@ export function aggregateAdminDashboard(
       change: `From ${orders.length} total orders`,
       isPositive: true,
       iconName: "DollarSign",
+    },
+    {
+      title: "Net Profit",
+      value: `$${Math.max(0, totalProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      change: totalProfit >= 0 ? `${profitMargin}% profit margin` : `Loss: $${Math.abs(totalProfit).toFixed(2)}`,
+      isPositive: totalProfit >= 0,
+      iconName: "TrendingUp",
     },
     {
       title: "Orders Processed",
@@ -398,13 +583,6 @@ export function aggregateAdminDashboard(
       isPositive: true,
       iconName: "Users",
     },
-    {
-      title: "Avg Order Value",
-      value: `$${avgOrderValue.toFixed(2)}`,
-      change: `${deliverySuccessRate}% delivery success rate`,
-      isPositive: deliverySuccessRate >= 80,
-      iconName: "TrendingUp",
-    },
   ];
 
   return {
@@ -416,6 +594,10 @@ export function aggregateAdminDashboard(
     topProducts,
     recentOrders,
     kpis,
+    dailyProfitData,
+    weeklyProfitData,
+    monthlyProfitData,
+    yearlyProfitData,
   };
 }
 

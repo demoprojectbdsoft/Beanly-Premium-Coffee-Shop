@@ -90,6 +90,7 @@ export default function AddProductClient({
     slug: "",
     price: "",
     originalPrice: "",
+    investPrice: "",
     discountPercentage: "",
     stockQuantity: "",
     sku: "",
@@ -264,6 +265,7 @@ export default function AddProductClient({
       subCategoryIds: Array.from(selectedSubCategoryIds),
       price: parseFloat(formState.price) || 0,
       originalPrice: formState.originalPrice ? parseFloat(formState.originalPrice) : undefined,
+      investPrice: formState.investPrice ? parseFloat(formState.investPrice) : undefined,
       stockQuantity: formState.stockQuantity ? parseInt(formState.stockQuantity, 10) : undefined,
       sku: formState.sku || undefined,
       description: formState.description || undefined,
@@ -663,6 +665,23 @@ export default function AddProductClient({
                     value={formState.originalPrice}
                     onChange={(e) =>
                       handlePriceChange(formState.price, e.target.value)
+                    }
+                  />
+                </div>
+
+                <div className={fieldClass}>
+                  <label className={labelClass}>
+                    Invest / Cost Price ($)
+                    <span className="ml-1 text-[10px] font-normal text-amber-500">(admin only)</span>
+                  </label>
+                  <Input
+                    name="investPrice"
+                    type="number"
+                    step="0.01"
+                    placeholder="8.99"
+                    value={formState.investPrice}
+                    onChange={(e) =>
+                      setFormState((prev) => ({ ...prev, investPrice: e.target.value }))
                     }
                   />
                 </div>
