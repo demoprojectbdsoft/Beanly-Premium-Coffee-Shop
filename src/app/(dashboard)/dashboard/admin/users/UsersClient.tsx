@@ -33,7 +33,7 @@ import {
   Package,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { updateUser, deleteUser } from "@/lib/action/user";
+import { updateUser } from "@/lib/action/user";
 import { getUserOrdersAction } from "@/lib/action/orders";
 
 const ROLE_OPTIONS = [
@@ -204,7 +204,6 @@ export default function UsersClient({
   const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
 
   // User orders state for modal
@@ -346,30 +345,6 @@ export default function UsersClient({
       toast.error("Error updating user status");
     } finally {
       setIsUpdating(false);
-    }
-  };
-
-  // Delete user
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`Are you sure you want to permanently delete user "${userName}"?`)) return;
-    setIsDeleting(true);
-    try {
-      const res = await deleteUser(userId);
-      if (res?.success !== false) {
-        toast.success("User deleted successfully");
-        setUsers((prev) => prev.filter((u) => (u._id || u.id) !== userId));
-        if (selectedUser && (selectedUser._id || selectedUser.id) === userId) {
-          setIsModalOpen(false);
-          setSelectedUser(null);
-        }
-        router.refresh();
-      } else {
-        toast.error(res?.message || "Failed to delete user");
-      }
-    } catch {
-      toast.error("Error deleting user");
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -724,16 +699,6 @@ export default function UsersClient({
                             className="w-8 h-8 rounded-lg text-gray-500 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/50 cursor-pointer transition-colors"
                           >
                             <Eye className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            isIconOnly
-                            size="sm"
-                            variant="ghost"
-                            onPress={() => handleDeleteUser(id, name)}
-                            aria-label={`Delete ${name}`}
-                            className="w-8 h-8 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
                       </td>
@@ -1131,23 +1096,7 @@ export default function UsersClient({
                   </Modal.Body>
 
                   {/* Modal Footer */}
-                  <Modal.Footer className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-gray-800">
-                    <Button
-                      size="sm"
-                      variant="danger-soft"
-                      onPress={() =>
-                        handleDeleteUser(
-                          selectedUser._id || selectedUser.id!,
-                          selectedUser.name || "User"
-                        )
-                      }
-                      isDisabled={isDeleting}
-                      className="px-3.5 h-9 rounded-xl font-bold text-xs cursor-pointer inline-flex items-center gap-1.5"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete User</span>
-                    </Button>
-
+                  <Modal.Footer className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-gray-800">
                     <Button
                       size="sm"
                       onPress={() => setIsModalOpen(false)}
