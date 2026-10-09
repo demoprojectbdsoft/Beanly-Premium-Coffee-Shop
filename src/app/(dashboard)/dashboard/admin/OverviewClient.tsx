@@ -82,8 +82,6 @@ const ICON_MAP: Record<string, any> = {
   CreditCard,
 };
 
-const TIMEFRAMES = ["Last 30 Days", "Last 6 Months", "This Year", "All Time"];
-
 export default function OverviewClient({
   stats,
   revenueData,
@@ -98,7 +96,6 @@ export default function OverviewClient({
   monthlyProfitData,
   yearlyProfitData,
 }: OverviewClientProps) {
-  const [selectedTimeframe, setSelectedTimeframe] = useState("This Year");
   const [revenueMetric, setRevenueMetric] = useState<"both" | "revenue" | "orders">("both");
   const [profitTimeframe, setProfitTimeframe] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly");
 
@@ -112,24 +109,28 @@ export default function OverviewClient({
   /**
    * Handles exporting all Admin Overview data:
    * - Key Stat Cards & KPIs
+   * - Profit & Loss Performance Analytics (Daily, Weekly, Monthly, Yearly)
    * - Monthly Revenue & Order Volume (Graph 1)
    * - Category Share & Catalog Distribution (Graph 2)
    * - Order Fulfillment Pipeline (Graph 3)
    * - Payment Gateways & Revenue Flow (Graph 4)
-   * - Top Performing Products Matrix
+   * - Top Performing Products & Profitability Matrix
    * - Recent Store Orders Table
    * 
-   * Formats into a clean, UTF-8 BOM enabled CSV file with robust escaping to prevent broken data.
+   * Formats into a clean, UTF-8 BOM enabled CSV file with robust escaping.
    */
   const handleExportAnalytics = () => {
     try {
-      toast.info("Generating store performance & sales CSV report...");
+      toast.info("Generating store performance, profit & sales CSV report...");
       
-      // Execute the CSV export with all live data points and current timeframe
+      // Execute the CSV export with all live data points, profit breakdowns & store records
       exportAdminOverviewCsv({
-        timeframe: selectedTimeframe,
         stats,
         kpis,
+        dailyProfitData,
+        weeklyProfitData,
+        monthlyProfitData,
+        yearlyProfitData,
         revenueData,
         categoryData,
         orderStatusData,
@@ -171,23 +172,7 @@ export default function OverviewClient({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center bg-slate-100 dark:bg-gray-800 p-1 rounded-xl border border-slate-200 dark:border-gray-700 text-xs">
-            {TIMEFRAMES.map((tf) => (
-              <button
-                key={tf}
-                onClick={() => setSelectedTimeframe(tf)}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
-                  selectedTimeframe === tf
-                    ? "bg-white dark:bg-gray-900 text-sky-600 dark:text-sky-400 shadow-xs"
-                    : "text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
-                }`}
-              >
-                {tf}
-              </button>
-            ))}
-          </div>
-
+        <div className="flex items-center gap-2.5">
           <button
             onClick={handleExportAnalytics}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white text-xs font-bold shadow-md shadow-sky-500/20 transition-all cursor-pointer"

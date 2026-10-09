@@ -84,7 +84,38 @@ export interface AdminOverviewExportData {
     deliverySuccessRate: number;
     totalProducts: number;
     totalTransactions: number;
+    totalProfit?: number;
+    totalCost?: number;
+    profitMargin?: number;
   };
+  dailyProfitData?: Array<{
+    label: string;
+    revenue: number;
+    cost: number;
+    profit: number;
+    orders: number;
+  }>;
+  weeklyProfitData?: Array<{
+    label: string;
+    revenue: number;
+    cost: number;
+    profit: number;
+    orders: number;
+  }>;
+  monthlyProfitData?: Array<{
+    label: string;
+    revenue: number;
+    cost: number;
+    profit: number;
+    orders: number;
+  }>;
+  yearlyProfitData?: Array<{
+    label: string;
+    revenue: number;
+    cost: number;
+    profit: number;
+    orders: number;
+  }>;
   revenueData: Array<{
     month: string;
     revenue: number;
@@ -111,8 +142,12 @@ export interface AdminOverviewExportData {
     id?: string;
     title: string;
     category: string;
+    price?: number;
+    investPrice?: number;
     unitsSold: number;
     revenue: number;
+    cost?: number;
+    profit?: number;
   }>;
   recentOrders: Array<{
     id: string;
@@ -128,13 +163,17 @@ export interface AdminOverviewExportData {
 /**
  * Generates and downloads a comprehensive CSV report containing:
  * 1. Store Overview & Header Metadata
- * 2. Key Metrics & Stat Cards
- * 3. Monthly Revenue & Order Volume Analytics (Graph 1)
- * 4. Category Market Share & Catalog Distribution (Graph 2)
- * 5. Order Fulfillment Pipeline (Graph 3)
- * 6. Payment Channels & Gateway Flow (Graph 4)
- * 7. Top Performing Products Matrix
- * 8. Recent Store Orders Table
+ * 2. Key Metrics, KPIs, Total Profit & Margin
+ * 3. Monthly Profit & Loss Performance Analytics
+ * 4. Weekly Profit & Loss Performance Analytics
+ * 5. Daily Profit & Loss Performance Analytics
+ * 6. Yearly Profit & Loss Performance Analytics
+ * 7. Monthly Revenue & Order Volume Analytics (Graph 1)
+ * 8. Category Market Share & Catalog Distribution (Graph 2)
+ * 9. Order Fulfillment Pipeline (Graph 3)
+ * 10. Payment Channels & Gateway Flow (Graph 4)
+ * 11. Top Performing Products & Profitability Matrix
+ * 12. Recent Store Orders Table
  */
 export function exportAdminOverviewCsv(data: AdminOverviewExportData): void {
   const dateStr = new Date().toISOString().split("T")[0];
@@ -148,15 +187,27 @@ export function exportAdminOverviewCsv(data: AdminOverviewExportData): void {
   // ── SECTION 1: HEADER & METADATA ──
   rows.push(["ELECTRO E-COMMERCE - ADMIN OVERVIEW & STORE ANALYTICS REPORT"]);
   rows.push(["Generated On", timestamp]);
-  rows.push(["Selected Timeframe", data.timeframe || "All Time"]);
+  rows.push(["Data Scope", "Live Real-Time Store Performance & Financial Summary"]);
   rows.push([]); // Blank separator row
 
-  // ── SECTION 2: STAT CARDS & CORE KPIS ──
-  rows.push(["=== 1. KEY PERFORMANCE INDICATORS & STAT CARDS ==="]);
-  rows.push(["Metric Title", "Current Value", "Trend / Change"]);
+  // ── SECTION 2: STAT CARDS & CORE KPIS & PROFIT/LOSS SUMMARY ──
+  rows.push(["=== 1. KEY PERFORMANCE INDICATORS & FINANCIAL SUMMARY ==="]);
+  rows.push(["Metric Title", "Current Value", "Trend / Note"]);
   data.stats.forEach((s) => {
-    rows.push([s.title, s.value, s.change || "N/A"]);
+    rows.push([s.title, s.value, s.change || "Live Real-Time"]);
   });
+  
+  // Profit & Loss Key Metrics
+  if (data.kpis.totalProfit !== undefined) {
+    rows.push(["Total Net Profit", `$${data.kpis.totalProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "Revenue minus Invest Cost"]);
+  }
+  if (data.kpis.totalCost !== undefined) {
+    rows.push(["Total Invest / COGS", `$${data.kpis.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "Total Product Purchase Cost"]);
+  }
+  if (data.kpis.profitMargin !== undefined) {
+    rows.push(["Overall Profit Margin", `${data.kpis.profitMargin.toFixed(1)}%`, "Profit / Revenue Ratio"]);
+  }
+
   // Additional Admin KPIs
   rows.push(["Average Order Value (AOV)", `$${data.kpis.avgOrderValue.toFixed(2)}`, "Live Store Metric"]);
   rows.push(["Fulfillment Success Rate", `${data.kpis.deliverySuccessRate}%`, "Completed Shipments"]);
@@ -164,20 +215,100 @@ export function exportAdminOverviewCsv(data: AdminOverviewExportData): void {
   rows.push(["Total Transactions Logged", `${data.kpis.totalTransactions} events`, "Payment Records"]);
   rows.push([]);
 
-  // ── SECTION 3: GRAPH 1 - REVENUE & ORDER VELOCITY ──
-  rows.push(["=== 2. MONTHLY REVENUE ANALYTICS & SALES VELOCITY (GRAPH 1) ==="]);
+  // ── SECTION 3: MONTHLY PROFIT & LOSS BREAKDOWN ──
+  rows.push(["=== 2. MONTHLY PROFIT & LOSS PERFORMANCE ==="]);
+  rows.push(["Month / Period", "Gross Selling Revenue ($ USD)", "Total Invest Cost ($ USD)", "Net Profit / Loss ($ USD)", "Profit Margin (%)", "Orders Count"]);
+  if (data.monthlyProfitData && data.monthlyProfitData.length > 0) {
+    data.monthlyProfitData.forEach((item) => {
+      const margin = item.revenue > 0 ? ((item.profit / item.revenue) * 100).toFixed(1) : "0.0";
+      rows.push([
+        item.label,
+        item.revenue.toFixed(2),
+        item.cost.toFixed(2),
+        item.profit.toFixed(2),
+        `${margin}%`,
+        item.orders,
+      ]);
+    });
+  } else {
+    rows.push(["No monthly profit data available", "$0.00", "$0.00", "$0.00", "0.0%", 0]);
+  }
+  rows.push([]);
+
+  // ── SECTION 4: WEEKLY PROFIT & LOSS BREAKDOWN ──
+  rows.push(["=== 3. WEEKLY PROFIT & LOSS PERFORMANCE ==="]);
+  rows.push(["Week Period", "Gross Selling Revenue ($ USD)", "Total Invest Cost ($ USD)", "Net Profit / Loss ($ USD)", "Profit Margin (%)", "Orders Count"]);
+  if (data.weeklyProfitData && data.weeklyProfitData.length > 0) {
+    data.weeklyProfitData.forEach((item) => {
+      const margin = item.revenue > 0 ? ((item.profit / item.revenue) * 100).toFixed(1) : "0.0";
+      rows.push([
+        item.label,
+        item.revenue.toFixed(2),
+        item.cost.toFixed(2),
+        item.profit.toFixed(2),
+        `${margin}%`,
+        item.orders,
+      ]);
+    });
+  } else {
+    rows.push(["No weekly profit data available", "$0.00", "$0.00", "$0.00", "0.0%", 0]);
+  }
+  rows.push([]);
+
+  // ── SECTION 5: DAILY PROFIT & LOSS BREAKDOWN ──
+  rows.push(["=== 4. DAILY PROFIT & LOSS PERFORMANCE (LAST 7 DAYS) ==="]);
+  rows.push(["Date / Day", "Gross Selling Revenue ($ USD)", "Total Invest Cost ($ USD)", "Net Profit / Loss ($ USD)", "Profit Margin (%)", "Orders Count"]);
+  if (data.dailyProfitData && data.dailyProfitData.length > 0) {
+    data.dailyProfitData.forEach((item) => {
+      const margin = item.revenue > 0 ? ((item.profit / item.revenue) * 100).toFixed(1) : "0.0";
+      rows.push([
+        item.label,
+        item.revenue.toFixed(2),
+        item.cost.toFixed(2),
+        item.profit.toFixed(2),
+        `${margin}%`,
+        item.orders,
+      ]);
+    });
+  } else {
+    rows.push(["No daily profit data available", "$0.00", "$0.00", "$0.00", "0.0%", 0]);
+  }
+  rows.push([]);
+
+  // ── SECTION 6: YEARLY PROFIT & LOSS BREAKDOWN ──
+  rows.push(["=== 5. YEARLY PROFIT & LOSS PERFORMANCE ==="]);
+  rows.push(["Year", "Gross Selling Revenue ($ USD)", "Total Invest Cost ($ USD)", "Net Profit / Loss ($ USD)", "Profit Margin (%)", "Orders Count"]);
+  if (data.yearlyProfitData && data.yearlyProfitData.length > 0) {
+    data.yearlyProfitData.forEach((item) => {
+      const margin = item.revenue > 0 ? ((item.profit / item.revenue) * 100).toFixed(1) : "0.0";
+      rows.push([
+        item.label,
+        item.revenue.toFixed(2),
+        item.cost.toFixed(2),
+        item.profit.toFixed(2),
+        `${margin}%`,
+        item.orders,
+      ]);
+    });
+  } else {
+    rows.push(["No yearly profit data available", "$0.00", "$0.00", "$0.00", "0.0%", 0]);
+  }
+  rows.push([]);
+
+  // ── SECTION 7: GRAPH 1 - MONTHLY SALES & ORDER VELOCITY ──
+  rows.push(["=== 6. MONTHLY SALES REVENUE & ORDER VOLUME ==="]);
   rows.push(["Month", "Gross Revenue ($ USD)", "Orders Processed"]);
   if (data.revenueData && data.revenueData.length > 0) {
     data.revenueData.forEach((item) => {
-      rows.push([item.month, item.revenue, item.orders]);
+      rows.push([item.month, item.revenue.toFixed(2), item.orders]);
     });
   } else {
     rows.push(["No monthly revenue data available", 0, 0]);
   }
   rows.push([]);
 
-  // ── SECTION 4: GRAPH 2 - CATEGORY SHARE & CATALOG DISTRIBUTION ──
-  rows.push(["=== 3. CATEGORY DISTRIBUTION & MARKET SHARE (GRAPH 2) ==="]);
+  // ── SECTION 8: GRAPH 2 - CATEGORY SHARE & CATALOG DISTRIBUTION ──
+  rows.push(["=== 7. CATEGORY DISTRIBUTION & MARKET SHARE ==="]);
   rows.push(["Category Name", "Market Share (%)", "Products Count"]);
   if (data.categoryData && data.categoryData.length > 0) {
     data.categoryData.forEach((cat) => {
@@ -188,8 +319,8 @@ export function exportAdminOverviewCsv(data: AdminOverviewExportData): void {
   }
   rows.push([]);
 
-  // ── SECTION 5: GRAPH 3 - ORDER FULFILLMENT PIPELINE ──
-  rows.push(["=== 4. ORDER FULFILLMENT PIPELINE (GRAPH 3) ==="]);
+  // ── SECTION 9: GRAPH 3 - ORDER FULFILLMENT PIPELINE ──
+  rows.push(["=== 8. ORDER FULFILLMENT PIPELINE ==="]);
   rows.push(["Fulfillment Status", "Order Count", "Share (%)", "Total Value ($ USD)"]);
   if (data.orderStatusData && data.orderStatusData.length > 0) {
     data.orderStatusData.forEach((st) => {
@@ -200,8 +331,8 @@ export function exportAdminOverviewCsv(data: AdminOverviewExportData): void {
   }
   rows.push([]);
 
-  // ── SECTION 6: GRAPH 4 - PAYMENT GATEWAY FLOW ──
-  rows.push(["=== 5. PAYMENT GATEWAYS & REVENUE FLOW (GRAPH 4) ==="]);
+  // ── SECTION 10: GRAPH 4 - PAYMENT GATEWAY FLOW ──
+  rows.push(["=== 9. PAYMENT GATEWAYS & REVENUE FLOW ==="]);
   rows.push(["Payment Channel", "Volume Share (%)", "Settled Amount ($ USD)", "Transactions Count"]);
   if (data.paymentMethodData && data.paymentMethodData.length > 0) {
     data.paymentMethodData.forEach((pm) => {
@@ -212,20 +343,37 @@ export function exportAdminOverviewCsv(data: AdminOverviewExportData): void {
   }
   rows.push([]);
 
-  // ── SECTION 7: TOP PERFORMING PRODUCTS MATRIX ──
-  rows.push(["=== 6. TOP PERFORMING & TRENDING PRODUCTS ==="]);
-  rows.push(["Rank", "Product Title", "Category", "Units Sold", "Total Revenue ($ USD)"]);
+  // ── SECTION 11: TOP PERFORMING PRODUCTS & PROFITABILITY MATRIX ──
+  rows.push(["=== 10. TOP PERFORMING PRODUCTS & PROFITABILITY MATRIX ==="]);
+  rows.push(["Rank", "Product Title", "Category", "Units Sold", "Selling Price ($)", "Invest Price ($)", "Total Revenue ($)", "Total Invest Cost ($)", "Net Profit / Loss ($)", "Profit Margin (%)"]);
   if (data.topProducts && data.topProducts.length > 0) {
     data.topProducts.forEach((p, idx) => {
-      rows.push([`#${idx + 1}`, p.title, p.category, p.unitsSold, `$${p.revenue.toLocaleString()}`]);
+      const price = p.price ?? (p.unitsSold > 0 ? p.revenue / p.unitsSold : 0);
+      const investPrice = p.investPrice ?? (p.cost !== undefined && p.unitsSold > 0 ? p.cost / p.unitsSold : 0);
+      const cost = p.cost ?? (investPrice * p.unitsSold);
+      const profit = p.profit ?? (p.revenue - cost);
+      const margin = p.revenue > 0 ? ((profit / p.revenue) * 100).toFixed(1) : "0.0";
+
+      rows.push([
+        `#${idx + 1}`,
+        p.title,
+        p.category,
+        p.unitsSold,
+        `$${price.toFixed(2)}`,
+        `$${investPrice.toFixed(2)}`,
+        `$${p.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        `$${cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        `$${profit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        `${margin}%`,
+      ]);
     });
   } else {
-    rows.push(["-", "No top products recorded", "-", 0, "$0"]);
+    rows.push(["-", "No top products recorded", "-", 0, "$0.00", "$0.00", "$0.00", "$0.00", "$0.00", "0.0%"]);
   }
   rows.push([]);
 
-  // ── SECTION 8: RECENT STORE ORDERS TABLE ──
-  rows.push(["=== 7. RECENT STORE ORDERS TABLE ==="]);
+  // ── SECTION 12: RECENT STORE ORDERS TABLE ──
+  rows.push(["=== 11. RECENT STORE ORDERS TABLE ==="]);
   rows.push(["Order ID", "Customer Name", "Customer Email", "Purchased Items", "Amount", "Status", "Order Date"]);
   if (data.recentOrders && data.recentOrders.length > 0) {
     data.recentOrders.forEach((o) => {
