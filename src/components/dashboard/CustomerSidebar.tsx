@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -33,6 +34,23 @@ const CUSTOMER_ACCOUNT_ITEMS = [
   { name: "Settings", href: "/dashboard/customer/settings", icon: Settings },
 ];
 
+/** Maps raw member string to a proper display label */
+function formatMemberTier(member?: string | null): string {
+  if (!member) return "Silver Member";
+  const tier = member.charAt(0).toUpperCase() + member.slice(1).toLowerCase();
+  return `${tier} Member`;
+}
+
+/** Tier badge colour */
+function getTierColor(member?: string | null): string {
+  switch (member?.toLowerCase()) {
+    case "diamond": return "from-cyan-500 to-sky-600";
+    case "platinum": return "from-purple-500 to-indigo-600";
+    case "gold": return "from-amber-500 to-yellow-600";
+    default: return "from-sky-500 to-blue-600";
+  }
+}
+
 interface CustomerSidebarProps {
   isOpen: boolean;
   onClose: () => void;
@@ -42,18 +60,51 @@ export default function CustomerSidebar({ isOpen, onClose }: CustomerSidebarProp
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = authClient.useSession();
-  const user = session?.user as {
+
+  // Session-level user for identity (name, email, id)
+  const sessionUser = session?.user as {
+    id?: string;
     name?: string;
     email?: string;
     member?: string;
     points?: number;
-    plan?: string;
   } | undefined;
 
-  const memberTier = user?.member
-    ? user.member.charAt(0).toUpperCase() + user.member.slice(1) + " Member"
-    : "Silver Member";
-  const userPoints = user?.points !== undefined ? user.points.toLocaleString() : "0";
+  // Live member/points fetched from DB
+  const [liveData, setLiveData] = useState<{
+    member?: string;
+    points?: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!sessionUser?.id) return;
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (!apiUrl) return;
+
+    fetch(`${apiUrl}/users/${sessionUser.id}`, { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        const data = json?.data ?? json;
+        if (data) {
+          setLiveData({
+            member: data.member,
+            points: typeof data.points === "number" ? data.points : undefined,
+          });
+        }
+      })
+      .catch(() => {
+        // Silently fallback to session data
+      });
+  }, [sessionUser?.id]);
+
+  // Prefer live DB data, fallback to session
+  const activeMember = liveData?.member ?? sessionUser?.member;
+  const activePoints = liveData?.points !== undefined ? liveData.points : (sessionUser?.points ?? 0);
+
+  const memberTier = formatMemberTier(activeMember);
+  const tierGradient = getTierColor(activeMember);
+  const userPoints = activePoints.toLocaleString();
 
   const handleSignOut = async () => {
     try {
@@ -167,10 +218,10 @@ export default function CustomerSidebar({ isOpen, onClose }: CustomerSidebarProp
 
         {/* Sidebar Footer with Loyalty Tier & Back to Store */}
         <div className="p-4 border-t border-slate-100 dark:border-gray-800/60 space-y-3 bg-slate-50/50 dark:bg-gray-950/40">
-          {/* Rewards Card */}
+          {/* Rewards Card — live data */}
           <div className="p-3 rounded-xl bg-gradient-to-br from-sky-500/10 via-blue-500/10 to-indigo-500/10 border border-sky-500/20 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-xs">
+              <div className={`w-8 h-8 rounded-lg bg-gradient-to-tr ${tierGradient} flex items-center justify-center text-white shadow-xs`}>
                 <Sparkles className="w-4 h-4" />
               </div>
               <div>

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Form,
   Card,
@@ -23,6 +23,10 @@ import { toast } from "react-toastify";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawCallbackUrl = searchParams.get("callbackUrl") || searchParams.get("redirect") || "/";
+  const callbackUrl = rawCallbackUrl.startsWith("/") && !rawCallbackUrl.startsWith("//") ? rawCallbackUrl : "/";
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,8 +57,9 @@ export function LoginForm() {
         rememberMe: true,
       });
       if (loginData) {
-        router.push("/");
         toast.success("Authentication Successful!");
+        router.push(callbackUrl);
+        router.refresh();
       }
       if (error) {
         toast.error(error.message);
@@ -78,7 +83,7 @@ export function LoginForm() {
     try {
       const res = await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/",
+        callbackURL: callbackUrl,
       });
 
       if (res?.error) {
@@ -289,7 +294,7 @@ export function LoginForm() {
             <div className="text-center text-xs text-slate-500 dark:text-slate-400 pt-2">
               Don&apos;t have an account?{" "}
               <Link
-                href="/auth/register"
+                href={callbackUrl !== "/" ? `/auth/register?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/auth/register"}
                 className="font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline"
               >
                 Create Account

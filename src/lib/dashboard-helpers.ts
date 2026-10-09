@@ -518,7 +518,13 @@ export function aggregateCustomerDashboard(
   // Calculate Reward points: user.points from db or 1 pt per dollar spent
   const rewardPoints = user?.points !== undefined && user?.points !== null ? Number(user.points) : Math.floor(totalSpent);
   const membershipTier =
-    rewardPoints >= 2000 ? "Platinum Tier" : rewardPoints >= 1000 ? "Gold Tier" : rewardPoints >= 500 ? "Silver Tier" : "Bronze Member";
+    rewardPoints >= 10000
+      ? "Diamond Tier"
+      : rewardPoints >= 4000
+      ? "Platinum Tier"
+      : rewardPoints >= 1000
+      ? "Gold Tier"
+      : "Silver Tier";
 
   // Spending data (Graph 1)
   const spendingData: SpendingDataPoint[] = monthList.map((m) => {

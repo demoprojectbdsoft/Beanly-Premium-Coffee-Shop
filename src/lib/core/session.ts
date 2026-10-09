@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "../auth";
 
-type Role = "admin" | "user";
+type Role = "admin" | "customer" | "user";
 
 export const getUserSession = async () => {
   const session = await auth.api.getSession({

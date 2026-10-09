@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { LoginForm } from "./LoginForm";
 
 export const metadata = {
@@ -7,5 +7,9 @@ export const metadata = {
 };
 
 export default function LoginPage() {
-  return <LoginForm />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 dark:bg-gray-950" />}>
+      <LoginForm />
+    </Suspense>
+  );
 }

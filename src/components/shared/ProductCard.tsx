@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { ShoppingBag, Heart, Repeat, Eye, Star } from "lucide-react";
 import { toast } from "react-toastify";
 import { authClient } from "@/lib/auth-client";
@@ -97,6 +97,7 @@ export default function ProductCard({
 }: ProductCardProps) {
   // ── Session & Auth ──────────────────────────────────────────────────────────
   const router = useRouter();
+  const pathname = usePathname();
   const { data: session } = authClient.useSession();
   const user = session?.user;
   const userRole = ((user as { role?: string })?.role || "").toLowerCase();
@@ -171,7 +172,8 @@ export default function ProductCard({
       toast.info("Please log in to add items to your cart", {
         icon: <span>🔒</span>,
       });
-      router.push("/auth/login");
+      const returnUrl = pathname || (product.slug ? `/shop/${product.slug}` : `/shop/${product.id}`);
+      router.push(`/auth/login?callbackUrl=${encodeURIComponent(returnUrl)}`);
       return;
     }
 
@@ -220,7 +222,8 @@ export default function ProductCard({
       toast.info("Please log in to add items to your wishlist", {
         icon: <span>🔒</span>,
       });
-      router.push("/auth/login");
+      const returnUrl = pathname || (product.slug ? `/shop/${product.slug}` : `/shop/${product.id}`);
+      router.push(`/auth/login?callbackUrl=${encodeURIComponent(returnUrl)}`);
       return;
     }
 

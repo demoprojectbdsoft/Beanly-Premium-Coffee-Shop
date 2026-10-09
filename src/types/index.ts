@@ -79,7 +79,7 @@ export interface User {
   role?: string | null;
   plan?: string | null;
   status?: string | null;
-  member?: "silver" | "gold" | "platinum" | string | null;
+  member?: "silver" | "gold" | "platinum" | "diamond" | string | null;
   points?: number | null;
   phone?: string | null;
   bio?: string | null;

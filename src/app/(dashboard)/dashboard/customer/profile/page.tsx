@@ -12,7 +12,7 @@ export interface RealCustomerProfile {
   role: string;
   plan: string;
   status: string;
-  member: "silver" | "gold" | "platinum" | string;
+  member: "silver" | "gold" | "platinum" | "diamond" | string;
   points: number;
   phone: string;
   bio: string;

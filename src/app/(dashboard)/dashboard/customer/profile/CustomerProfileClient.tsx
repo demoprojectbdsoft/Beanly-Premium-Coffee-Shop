@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Card, Button, Input } from "@heroui/react";
@@ -13,7 +13,7 @@ import {
   Coins,
   Crown,
   Phone,
-  FileText,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { authClient } from "@/lib/auth-client";
@@ -29,6 +29,7 @@ export default function CustomerProfileClient({
   initialProfile,
 }: CustomerProfileClientProps) {
   const [profile, setProfile] = useState<RealCustomerProfile>(initialProfile);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [name, setName] = useState(initialProfile.name || "");
   const [imageUrl, setImageUrl] = useState(initialProfile.image || "");
@@ -36,11 +37,48 @@ export default function CustomerProfileClient({
   const [bio, setBio] = useState(initialProfile.bio || "");
   const [isSaving, setIsSaving] = useState(false);
 
+  const { data: session } = authClient.useSession();
+  const sessionUser = session?.user as { id?: string } | undefined;
+
+  // Fetch live DB data on mount to get up-to-date member/points
+  useEffect(() => {
+    const userId = profile.id || sessionUser?.id;
+    if (!userId) return;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (!apiUrl) return;
+
+    fetch(`${apiUrl}/users/${userId}`, { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        const data = json?.data ?? json;
+        if (data) {
+          setProfile((prev) => ({
+            ...prev,
+            member: data.member ?? prev.member,
+            points: typeof data.points === "number" ? data.points : prev.points,
+            status: data.status ?? prev.status,
+            plan: data.plan ?? prev.plan,
+            role: data.role ?? prev.role,
+          }));
+        }
+      })
+      .catch(() => {
+        // Silently fallback to initial server-rendered data
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.id, sessionUser?.id]);
+
   const memberTierName =
     profile.member.charAt(0).toUpperCase() + profile.member.slice(1);
 
   const getTierColors = (tier: string) => {
     switch (tier.toLowerCase()) {
+      case "diamond":
+        return {
+          bg: "bg-cyan-50 dark:bg-cyan-950/60 border-cyan-200 dark:border-cyan-800 text-cyan-700 dark:text-cyan-300",
+          badge: "bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white",
+          iconColor: "text-cyan-500",
+        };
       case "platinum":
         return {
           bg: "bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300",
@@ -63,6 +101,36 @@ export default function CustomerProfileClient({
   };
 
   const tierColors = getTierColors(profile.member);
+
+  // Manual refresh of live data
+  const handleRefreshLiveData = async () => {
+    const userId = profile.id || sessionUser?.id;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (!userId || !apiUrl) return;
+    setIsRefreshing(true);
+    try {
+      const res = await fetch(`${apiUrl}/users/${userId}`, { cache: "no-store" });
+      if (res.ok) {
+        const json = await res.json();
+        const data = json?.data ?? json;
+        if (data) {
+          setProfile((prev) => ({
+            ...prev,
+            member: data.member ?? prev.member,
+            points: typeof data.points === "number" ? data.points : prev.points,
+            status: data.status ?? prev.status,
+            plan: data.plan ?? prev.plan,
+            role: data.role ?? prev.role,
+          }));
+          toast.success("Profile data refreshed!");
+        }
+      }
+    } catch {
+      toast.error("Failed to refresh live data.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,13 +210,13 @@ export default function CustomerProfileClient({
                 {profile.name}
               </h2>
 
-              {/* Status Badge */}
+              {/* Account Status Badge */}
               <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                 {profile.status === "active" ? "Active Customer" : "Account Suspended"}
               </span>
 
-              {/* Member Tier Badge */}
+              {/* Member Tier Badge — live data */}
               <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${tierColors.badge}`}>
                 <Crown className="w-3.5 h-3.5" />
                 {memberTierName} Tier
@@ -172,6 +240,7 @@ export default function CustomerProfileClient({
                   {profile.phone}
                 </span>
               )}
+              {/* Live Points */}
               <span className="flex items-center gap-1">
                 <Coins className="w-3.5 h-3.5 text-amber-500" />
                 <span className="font-semibold text-gray-900 dark:text-white">
@@ -284,16 +353,28 @@ export default function CustomerProfileClient({
         {/* Membership & Rewards Summary Card */}
         <div className="space-y-6">
           <Card className="bg-white dark:bg-gray-900 border border-slate-200/80 dark:border-gray-800 rounded-2xl p-6 shadow-xs space-y-4">
-            <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-white">
-                Membership &amp; Perks
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Your tier benefits and loyalty balance
-              </p>
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                  Membership &amp; Perks
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Your live tier benefits and loyalty balance
+                </p>
+              </div>
+              {/* Refresh live data button */}
+              <button
+                type="button"
+                onClick={handleRefreshLiveData}
+                disabled={isRefreshing}
+                title="Refresh live membership data"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+              </button>
             </div>
 
-            {/* Current Tier Box */}
+            {/* Current Tier Box — live data */}
             <div className={`p-4 rounded-xl border ${tierColors.bg} space-y-2`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -311,7 +392,7 @@ export default function CustomerProfileClient({
               </p>
             </div>
 
-            {/* Reward Points Box */}
+            {/* Reward Points Box — live data */}
             <div className="p-4 rounded-xl border border-slate-200 dark:border-gray-800 bg-slate-50/50 dark:bg-gray-950/40 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -331,6 +412,26 @@ export default function CustomerProfileClient({
                 </span>{" "}
                 in store credit.
               </p>
+
+              {/* Next tier progress hint */}
+              {profile.member?.toLowerCase() !== "diamond" && (
+                <div className="pt-1 text-[10px] text-gray-400 dark:text-gray-500">
+                  {profile.member?.toLowerCase() === "silver" && (
+                    <span>🥇 <strong>{(1000 - profile.points).toLocaleString()}</strong> pts to Gold</span>
+                  )}
+                  {profile.member?.toLowerCase() === "gold" && (
+                    <span>🟣 <strong>{(4000 - profile.points).toLocaleString()}</strong> pts to Platinum</span>
+                  )}
+                  {profile.member?.toLowerCase() === "platinum" && (
+                    <span>💎 <strong>{(10000 - profile.points).toLocaleString()}</strong> pts to Diamond</span>
+                  )}
+                </div>
+              )}
+              {profile.member?.toLowerCase() === "diamond" && (
+                <p className="pt-1 text-[10px] font-bold text-cyan-600 dark:text-cyan-400">
+                  💎 You have reached the highest Diamond tier!
+                </p>
+              )}
             </div>
 
             {/* Account Status */}

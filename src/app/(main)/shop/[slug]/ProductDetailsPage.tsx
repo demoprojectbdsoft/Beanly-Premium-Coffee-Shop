@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   ShoppingBag,
   Heart,
@@ -57,6 +57,7 @@ export default function ProductDetailsPage({
 }) {
   // ⚠️ All hooks must be called unconditionally before any early returns
   const router = useRouter();
+  const pathname = usePathname();
   const { data: clientSession } = authClient.useSession();
 
   // Local reviews state initialized with server-fetched or demo reviews
@@ -212,7 +213,8 @@ export default function ProductDetailsPage({
       toast.info("Please log in to add items to your cart", {
         icon: <span>🔒</span>,
       });
-      router.push("/auth/login");
+      const returnUrl = pathname || `/shop/${product.slug || product.id}`;
+      router.push(`/auth/login?callbackUrl=${encodeURIComponent(returnUrl)}`);
       return;
     }
 
@@ -264,7 +266,8 @@ export default function ProductDetailsPage({
       toast.info("Please log in to add items to your wishlist", {
         icon: <span>🔒</span>,
       });
-      router.push("/auth/login");
+      const returnUrl = pathname || `/shop/${product.slug || product.id}`;
+      router.push(`/auth/login?callbackUrl=${encodeURIComponent(returnUrl)}`);
       return;
     }
 
@@ -890,7 +893,7 @@ export default function ProductDetailsPage({
                           </p>
                         </div>
                         <Link
-                          href="/auth/login"
+                          href={`/auth/login?callbackUrl=${encodeURIComponent(pathname || `/shop/${product.slug || product.id}`)}`}
                           className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white shadow-md shadow-sky-500/25 transition-all"
                         >
                           <UserCheck className="w-3.5 h-3.5" />

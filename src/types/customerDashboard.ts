@@ -143,8 +143,8 @@ export interface CustomerProfileData {
   gender: "Male" | "Female" | "Other" | "Prefer not to say";
   bio: string;
   memberSince: string;
-  membershipTier: "Bronze" | "Silver" | "Gold" | "Platinum" | string;
-  member?: "silver" | "gold" | "platinum" | string;
+  membershipTier: "Silver" | "Gold" | "Platinum" | "Diamond" | string;
+  member?: "silver" | "gold" | "platinum" | "diamond" | string;
   points?: number;
   addresses: CustomerAddress[];
 }

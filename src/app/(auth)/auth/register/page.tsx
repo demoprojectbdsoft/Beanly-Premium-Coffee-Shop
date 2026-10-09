@@ -1,6 +1,4 @@
-// app/(auth)/register/page.tsx
-
-import React from "react";
+import React, { Suspense } from "react";
 import { RegisterForm } from "./RegisterForm";
 
 export const metadata = {
@@ -9,5 +7,9 @@ export const metadata = {
 };
 
 export default function RegisterPage() {
-  return <RegisterForm />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 dark:bg-gray-950" />}>
+      <RegisterForm />
+    </Suspense>
+  );
 }
