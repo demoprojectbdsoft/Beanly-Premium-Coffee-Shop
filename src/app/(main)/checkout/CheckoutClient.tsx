@@ -9,6 +9,7 @@ import {
   Input,
   Button,
 } from "@heroui/react";
+import SuspendedAccountModal from "@/components/shared/SuspendedAccountModal";
 import {
   ShoppingBag,
   ShieldCheck,
@@ -34,6 +35,7 @@ import {
   X,
   Clock,
   ExternalLink,
+  Ban,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { authClient } from "@/lib/auth-client";
@@ -123,6 +125,8 @@ export default function CheckoutClient({
   const router = useRouter();
   const { data: clientSession } = authClient.useSession();
   const user = initialUser || clientSession?.user;
+  const isSuspended = ((user as { status?: string })?.status || "").toLowerCase() === "suspended";
+  const [showSuspendedAlert, setShowSuspendedAlert] = useState<boolean>(false);
 
   // ── Cart State ─────────────────────────────────────────────────────────────
   const [cart, setCart] = useState<CartData | null>(initialCart || null);
@@ -261,6 +265,11 @@ export default function CheckoutClient({
   const handleSendOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
+    if (isSuspended) {
+      setShowSuspendedAlert(true);
+      return;
+    }
+
     const cleanPhone = walletPhone.trim();
     if (!cleanPhone || cleanPhone.length < 10) {
       toast.error("Please enter a valid mobile number (min 10 digits)");
@@ -310,6 +319,11 @@ export default function CheckoutClient({
   // 2. Verify OTP (Demo) inside Modal
   const handleVerifyOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+
+    if (isSuspended) {
+      setShowSuspendedAlert(true);
+      return;
+    }
 
     const cleanOtp = enteredOtp.trim();
     if (!cleanOtp || cleanOtp.length !== 6) {
@@ -365,6 +379,11 @@ export default function CheckoutClient({
 
   // 4. Place Order — calls real backend POST /api/orders
   const handlePlaceOrder = async () => {
+    if (isSuspended) {
+      setShowSuspendedAlert(true);
+      return;
+    }
+
     if (isCartEmpty) {
       toast.error("Your cart is empty. Add items before placing an order.");
       return;
@@ -437,7 +456,38 @@ export default function CheckoutClient({
     "text-base font-bold text-slate-900 dark:text-white flex items-center gap-2";
 
   return (
+    <>
+    <SuspendedAccountModal
+      isOpen={showSuspendedAlert}
+      onOpenChange={setShowSuspendedAlert}
+      message="Your account has been suspended. You cannot place orders or proceed with checkout. Please contact customer support for assistance."
+    />
+
     <div className="py-6 md:py-10 space-y-6">
+      {/* ── Suspension Notice Banner ── */}
+      {isSuspended && (
+        <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 flex items-center gap-3.5 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 border border-red-200 dark:border-red-800">
+            <Ban className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-bold text-red-900 dark:text-red-200">
+              Account Suspended
+            </h3>
+            <p className="text-xs text-red-700 dark:text-red-300 mt-0.5">
+              Your account has been suspended by administration. Checkout and order placement actions are disabled.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            onPress={() => setShowSuspendedAlert(true)}
+            className="px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 shrink-0"
+          >
+            Details
+          </Button>
+        </div>
+      )}
+
       {/* ── Breadcrumbs & Page Header ── */}
       <div className="space-y-2">
         <nav className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
@@ -951,11 +1001,26 @@ export default function CheckoutClient({
                 <div className="space-y-3 pt-2">
                   <Button
                     type="button"
-                    onPress={() => handlePlaceOrder()}
-                    isDisabled={!isCheckoutReady}
-                    className="w-full h-12 rounded-xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-600 hover:via-blue-700 hover:to-indigo-700 text-white font-extrabold text-sm shadow-md shadow-sky-500/25 transition-all duration-300 hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    onPress={() => {
+                      if (isSuspended) {
+                        setShowSuspendedAlert(true);
+                        return;
+                      }
+                      handlePlaceOrder();
+                    }}
+                    isDisabled={isSuspended ? false : !isCheckoutReady}
+                    className={`w-full h-12 rounded-xl text-white font-extrabold text-sm shadow-md transition-all duration-300 hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${
+                      isSuspended
+                        ? "bg-gradient-to-r from-red-500 to-rose-600 shadow-red-500/25"
+                        : "bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-600 hover:via-blue-700 hover:to-indigo-700 shadow-sky-500/25"
+                    }`}
                   >
-                    {isPlacingOrder ? (
+                    {isSuspended ? (
+                      <span className="flex items-center gap-2">
+                        <Ban className="w-4 h-4" />
+                        Account Suspended (Cannot Place Order)
+                      </span>
+                    ) : isPlacingOrder ? (
                       <span className="flex items-center gap-2">
                         <RefreshCw className="w-4 h-4 animate-spin" />
                         Placing Your Order...
@@ -1168,5 +1233,6 @@ export default function CheckoutClient({
         </div>
       )}
     </div>
+    </>
   );
 }

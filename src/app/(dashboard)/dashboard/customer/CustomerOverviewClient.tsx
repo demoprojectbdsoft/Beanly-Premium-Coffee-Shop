@@ -55,6 +55,7 @@ import {
 import type { ValueType } from "recharts/types/component/DefaultTooltipContent";
 import { toast } from "react-toastify";
 import { authClient } from "@/lib/auth-client";
+import SuspendedAccountModal from "@/components/shared/SuspendedAccountModal";
 import { addToCart } from "@/lib/action/cart";
 import {
   SpendingDataPoint,
@@ -115,13 +116,20 @@ export default function CustomerOverviewClient({
   const [wishlist, setWishlist] = useState(initialWishlist);
   const [selectedOrderForTracking, setSelectedOrderForTracking] = useState<CustomerOrder | null>(null);
   const [activeSpendingView, setActiveSpendingView] = useState<"both" | "spending" | "orders">("both");
+  const [showSuspendedAlert, setShowSuspendedAlert] = useState(false);
 
   const router = useRouter();
   const { data: session } = authClient.useSession();
   const user = session?.user;
   const userRole = ((user as { role?: string })?.role || "").toLowerCase();
+  const isSuspended = ((user as { status?: string })?.status || "").toLowerCase() === "suspended";
 
   const handleAddToCart = async (item: CustomerWishlistItem) => {
+    if (isSuspended) {
+      setShowSuspendedAlert(true);
+      return;
+    }
+
     if (!user) {
       toast.info("Please log in to add items to your cart", {
         icon: <span>🔒</span>,
@@ -202,6 +210,13 @@ export default function CustomerOverviewClient({
   const totalSpentAll = spendingData.reduce((acc, curr) => acc + curr.amount, 0);
 
   return (
+    <>
+    <SuspendedAccountModal
+      isOpen={showSuspendedAlert}
+      onOpenChange={setShowSuspendedAlert}
+      message="Your account has been suspended. You are not allowed to add items to the cart. Please contact support for assistance."
+    />
+
     <div className="space-y-8">
       {/* ── Page Header / Welcome ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1008,5 +1023,6 @@ export default function CustomerOverviewClient({
         </div>
       )}
     </div>
+    </>
   );
 }

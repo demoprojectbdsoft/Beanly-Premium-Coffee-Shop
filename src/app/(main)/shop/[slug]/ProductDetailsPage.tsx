@@ -29,6 +29,7 @@ import {
 import { Button, Card, Tabs, Tab, TabList, TabPanel } from "@heroui/react";
 import { toast } from "react-toastify";
 import { authClient } from "@/lib/auth-client";
+import SuspendedAccountModal from "@/components/shared/SuspendedAccountModal";
 import { Product, ProductReview, User } from "@/types";
 import ProductNotFound from "./ProductNotFound";
 import { addReview } from "@/lib/action/reviews";
@@ -75,6 +76,7 @@ export default function ProductDetailsPage({
   const [isWishlisted, setIsWishlisted] = useState<boolean>(false);
   const [isInCart, setIsInCart] = useState<boolean>(false);
   const [isWishlistLoading, setIsWishlistLoading] = useState<boolean>(false);
+  const [showSuspendedAlert, setShowSuspendedAlert] = useState<boolean>(false);
 
   // Early return after all hooks
   if (!product) {
@@ -87,6 +89,8 @@ export default function ProductDetailsPage({
   const isOwner = Boolean(
     user?.id && product?.ownerId && String(user.id) === String(product.ownerId)
   );
+
+  const isSuspended = ((user as { status?: string })?.status || "").toLowerCase() === "suspended";
 
   // Calculate review stats
   const totalReviews = reviews.length;
@@ -215,6 +219,11 @@ export default function ProductDetailsPage({
       });
       const returnUrl = pathname || `/shop/${product.slug || product.id}`;
       router.push(`/auth/login?callbackUrl=${encodeURIComponent(returnUrl)}`);
+      return;
+    }
+
+    if (isSuspended) {
+      setShowSuspendedAlert(true);
       return;
     }
 
@@ -424,6 +433,13 @@ export default function ProductDetailsPage({
   };
 
   return (
+    <>
+    <SuspendedAccountModal
+      isOpen={showSuspendedAlert}
+      onOpenChange={setShowSuspendedAlert}
+      message="Your account has been suspended. You are not allowed to add items to the cart. Please contact support for assistance."
+    />
+
     <div className="w-full py-6 space-y-8 relative">
       {/* Subtle ambient bluish gradient in dark mode */}
       <div className="absolute top-0 right-1/4 w-96 h-96 bg-sky-500/5 dark:bg-sky-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
@@ -1151,5 +1167,6 @@ export default function ProductDetailsPage({
           </Tabs>
         </Card>
     </div>
+    </>
   );
 }

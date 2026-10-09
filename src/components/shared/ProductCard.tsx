@@ -6,7 +6,9 @@ import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { ShoppingBag, Heart, Repeat, Eye, Star } from "lucide-react";
 import { toast } from "react-toastify";
+import { Button } from "@heroui/react";
 import { authClient } from "@/lib/auth-client";
+import SuspendedAccountModal from "@/components/shared/SuspendedAccountModal";
 import { addToCart, isCarted as checkIsCartedAction } from "@/lib/action/cart";
 import {
   addToWishlist,
@@ -112,6 +114,9 @@ export default function ProductCard({
   const [isWishlistLoading, setIsWishlistLoading] = useState<boolean>(false);
   const [rating, setRating] = useState<number>(Number(product.rating) || 0);
   const [reviewCount, setReviewCount] = useState<number>(Number(product.reviewCount) || 0);
+  const [showSuspendedAlert, setShowSuspendedAlert] = useState<boolean>(false);
+
+  const isSuspended = ((user as { status?: string })?.status || "").toLowerCase() === "suspended";
 
   // ── Fetch Live Reviews, Wishlist & Cart Status ─────────────────────────────
   // 1. Queries latest reviews to calculate dynamic average rating & review count.
@@ -174,6 +179,11 @@ export default function ProductCard({
       });
       const returnUrl = pathname || (product.slug ? `/shop/${product.slug}` : `/shop/${product.id}`);
       router.push(`/auth/login?callbackUrl=${encodeURIComponent(returnUrl)}`);
+      return;
+    }
+
+    if (isSuspended) {
+      setShowSuspendedAlert(true);
       return;
     }
 
@@ -303,6 +313,13 @@ export default function ProductCard({
       : null);
 
   return (
+    <>
+    <SuspendedAccountModal
+      isOpen={showSuspendedAlert}
+      onOpenChange={setShowSuspendedAlert}
+      message="Your account has been suspended. You are not allowed to add items to the cart. Please contact support for assistance."
+    />
+
     <div
       className={`group relative flex flex-col justify-between p-2.5 sm:p-4 
         bg-gradient-to-br from-sky-50/80 via-blue-50/30 to-slate-50 
@@ -445,5 +462,6 @@ export default function ProductCard({
         </button>
       </div>
     </div>
+    </>
   );
 }

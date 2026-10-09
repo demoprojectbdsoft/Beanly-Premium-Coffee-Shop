@@ -23,6 +23,8 @@ import {
   Copy,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { authClient } from "@/lib/auth-client";
+import SuspendedAccountModal from "@/components/shared/SuspendedAccountModal";
 import { CustomerOrder } from "@/types/customerDashboard";
 
 const STATUS_TABS = ["All Orders", "Processing", "Shipped", "Delivered", "Cancelled"];
@@ -32,6 +34,11 @@ interface CustomerOrdersClientProps {
 }
 
 export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrdersClientProps) {
+  const { data: session } = authClient.useSession();
+  const user = session?.user;
+  const isSuspended = ((user as { status?: string })?.status || "").toLowerCase() === "suspended";
+  const [showSuspendedAlert, setShowSuspendedAlert] = useState(false);
+
   const [orders, setOrders] = useState<CustomerOrder[]>(
     Array.isArray(initialOrders) ? initialOrders : []
   );
@@ -54,6 +61,10 @@ export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrd
   };
 
   const handleBuyAgain = (item: { name: string }) => {
+    if (isSuspended) {
+      setShowSuspendedAlert(true);
+      return;
+    }
     toast.success(`"${item.name}" added to cart for reorder!`);
   };
 
@@ -65,6 +76,13 @@ export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrd
   };
 
   return (
+    <>
+    <SuspendedAccountModal
+      isOpen={showSuspendedAlert}
+      onOpenChange={setShowSuspendedAlert}
+      message="Your account has been suspended. You are not allowed to add items to the cart or reorder. Please contact support for assistance."
+    />
+
     <div className="space-y-8">
       {/* ── Page Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -411,5 +429,6 @@ export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrd
         </div>
       )}
     </div>
+    </>
   );
 }

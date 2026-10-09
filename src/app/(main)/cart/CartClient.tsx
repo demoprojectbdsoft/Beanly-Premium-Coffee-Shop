@@ -24,8 +24,9 @@ import {
   CreditCard,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { AlertDialog, Button } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { authClient } from "@/lib/auth-client";
+import SuspendedAccountModal from "@/components/shared/SuspendedAccountModal";
 import { updateCartItem, removeFromCart, clearCart } from "@/lib/action/cart";
 import { getCartByUserId } from "@/lib/api/cart";
 import { CartClientProps, CartData, CartItem } from "@/types";
@@ -53,6 +54,9 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
   } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState<boolean>(false);
+  const [showSuspendedCheckoutAlert, setShowSuspendedCheckoutAlert] = useState<boolean>(false);
+
+  const isSuspended = ((user as { status?: string })?.status || "").toLowerCase() === "suspended";
 
   // Fetch cart data when user is available or on mount
   const refreshCart = async () => {
@@ -263,6 +267,13 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
   };
 
   return (
+    <>
+    <SuspendedAccountModal
+      isOpen={showSuspendedCheckoutAlert}
+      onOpenChange={setShowSuspendedCheckoutAlert}
+      message="Your account has been suspended. You cannot proceed to checkout. Please contact support for assistance."
+    />
+
     <div className="min-h-screen bg-slate-50/60 dark:bg-[#0b1120] text-slate-800 dark:text-slate-100 transition-colors duration-300">
       {/* ── Breadcrumbs Bar ── */}
       <div className="bg-white dark:bg-slate-900 border-b border-sky-100 dark:border-slate-800 shadow-xs">
@@ -876,14 +887,26 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
 
                 {/* Checkout CTA */}
                 <div className="mt-6 space-y-3">
-                  <Link
-                    href={user ? "/checkout" : "/auth/login?callbackUrl=/checkout"}
-                    className="w-full h-12 rounded-xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-600 hover:via-blue-700 hover:to-indigo-700 text-white font-extrabold text-sm shadow-md shadow-sky-500/25 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <Lock className="w-4 h-4" />
-                    Proceed to Checkout
-                    <ArrowRight className="w-4 h-4 ml-1" />
-                  </Link>
+                  {isSuspended ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowSuspendedCheckoutAlert(true)}
+                      className="w-full h-12 rounded-xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-600 hover:via-blue-700 hover:to-indigo-700 text-white font-extrabold text-sm shadow-md shadow-sky-500/25 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Lock className="w-4 h-4" />
+                      Proceed to Checkout
+                      <ArrowRight className="w-4 h-4 ml-1" />
+                    </button>
+                  ) : (
+                    <Link
+                      href={user ? "/checkout" : "/auth/login?callbackUrl=/checkout"}
+                      className="w-full h-12 rounded-xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-600 hover:via-blue-700 hover:to-indigo-700 text-white font-extrabold text-sm shadow-md shadow-sky-500/25 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Lock className="w-4 h-4" />
+                      Proceed to Checkout
+                      <ArrowRight className="w-4 h-4 ml-1" />
+                    </Link>
+                  )}
 
                   <p className="text-[11px] text-center text-slate-400 flex items-center justify-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
@@ -929,5 +952,6 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
         )}
       </div>
     </div>
+    </>
   );
 }

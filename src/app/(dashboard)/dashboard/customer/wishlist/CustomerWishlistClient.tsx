@@ -10,7 +10,6 @@ import {
   Input,
   Select,
   ListBox,
-  AlertDialog,
 } from "@heroui/react";
 import {
   Heart,
@@ -25,6 +24,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { authClient } from "@/lib/auth-client";
+import SuspendedAccountModal from "@/components/shared/SuspendedAccountModal";
 import { CustomerWishlistItem } from "@/types/customerDashboard";
 import { removeFromWishlist } from "@/lib/action/wishlist";
 import { addToCart, isCarted as checkIsCartedAction } from "@/lib/action/cart";
@@ -50,6 +50,9 @@ function WishlistProductCard({
 
   const [isInCart, setIsInCart] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [showSuspendedAlert, setShowSuspendedAlert] = useState(false);
+
+  const isSuspended = ((user as { status?: string })?.status || "").toLowerCase() === "suspended";
 
   useEffect(() => {
     if (!item.productId) return;
@@ -67,6 +70,10 @@ function WishlistProductCard({
     if (!user) {
       toast.info("Please log in to add items to your cart");
       router.push("/auth/login");
+      return;
+    }
+    if (isSuspended) {
+      setShowSuspendedAlert(true);
       return;
     }
     if (userRole === "admin") {
@@ -96,6 +103,13 @@ function WishlistProductCard({
   };
 
   return (
+    <>
+    <SuspendedAccountModal
+      isOpen={showSuspendedAlert}
+      onOpenChange={setShowSuspendedAlert}
+      message="Your account has been suspended. You are not allowed to add items to the cart. Please contact support for assistance."
+    />
+
     <div className="group relative bg-white dark:bg-gray-900 border border-slate-200/80 dark:border-gray-800 rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between hover:border-sky-500/40 hover:shadow-lg transition-all">
       {/* Discount Badge */}
       {item.discountPercentage ? (
@@ -187,6 +201,7 @@ function WishlistProductCard({
         </div>
       </div>
     </div>
+    </>
   );
 }
 
