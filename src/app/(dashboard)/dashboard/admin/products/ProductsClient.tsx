@@ -158,6 +158,7 @@ export default function ProductsClient({
     slug: "",
     price: "",
     originalPrice: "",
+    investPrice: "",
     discountPercentage: "",
     stockQuantity: "",
     sku: "",
@@ -238,6 +239,7 @@ export default function ProductsClient({
       slug: p.slug || "",
       price: p.price ? String(p.price) : "",
       originalPrice: p.originalPrice ? String(p.originalPrice) : "",
+      investPrice: p.investPrice != null ? String(p.investPrice) : "",
       discountPercentage: p.discountPercentage ? String(p.discountPercentage) : "",
       stockQuantity: p.stockQuantity !== undefined ? String(p.stockQuantity) : "",
       sku: p.sku || "",
@@ -297,6 +299,7 @@ export default function ProductsClient({
       slug: editForm.slug || generateSlug(editForm.title),
       price: parseFloat(editForm.price) || 0,
       originalPrice: editForm.originalPrice ? parseFloat(editForm.originalPrice) : undefined,
+      investPrice: editForm.investPrice ? parseFloat(editForm.investPrice) : undefined,
       discountPercentage: editForm.discountPercentage ? parseFloat(editForm.discountPercentage) : undefined,
       stockQuantity: editForm.stockQuantity ? parseInt(editForm.stockQuantity) : 0,
       sku: editForm.sku || undefined,
@@ -937,7 +940,7 @@ export default function ProductsClient({
                     Pricing & Inventory
                   </h3>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                     <div>
                       <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">
                         Price ($) *
@@ -966,6 +969,24 @@ export default function ProductsClient({
                         value={editForm.originalPrice}
                         onChange={(e) =>
                           handleEditPriceChange(editForm.price, e.target.value)
+                        }
+                        className="w-full h-10 rounded-xl bg-slate-50 dark:bg-gray-800 text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                        Invest / Cost ($)
+                        <span className="ml-1 text-[10px] font-normal text-gray-400">(admin)</span>
+                      </label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="8.99"
+                        value={editForm.investPrice}
+                        onChange={(e) =>
+                          setEditForm((prev) => ({ ...prev, investPrice: e.target.value }))
                         }
                         className="w-full h-10 rounded-xl bg-slate-50 dark:bg-gray-800 text-xs"
                       />
