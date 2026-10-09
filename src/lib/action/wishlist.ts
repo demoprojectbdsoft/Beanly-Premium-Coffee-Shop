@@ -18,6 +18,6 @@ export const removeFromWishlist = async (productId: string) => {
 export const isWishlisted = async (productId: string) => {
   const user = await getUserSession();
   if (!user?.id) return { isWishlisted: false };
-  const res = await serverFetch(`/wishlist/is-wishlisted?userId=${user.id}&productId=${productId}`);
+  const res = await serverFetch(`/wishlist/is-wishlisted?userId=${user.id}&productId=${productId}`, true);
   return res?.data || { isWishlisted: false };
 };

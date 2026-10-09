@@ -8,14 +8,14 @@ export const getAllOrders = async (params?: Record<string, any>) => {
     });
   }
   const qs = query.toString();
-  return serverFetch(`/orders${qs ? `?${qs}` : ""}`);
+  return serverFetch(`/orders${qs ? `?${qs}` : ""}`, true);
 };
 
 export const getOrdersByUserId = async (userId: string) => {
-  return serverFetch(`/orders?userId=${userId}`);
+  return serverFetch(`/orders?userId=${userId}`, true);
 };
 
 export const getOrderById = async (id: string) => {
-  return serverFetch(`/orders/${id}`);
+  return serverFetch(`/orders/${id}`, true);
 };
 

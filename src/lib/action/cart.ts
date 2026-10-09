@@ -30,7 +30,7 @@ export const clearCart = async () => {
 export const isCarted = async (productId: string) => {
   const user = await getUserSession();
   if (!user?.id) return { isCarted: false, isInCart: false };
-  const res = await serverFetch(`/cart/is-carted?userId=${user.id}&productId=${productId}`);
+  const res = await serverFetch(`/cart/is-carted?userId=${user.id}&productId=${productId}`, true);
   return res?.data || { isCarted: false, isInCart: false };
 };
 

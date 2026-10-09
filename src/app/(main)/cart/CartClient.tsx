@@ -24,7 +24,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { Button } from "@heroui/react";
+import { AlertDialog, Button } from "@heroui/react";
 import { authClient } from "@/lib/auth-client";
 import SuspendedAccountModal from "@/components/shared/SuspendedAccountModal";
 import { updateCartItem, removeFromCart, clearCart } from "@/lib/action/cart";
