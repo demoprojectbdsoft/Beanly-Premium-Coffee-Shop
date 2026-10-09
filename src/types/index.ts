@@ -129,7 +129,10 @@ export interface Product {
   subCategoryIds?: { name: string; slug: string }[];
   price: number;
   originalPrice?: number;
+  investPrice?: number;       // admin-only: purchase/cost price
   discountPercentage?: number; // e.g. 80 for -80%
+  profitMargin?: number;      // computed: (price - investPrice) / price * 100
+  isOfferExpired?: boolean;   // true when offerEndDate has passed
   image: string;
   additionalImages?: string[];
   inStock: boolean;

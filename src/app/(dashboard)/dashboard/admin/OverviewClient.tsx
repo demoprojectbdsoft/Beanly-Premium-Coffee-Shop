@@ -30,10 +30,13 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  LineChart,
+  Line,
   BarChart,
   Bar,
   XAxis,
   YAxis,
+  CartesianGrid,
   Tooltip,
   PieChart,
   Pie,
@@ -51,6 +54,7 @@ import {
   TopProductItem,
   AdminKPIs,
   RecentOrder,
+  ProfitDataPoint,
 } from "@/types/adminDashboard";
 import { exportAdminOverviewCsv } from "@/lib/csvExport";
 
@@ -63,6 +67,10 @@ interface OverviewClientProps {
   topProducts: TopProductItem[];
   recentOrders: RecentOrder[];
   kpis: AdminKPIs;
+  dailyProfitData: ProfitDataPoint[];
+  weeklyProfitData: ProfitDataPoint[];
+  monthlyProfitData: ProfitDataPoint[];
+  yearlyProfitData: ProfitDataPoint[];
 }
 
 const ICON_MAP: Record<string, any> = {
@@ -85,9 +93,21 @@ export default function OverviewClient({
   topProducts,
   recentOrders,
   kpis,
+  dailyProfitData,
+  weeklyProfitData,
+  monthlyProfitData,
+  yearlyProfitData,
 }: OverviewClientProps) {
   const [selectedTimeframe, setSelectedTimeframe] = useState("This Year");
   const [revenueMetric, setRevenueMetric] = useState<"both" | "revenue" | "orders">("both");
+  const [profitTimeframe, setProfitTimeframe] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly");
+
+  const profitChartData = {
+    daily: dailyProfitData,
+    weekly: weeklyProfitData,
+    monthly: monthlyProfitData,
+    yearly: yearlyProfitData,
+  }[profitTimeframe];
 
   /**
    * Handles exporting all Admin Overview data:
@@ -264,6 +284,192 @@ export default function OverviewClient({
             <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Transactions Logged</p>
             <p className="text-sm font-extrabold text-gray-900 dark:text-white">{kpis.totalTransactions} Events</p>
           </div>
+        </div>
+      </div>
+
+      {/* ── Profit & Loss Analytics Chart ── */}
+      <div className="bg-white dark:bg-gray-900 border border-slate-200/80 dark:border-gray-800 rounded-2xl p-6 shadow-xs space-y-5">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <TrendingUp className="w-4 h-4" />
+              </div>
+              <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                Profit &amp; Loss Analytics
+              </h3>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Revenue vs. cost vs. net profit breakdown by period
+            </p>
+          </div>
+
+          {/* Timeframe selector */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-gray-800 p-1 rounded-xl text-xs self-start sm:self-auto">
+            {(["daily", "weekly", "monthly", "yearly"] as const).map((tf) => (
+              <button
+                key={tf}
+                onClick={() => setProfitTimeframe(tf)}
+                className={`px-3 py-1.5 rounded-lg font-semibold capitalize transition-all cursor-pointer ${
+                  profitTimeframe === tf
+                    ? "bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                    : "text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                }`}
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* KPI Row */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="p-3 rounded-xl bg-sky-50 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/40">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-sky-500">Total Revenue</p>
+            <p className="text-lg font-black text-gray-900 dark:text-white mt-0.5">
+              ${kpis.totalProfit != null
+                ? (profitChartData?.reduce((s, d) => s + d.revenue, 0) ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                : "0.00"}
+            </p>
+          </div>
+          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-rose-500">Total Cost</p>
+            <p className="text-lg font-black text-gray-900 dark:text-white mt-0.5">
+              ${(profitChartData?.reduce((s, d) => s + d.cost, 0) ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </div>
+          <div className={`p-3 rounded-xl border ${
+            kpis.totalProfit >= 0
+              ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-100 dark:border-emerald-900/40"
+              : "bg-amber-50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900/40"
+          }`}>
+            <p className={`text-[10px] font-bold uppercase tracking-wider ${kpis.totalProfit >= 0 ? "text-emerald-500" : "text-amber-500"}`}>
+              {kpis.totalProfit >= 0 ? "Net Profit" : "Net Loss"}
+            </p>
+            <p className="text-lg font-black text-gray-900 dark:text-white mt-0.5">
+              ${kpis.totalProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <span className="ml-1.5 text-xs font-semibold text-gray-400">({kpis.profitMargin}%)</span>
+            </p>
+          </div>
+        </div>
+
+        {/* ── Line Chart: Sell Price vs Invest Price vs Profit ── */}
+        <div className="h-80 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={profitChartData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+              <defs>
+                {/* Sell Price (Revenue) gradient */}
+                <linearGradient id="sellAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#0284c7" stopOpacity={0.22} />
+                  <stop offset="95%" stopColor="#0284c7" stopOpacity={0.0} />
+                </linearGradient>
+                {/* Invest Price (Cost) gradient */}
+                <linearGradient id="investAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.18} />
+                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0.0} />
+                </linearGradient>
+                {/* Net Profit gradient */}
+                <linearGradient id="profitAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.18} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.12)" vertical={false} />
+              <XAxis
+                dataKey="label"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "#94a3b8", fontSize: 11 }}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "#94a3b8", fontSize: 11 }}
+                tickFormatter={(v) => v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v}`}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#0f172a",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: "14px",
+                  color: "#fff",
+                  fontSize: "12px",
+                  boxShadow: "0 20px 40px -10px rgba(0,0,0,0.4)",
+                }}
+                formatter={(value: any, name: any) => [
+                  `$${Number(value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                  String(name) === "revenue"
+                    ? "💰 Sell Price (Revenue)"
+                    : String(name) === "cost"
+                    ? "🏷️ Invest Price (Cost)"
+                    : "📈 Net Profit",
+                ]}
+                labelStyle={{ color: "#94a3b8", fontWeight: 600, marginBottom: 4 }}
+              />
+              <Legend
+                formatter={(value) =>
+                  value === "revenue"
+                    ? "Sell Price (Revenue)"
+                    : value === "cost"
+                    ? "Invest Price (Cost)"
+                    : "Net Profit"
+                }
+                wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }}
+              />
+              {/* Sell Price line — blue, thick */}
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                name="revenue"
+                stroke="#0284c7"
+                strokeWidth={2.5}
+                dot={{ r: 3, fill: "#0284c7", strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: "#0284c7", strokeWidth: 2, stroke: "#fff" }}
+              />
+              {/* Invest Price line — red, dashed */}
+              <Line
+                type="monotone"
+                dataKey="cost"
+                name="cost"
+                stroke="#ef4444"
+                strokeWidth={2.5}
+                strokeDasharray="6 3"
+                dot={{ r: 3, fill: "#ef4444", strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: "#ef4444", strokeWidth: 2, stroke: "#fff" }}
+              />
+              {/* Net Profit line — emerald, dotted */}
+              <Line
+                type="monotone"
+                dataKey="profit"
+                name="profit"
+                stroke="#10b981"
+                strokeWidth={2.5}
+                dot={{ r: 3, fill: "#10b981", strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: "#10b981", strokeWidth: 2, stroke: "#fff" }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Legend key */}
+        <div className="flex flex-wrap items-center gap-5 text-xs pt-1">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-0.5 bg-sky-500 rounded" />
+            <span className="font-semibold text-gray-600 dark:text-gray-300">Sell Price (Revenue)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-0.5 bg-rose-500 rounded" style={{ borderTop: "2px dashed #ef4444", background: "none" }} />
+            <span className="font-semibold text-gray-600 dark:text-gray-300">Invest Price (Cost)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-0.5 bg-emerald-500 rounded" />
+            <span className="font-semibold text-gray-600 dark:text-gray-300">Net Profit</span>
+          </div>
+          <span className="ml-auto text-[10px] text-gray-400">
+            * Products without an invest price contribute $0 cost
+          </span>
         </div>
       </div>
 
