@@ -332,11 +332,11 @@ export default function AddProductClient({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* ════════════════════════════════════════════════════════
-              LEFT COLUMN (spans 2 of 3 columns)
+              LEFT COLUMN (spans 7 of 12 columns)
           ════════════════════════════════════════════════════════ */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-7 space-y-6">
             {/* ── Section: General Information ── */}
             <Card className={cardClass}>
               <Card.Content className="p-6 space-y-5">
@@ -625,9 +625,9 @@ export default function AddProductClient({
           </div>
 
           {/* ════════════════════════════════════════════════════════
-              RIGHT COLUMN (sidebar)
+              RIGHT COLUMN (sidebar spans 5 of 12 columns)
           ════════════════════════════════════════════════════════ */}
-          <div className="space-y-6">
+          <div className="lg:col-span-5 space-y-6">
             {/* ── Section: Pricing & Stock ── */}
             <Card className={cardClass}>
               <Card.Content className="p-6 space-y-4">

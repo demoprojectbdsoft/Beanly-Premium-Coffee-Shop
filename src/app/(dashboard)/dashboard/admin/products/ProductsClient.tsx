@@ -838,7 +838,7 @@ export default function ProductsClient({
       ════════════════════════════════════════════════════════ */}
       <Modal isOpen={isEditOpen} onOpenChange={setIsEditOpen}>
         <Modal.Backdrop>
-          <Modal.Container size="lg">
+          <Modal.Container size="xl">
             <Modal.Dialog className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
               <Modal.Header className="flex items-center justify-between border-b border-slate-100 dark:border-gray-800 pb-4">
                 <div>
