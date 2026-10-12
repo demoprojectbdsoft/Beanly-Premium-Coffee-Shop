@@ -2,40 +2,38 @@
 
 import React, { useState, useEffect, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Filter, Sparkles, CheckCircle2, RotateCcw, Tag, Check, Sliders, ChevronDown, Layers, DollarSign, Percent } from "lucide-react";
+import { Filter, Sparkles, CheckCircle2, Sliders, ChevronDown, DollarSign, Percent, Star, Tag, Zap } from "lucide-react";
 import { RadioGroup, Radio, Switch } from "@heroui/react";
-import { ProductsSidebarFilterProps, Category, SubCategory } from "@/types";
+import { ProductsSidebarFilterProps } from "@/types";
 
 const DISCOUNT_TABS = ["0-20", "20-40", "40-60", "60-80", "80-100"] as const;
+const BADGE_OPTIONS = ["new", "hot", "sale", "discount"] as const;
+const RATING_OPTIONS = [4, 3, 2, 1] as const;
 
 const MIN_PRICE = 0;
 const MAX_PRICE = 2000;
 
-export default function ProductsSidebarFilter({ categories = [], subCategories = [] }: ProductsSidebarFilterProps) {
+export default function ProductsSidebarFilter({}: ProductsSidebarFilterProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [isExpandedResponsive, setIsExpandedResponsive] = useState(false);
 
   // Read URL params
-  const activeCategory = searchParams.get("category") || "";
-  const activeSubCat   = searchParams.get("subCategory") || "";
-  const activeFeatured = searchParams.get("isFeatured") === "true";
-  const activeInStock  = searchParams.get("inStock") === "true";
-  const urlMin         = Number(searchParams.get("minPrice")) || MIN_PRICE;
-  const urlMax         = Number(searchParams.get("maxPrice")) || MAX_PRICE;
+  const activeFeatured  = searchParams.get("isFeatured") === "true";
+  const activeInStock   = searchParams.get("inStock") === "true";
+  const activeHasOffer  = searchParams.get("hasOffer") === "true";
+  const activeMinRating = Number(searchParams.get("minRating")) || 0;
+  const activeBadge     = searchParams.get("badge") || "";
+  const activeDiscount  = searchParams.get("discount") || "";
+  const urlMin          = Number(searchParams.get("minPrice")) || MIN_PRICE;
+  const urlMax          = Number(searchParams.get("maxPrice")) || MAX_PRICE;
 
   const [rangeMin, setRangeMin] = useState(urlMin);
   const [rangeMax, setRangeMax] = useState(urlMax);
-  const [expandedCats, setExpandedCats] = useState<Record<string, boolean>>({});
 
   useEffect(() => { setRangeMin(urlMin); }, [urlMin]);
   useEffect(() => { setRangeMax(urlMax); }, [urlMax]);
-
-  // Auto-expand active category accordion
-  useEffect(() => {
-    if (activeCategory) setExpandedCats((prev) => ({ ...prev, [activeCategory]: true }));
-  }, [activeCategory]);
 
   const updateParams = (updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -47,112 +45,47 @@ export default function ProductsSidebarFilter({ categories = [], subCategories =
     startTransition(() => router.push(`/shop?${params.toString()}`, { scroll: false }));
   };
 
-  const handleCategoryClick = (cat: Category) => {
-    const isCurrent = activeCategory === cat.slug;
-    updateParams({
-      category: isCurrent ? null : cat.slug,
-      subCategory: null,
-    });
-    setExpandedCats((prev) => ({ ...prev, [cat.slug]: !prev[cat.slug] }));
-  };
-
-  const handleSubCatClick = (sub: SubCategory, cat: Category) => {
-    const isCurrent = activeSubCat === sub.slug;
-    updateParams({
-      category: cat.slug,
-      subCategory: isCurrent ? null : sub.slug,
-    });
-  };
-
-  const activeDiscount = searchParams.get("discount") || "";
-
   const hasActiveFilters = Boolean(
-    activeCategory || activeSubCat || activeFeatured || activeInStock || activeDiscount || urlMin > MIN_PRICE || urlMax < MAX_PRICE
+    activeFeatured || activeInStock || activeHasOffer || activeMinRating ||
+    activeBadge || activeDiscount || urlMin > MIN_PRICE || urlMax < MAX_PRICE
   );
 
-  const fillLeft = ((rangeMin - MIN_PRICE) / (MAX_PRICE - MIN_PRICE)) * 100;
+  const fillLeft  = ((rangeMin - MIN_PRICE) / (MAX_PRICE - MIN_PRICE)) * 100;
   const fillRight = ((rangeMax - MIN_PRICE) / (MAX_PRICE - MIN_PRICE)) * 100;
 
   const filterContent = (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-sky-100/80 dark:border-gray-800">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-          <h2 className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Filters</h2>
-        </div>
+      <div className="flex items-center gap-2 pb-3 border-b border-sky-100/80 dark:border-gray-800">
+        <Filter className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+        <h2 className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Filters</h2>
         {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={() => { setRangeMin(MIN_PRICE); setRangeMax(MAX_PRICE); router.push("/shop"); }}
-            className="flex items-center gap-1 text-[11px] font-semibold text-red-500 hover:text-red-600 cursor-pointer"
-          >
-            <RotateCcw className="w-3 h-3" /> Reset
-          </button>
+          <span className="ml-auto text-[10px] font-bold bg-sky-500 text-white rounded-full px-2 py-0.5 leading-none">
+            Active
+          </span>
         )}
       </div>
 
-      {/* Categories & Subcategories */}
-      <div className="space-y-2">
+      {/* Discount Range */}
+      <div className="space-y-2.5 pt-2 border-t border-sky-100/80 dark:border-gray-800">
         <label className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-1.5">
-          <Layers className="w-3.5 h-3.5 text-sky-500" />
-          Categories
+          <Percent className="w-3.5 h-3.5 text-sky-500" /> Discount
         </label>
-        <div className="space-y-1.5 max-h-64 overflow-y-auto pr-0.5">
-          {categories.map((cat) => {
-            const catId = cat._id || cat.id;
-            const children = subCategories.filter((sc) => {
-              const p = sc.categoryId;
-              const pId = typeof p === "object" && p !== null ? (p as any)._id || (p as any).id : p;
-              return pId && catId && String(pId) === String(catId);
-            });
-            const isActive = activeCategory === cat.slug;
-            const isExpanded = expandedCats[cat.slug] ?? isActive;
-
-            return (
-              <div key={cat.slug} className="rounded-xl border border-sky-100/60 dark:border-gray-800/80 overflow-hidden">
-                <div className={`flex items-center justify-between px-3 py-2 text-xs font-semibold transition-colors ${
-                  isActive ? "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400" : "text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60"
-                }`}>
-                  <button type="button" onClick={() => handleCategoryClick(cat)} className="flex items-center gap-1.5 flex-1 text-left cursor-pointer">
-                    <Tag className="w-3 h-3 text-sky-500 shrink-0" />
-                    <span className="truncate">{cat.name}</span>
-                    {children.length > 0 && <span className="text-[10px] text-gray-400 font-normal ml-1">({children.length})</span>}
-                  </button>
-                  {children.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setExpandedCats((prev) => ({ ...prev, [cat.slug]: !prev[cat.slug] }))}
-                      className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
-                    >
-                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-                    </button>
-                  )}
-                </div>
-
-                {isExpanded && children.length > 0 && (
-                  <div className="px-2.5 py-1.5 space-y-0.5 bg-gray-50/50 dark:bg-gray-900/50 border-t border-sky-100/40 dark:border-gray-800/50">
-                    {children.map((sub) => {
-                      const isSubActive = activeSubCat === sub.slug;
-                      return (
-                        <button
-                          key={sub.slug}
-                          type="button"
-                          onClick={() => handleSubCatClick(sub, cat)}
-                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] text-left cursor-pointer transition-all ${
-                            isSubActive ? "bg-sky-500 text-white font-semibold" : "text-gray-600 dark:text-gray-400 hover:bg-sky-50 dark:hover:bg-gray-800 hover:text-sky-600 dark:hover:text-sky-400"
-                          }`}
-                        >
-                          <span className="pl-1">• {sub.name}</span>
-                          {isSubActive && <Check className="w-3 h-3 shrink-0" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="flex flex-wrap gap-1.5">
+          {DISCOUNT_TABS.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => updateParams({ discount: activeDiscount === tab ? null : tab })}
+              className={`text-xs font-semibold px-3 py-1 rounded-full transition-all cursor-pointer ${
+                activeDiscount === tab
+                  ? "bg-sky-500 text-white shadow-xs"
+                  : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-700 hover:border-sky-400"
+              }`}
+            >
+              {tab}%
+            </button>
+          ))}
         </div>
       </div>
 
@@ -188,31 +121,83 @@ export default function ProductsSidebarFilter({ categories = [], subCategories =
         </button>
       </div>
 
-      {/* Discount Range */}
+      {/* Rating Filter */}
       <div className="space-y-2.5 pt-2 border-t border-sky-100/80 dark:border-gray-800">
         <label className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-1.5">
-          <Percent className="w-3.5 h-3.5 text-sky-500" /> Discount
+          <Star className="w-3.5 h-3.5 text-amber-400" /> Customer Rating
         </label>
-        <div className="flex flex-wrap gap-1.5">
-          {DISCOUNT_TABS.map((tab) => (
+        <div className="space-y-1.5">
+          {/* "All Ratings" option */}
+          <button
+            type="button"
+            onClick={() => updateParams({ minRating: null })}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-medium transition-all cursor-pointer ${
+              activeMinRating === 0
+                ? "bg-sky-50 dark:bg-sky-950/40 border border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300"
+                : "border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-sky-300 hover:text-sky-600"
+            }`}
+          >
+            <span>All Ratings</span>
+          </button>
+          {RATING_OPTIONS.map((rating) => (
             <button
-              key={tab}
+              key={rating}
               type="button"
-              onClick={() => updateParams({ discount: activeDiscount === tab ? null : tab })}
-              className={`text-xs font-semibold px-3 py-1 rounded-full transition-all cursor-pointer ${
-                activeDiscount === tab
-                  ? "bg-sky-500 text-white shadow-xs"
-                  : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-700 hover:border-sky-400"
+              onClick={() => updateParams({ minRating: activeMinRating === rating ? null : String(rating) })}
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-[11px] font-medium transition-all cursor-pointer ${
+                activeMinRating === rating
+                  ? "bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300"
+                  : "border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-amber-300 hover:text-amber-600"
               }`}
             >
-              {tab}%
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`w-3 h-3 ${i < rating ? "fill-amber-400 text-amber-400" : "text-gray-300 dark:text-gray-600"}`}
+                  />
+                ))}
+                <span className="ml-0.5">& up</span>
+              </div>
+              {activeMinRating === rating && (
+                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">✓</span>
+              )}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Featured & In Stock */}
+      {/* Badge Filter */}
+      <div className="space-y-2.5 pt-2 border-t border-sky-100/80 dark:border-gray-800">
+        <label className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-1.5">
+          <Tag className="w-3.5 h-3.5 text-sky-500" /> Badge
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {BADGE_OPTIONS.map((badge) => {
+            const isActive = activeBadge === badge;
+            const badgeColors: Record<string, string> = {
+              new:      isActive ? "bg-emerald-500 text-white" : "border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50",
+              hot:      isActive ? "bg-red-500 text-white"     : "border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50",
+              sale:     isActive ? "bg-orange-500 text-white"  : "border border-orange-200 dark:border-orange-800 text-orange-600 dark:text-orange-400 hover:bg-orange-50",
+              discount: isActive ? "bg-sky-500 text-white"     : "border border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400 hover:bg-sky-50",
+            };
+            return (
+              <button
+                key={badge}
+                type="button"
+                onClick={() => updateParams({ badge: isActive ? null : badge })}
+                className={`text-xs font-semibold px-3 py-1 rounded-full transition-all cursor-pointer capitalize ${badgeColors[badge]}`}
+              >
+                {badge}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Featured, In Stock & On Sale */}
       <div className="space-y-3 pt-2 border-t border-sky-100/80 dark:border-gray-800">
+        {/* Featured */}
         <div className="p-2.5 rounded-xl border border-sky-100/80 dark:border-gray-800 bg-sky-50/30 dark:bg-gray-800/40">
           <RadioGroup
             value={activeFeatured ? "yes" : "no"}
@@ -243,6 +228,7 @@ export default function ProductsSidebarFilter({ categories = [], subCategories =
           </RadioGroup>
         </div>
 
+        {/* In Stock */}
         <div className="flex items-center justify-between p-2.5 rounded-xl border border-sky-100/80 dark:border-gray-800 bg-sky-50/30 dark:bg-gray-800/40">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
@@ -252,6 +238,24 @@ export default function ProductsSidebarFilter({ categories = [], subCategories =
             </div>
           </div>
           <Switch isSelected={activeInStock} onChange={(checked) => updateParams({ inStock: checked ? "true" : null })} size="sm">
+            <Switch.Content>
+              <Switch.Control>
+                <Switch.Thumb />
+              </Switch.Control>
+            </Switch.Content>
+          </Switch>
+        </div>
+
+        {/* On Sale / Has Active Offer */}
+        <div className="flex items-center justify-between p-2.5 rounded-xl border border-sky-100/80 dark:border-gray-800 bg-sky-50/30 dark:bg-gray-800/40">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-orange-500" />
+            <div>
+              <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 block">On Sale</span>
+              <span className="text-[10px] text-gray-400">Active deals only</span>
+            </div>
+          </div>
+          <Switch isSelected={activeHasOffer} onChange={(checked) => updateParams({ hasOffer: checked ? "true" : null })} size="sm">
             <Switch.Content>
               <Switch.Control>
                 <Switch.Thumb />

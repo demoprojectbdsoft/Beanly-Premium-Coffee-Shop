@@ -12,6 +12,8 @@ export interface ShopQueryParams {
   badge?: string;
   isFeatured?: string;
   inStock?: string;
+  minRating?: string;
+  hasOffer?: string;
   sort?: string;
   page?: string;
 }
@@ -25,12 +27,12 @@ export interface ShopPagination {
 
 export interface ProductsTopBarProps {
   categories: Category[];
+  subCategories: SubCategory[];
   totalResults: number;
   onToggleMobileFilter?: () => void;
 }
 
 export interface ProductsSidebarFilterProps {
-  categories?: Category[];
   subCategories: SubCategory[];
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;

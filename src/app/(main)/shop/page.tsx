@@ -103,13 +103,13 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       {/* Top bar: Search, Category filter & Sort */}
       <ProductsTopBar
         categories={categories}
+        subCategories={subCategories}
         totalResults={pagination.total}
       />
 
       {/* Main layout: Sidebar filter (left) + Products grid (right) */}
       <div className="flex flex-col lg:flex-row items-start gap-6 xl:gap-8">
         <ProductsSidebarFilter
-          categories={categories}
           subCategories={subCategories}
         />
         <ProductsGrid
