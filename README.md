@@ -1,13 +1,13 @@
 <div align="center">
 
-# ⚡ Electro
+# ⚡ Sparq
 
 ### *Your one-stop electronics store — browse, compare, buy, track.*
 
 **A full-stack electronics e-commerce platform with role-based dashboards.**
 
-[![Frontend Repo](https://img.shields.io/badge/Frontend-Repository-2ea44f?style=for-the-badge)](https://github.com/nihalxofficial/Electro-Electronic-store)
-[![Server Repo](https://img.shields.io/badge/Server-Repository-blue?style=for-the-badge)](https://github.com/nihalxofficial/Electro-Server)
+[![Frontend Repo](https://img.shields.io/badge/Frontend-Repository-2ea44f?style=for-the-badge)](https://github.com/demoprojectbdsoft/Sparq-Electronics-Store)
+[![Server Repo](https://img.shields.io/badge/Server-Repository-blue?style=for-the-badge)](https://github.com/demoprojectbdsoft/Sparq-Server)
 [![Internship Project](https://img.shields.io/badge/Type-Internship%20Project-orange?style=for-the-badge)]()
 
 </div>
@@ -16,88 +16,113 @@
 
 ## 📑 Table of Contents
 
-- [About](#-about)
-- [Project Overview](#-project-overview)
-  - [Objective](#objective)
+- [📖 About](#-about)
+- [🎯 Project Overview](#-project-overview)
   - [Target Audience](#target-audience)
   - [Platforms Used](#platforms-used)
-- [Key Features](#-key-features)
-- [Tech Stack / npm Packages](#-npm-packages-used)
-- [Environment Variables](#-environment-variables)
-- [Getting Started](#-getting-started)
-- [Future Roadmap](#-future-roadmap)
-- [About This Project](#-about-this-project)
+- [🔐 Auth & Access Flow](#-auth--access-flow)
+- [✨ Features](#-features)
+- [⚙️ Functionalities](#️-functionalities)
+- [🔒 Security](#-security)
+- [📦 npm Packages Used](#-npm-packages-used)
+- [🔑 Environment Variables](#-environment-variables)
+- [🚀 Getting Started](#-getting-started)
+- [🗺️ Future Roadmap](#️-future-roadmap)
+- [🎓 About This Project](#-about-this-project)
 
 ---
 
 ## 📖 About
 
-Electro is a complete electronics e-commerce storefront built as a hands-on internship project — the goal was to go past a simple product-listing clone and actually build out the pieces a real electronics shop needs: dynamic, database-driven categories instead of hardcoded menus, a real cart/wishlist system, a working checkout flow with multiple payment options, order tracking, product reviews that actually affect ratings, a loyalty points system, and two fully separate dashboards for customers and admins.
-
-Nothing in the catalog, categories, or homepage content is hardcoded — every category, subcategory, product, and homepage slide is managed from the admin dashboard and served from MongoDB, so the same codebase could be re-skinned for a completely different product niche just by changing the data.
-
-**What makes it different from a typical storefront clone:**
-- **Fully dynamic category tree** — categories and subcategories (with their own images, descriptions, and active/inactive state) are created from the admin dashboard, not hardcoded in the navbar. The mega-menu, mobile menu, and shop filters all read from the same live data.
-- **Dynamic homepage hero slider** — the deal-countdown hero banner on the homepage is not static marketing copy; each slide links to a real product with a live countdown, pulled from the database.
-- **Real checkout pipeline, not a mock "Place Order" button** — Cash on Delivery and mobile wallet (bKash / Rocket / Nagad) checkout with OTP verification, server-computed shipping fees, stock validation, and a full order → transaction → status-history chain created together, atomically, on the backend.
-- **Self-correcting ratings** — product rating and review count are never trusted as stored values; they're recalculated from the actual review documents every time a review is added, edited, or removed.
-- **Loyalty points & membership tiers** — every completed order earns the customer loyalty points, tracked against a membership tier (e.g. Silver), server-side.
-- **Two real dashboards, not one generic "account page"** — Customers get orders, transactions, wishlist, reviews, analytics (with CSV export), profile and settings; Admins get full catalog management, order/transaction oversight, user role & status management, review moderation, and their own analytics.
-- **Shared JWT auth between two separate codebases** — the Next.js frontend owns authentication (better-auth, email/password + Google login) and exposes a JWKS endpoint; the independent Express backend verifies every request against that same JWKS, with no shared secret and no duplicated user store.
+Sparq is a full-stack electronics e-commerce platform — a dynamic, database-driven storefront with cart, wishlist, multi-method checkout, order tracking, reviews, a loyalty points system, and separate customer and admin dashboards. Nothing in the catalog, categories, or homepage content is hardcoded — categories, products, and the homepage slider are all managed from the admin dashboard and served from MongoDB.
 
 ---
 
 ## 🎯 Project Overview
 
-### Objective
-To design and build a realistic, end-to-end electronics e-commerce platform — from a fully dynamic public storefront, through authenticated cart/checkout/order flows, to complete customer and admin dashboards — while practicing production-level concerns: a database-driven content model (nothing hardcoded), layered backend architecture, stateless cross-service authentication, and server-side-trusted business logic (prices, stock, shipping fees, and loyalty points are always computed on the server, never trusted from the client).
-
 ### Target Audience
-- **Shoppers** browsing and buying electronics online — TVs, gaming gear, audio, accessories, and more.
-- **Store Admins** who need to manage the catalog (categories, subcategories, products, homepage slider), process orders, and oversee users and reviews.
-- **Developers/Recruiters** reviewing this project as a demonstration of full-stack, role-based, multi-service application development with a decoupled Next.js client and Express API.
+
+| Audience | What they get |
+|---|---|
+| **Shoppers** | Browse and buy electronics online. |
+| **Store Admins** | Manage the catalog, orders, users, and reviews. |
+| **Developers / Recruiters** | A demonstration of full-stack, role-based application development. |
 
 ### Platforms Used
-- **Frontend:** Next.js 16 (App Router), React 19, Tailwind CSS v4, HeroUI v3
-- **Backend:** Node.js + Express.js + TypeScript (see [server repository](https://github.com/nihalxofficial/Electro-Server))
-- **Database:** MongoDB Atlas (Mongoose on the backend; a separate `user` collection owned by better-auth)
-- **Auth:** better-auth (JWT via a JWKS endpoint) with email/password and Google Social Login
-- **Hosting:** Vercel (frontend) and Vercel Serverless Functions (backend API)
-- **Image Hosting:** ImgBB (used for category, product, and profile image uploads)
+
+| Layer | Choice |
+|---|---|
+| Frontend | Next.js 16 (App Router), React 19, Tailwind CSS v4, HeroUI v3 |
+| Backend | Node.js, Express.js, TypeScript ([server repository](https://github.com/demoprojectbdsoft/Sparq-Server)) |
+| Database | MongoDB Atlas (Mongoose) |
+| Auth | better-auth — JWT via JWKS, email/password and Google Social Login |
+| Hosting | Vercel (frontend) and Vercel Serverless Functions (backend) |
+| Image Hosting | ImgBB |
 
 ---
 
-## ✨ Key Features
+## 🔐 Auth & Access Flow
 
-> Only the features that set Electro apart are listed in depth here — standard auth/CRUD basics are covered under Tech Stack.
+```
+Sign in (email/password or Google) → better-auth issues a JWT
+        │
+        ├─ Frontend routes by role: admin → /dashboard/admin, customer → /dashboard/customer
+        └─ Backend verifies the JWT on every request via requireAuth + requireRole(...)
+```
 
-### Storefront (Public)
-- **Dynamic homepage** — hero slider with live countdown deals, Popular Products, Trending Products, Warehouse Deals, New Arrivals, promo banners, brand marquee, and a newsletter signup — all backed by real product/category data.
-- **Database-driven category mega-menu** — desktop dropdown and mobile menu both render from the same live category/subcategory data, with per-category background images.
-- **Shop page** — full product grid with search, category/price filters, sorting, and pagination handled against the backend, plus a dedicated product details page per product slug.
-- **Store Locator** — a dedicated page for finding physical store locations.
-- **Dark / Light theme** — toggle via `next-themes`, consistent across the whole site.
-- **Installable as an app (PWA)** — a web manifest lets customers install Electro directly to their desktop or mobile home screen, with its own name, icon, and standalone (browser-free) window.
+Role checks run on both sides — frontend route guards and backend middleware both enforce access, so a role check can't be bypassed through the UI.
 
-### Shopping & Checkout
-- **Cart & Wishlist** — persisted per user in the database (one record per user+product, quantity updated in place — not reconstructed from a local array), so a signed-in user's cart survives across devices.
-- **Product reviews & ratings** — star rating + written review per product; a product's average rating and review count are recalculated from real review documents on every create/update/delete, never stored as stale numbers.
-- **Guarded review eligibility** — reviews are gated by real rules, not an open comment box: only signed-in users can review; admins and the product's own owner are blocked from reviewing it; a review can only be left after the reviewer has actually purchased the product and that order has been delivered; and each user can leave only one review per product.
-- **Full checkout flow** — Cash on Delivery or mobile wallet (bKash / Rocket / Nagad) with a simulated OTP verification step; shipping fee and totals are computed server-side (free shipping above a set order threshold), never trusted from the client.
-- **Order creation pipeline** — placing an order atomically: validates product stock, computes subtotal/shipping/total, creates the order, creates a linked transaction record, logs the initial order-status entry, decrements product stock, clears the user's cart, and credits loyalty points to the user — all on the backend in one flow.
-- **Order tracking** — a Track Order page plus a full order-status history log per order (confirmed → processing → shipped → delivered / cancelled).
-- **Loyalty points & membership** — every order earns points based on amount spent, tied to the user's membership tier.
+---
 
-### Customer Dashboard
-- Overview, Orders (with status), Transactions, Wishlist, My Reviews (click-through to the product), Analytics (with CSV export), Profile, and Settings — each a dedicated page with search/filter/sort/pagination where it has a table.
+## ✨ Features
 
-### Admin Dashboard
-- **Catalog management** — create/edit categories, subcategories, and products (with multi-image upload, badges, specifications, stock).
-- **Homepage control** — manage the dynamic hero slider shown on the homepage.
-- **Order & transaction oversight** — platform-wide orders and transactions tables with status updates.
-- **User management** — view all users with the ability to change role and account status.
-- **Review moderation** — view and manage all product reviews across the platform.
-- **Admin analytics** — overview dashboard with CSV export for reporting.
+### 🏬 Storefront (Public)
+- **Dynamic homepage** — hero slider, Popular/Trending Products, Warehouse Deals, New Arrivals, promo banners, and newsletter signup.
+- **Category mega-menu** — desktop and mobile menus driven by live category/subcategory data.
+- **Shop page** — search, filters, sorting, pagination, and a product details page per slug.
+- **Store Locator** — a page for finding physical store locations.
+- **Language translator** — a built-in switcher to translate the storefront on the fly.
+- **Dark / Light theme** — via `next-themes`.
+- **Installable as an app (PWA)** — a web manifest for installing Sparq to desktop or mobile.
+
+### 🛍️ Shopping Experience
+- **Cart & Wishlist** — persisted per user in the database, synced across devices.
+- **Product reviews & ratings** — a product's rating and review count are recalculated from its actual reviews.
+- **Checkout** — Cash on Delivery or mobile wallet (bKash / Rocket / Nagad) with OTP verification.
+- **Order tracking** — a Track Order page and full status history per order.
+- **Loyalty points & membership** — points on every order, tracked against a membership tier.
+
+### 👤 Customer Dashboard
+- Overview, Orders, Transactions, Wishlist, Reviews, Analytics (with CSV export), Profile, and Settings.
+
+### 🛠️ Admin Dashboard
+- **Catalog management** — categories, subcategories, and products, with image upload, badges, and stock.
+- **Homepage slider control** — add, reorder, and manage slides by selecting an existing product.
+- **Order & transaction oversight** — platform-wide tables with status updates.
+- **User management** — change user role and account status.
+- **Review moderation** — view and manage all product reviews.
+- **Profit & sales analytics** — daily/weekly/monthly/yearly profit, exportable to CSV.
+
+---
+
+## ⚙️ Functionalities
+
+- **Order creation pipeline** — placing an order validates stock, computes totals, creates the order and linked transaction, logs status, decrements stock, and clears the cart — in one backend flow.
+- **Delivery-triggered loyalty points** — points are credited, and the membership tier re-checked, only when an admin marks the order delivered.
+- **Auto-settled COD transactions** — a COD transaction stays `pending` until delivery, then flips to `success` automatically.
+- **Countdown-driven pricing** — once a slide's countdown ends, its discount reverts to 0 and price reverts to original.
+- **Self-correcting ratings** — ratings are recalculated from actual review documents, never stored stale.
+
+---
+
+## 🔒 Security
+
+- **Shared JWT auth** — the frontend owns authentication via better-auth and exposes a JWKS endpoint; the backend verifies every request against it, with no shared secret.
+- **Role-isolated dashboard access** — route guards keep each role confined to its own dashboard.
+- **Guarded review eligibility** — only signed-in users who purchased and received the product can review it, once per product.
+- **Suspended-account restrictions** — a suspended user can't add new items to cart, but can still check out existing ones.
+- **Self-service account deletion** — requires password re-verification.
+- **Server-trusted money math** — prices, discounts, shipping fees, and totals are always computed server-side.
 
 ---
 
@@ -107,15 +132,15 @@ To design and build a realistic, end-to-end electronics e-commerce platform — 
 |---|---|
 | `next` | React framework — App Router, SSR, Server Actions |
 | `react` / `react-dom` | Core UI library |
-| `@heroui/react` / `@heroui/styles` | Primary component library (HeroUI v3) — Select, Modal, Switch, Tabs, etc. |
-| `tailwindcss` | Utility-first CSS framework |
-| `better-auth` / `@better-auth/mongo-adapter` | Authentication — email/password, Google OAuth, JWT/JWKS plugin |
-| `mongodb` | MongoDB driver (used directly by the better-auth adapter) |
+| `@heroui/react` / `@heroui/styles` | Component library (HeroUI v3) |
+| `tailwindcss` | Utility-first CSS |
+| `better-auth` / `@better-auth/mongo-adapter` | Authentication — email/password, Google OAuth, JWT/JWKS |
+| `mongodb` | MongoDB driver |
 | `next-themes` | Dark / Light theme switching |
 | `lucide-react` / `react-icons` | Icon sets |
-| `react-fast-marquee` | Brand logo marquee on the homepage |
+| `react-fast-marquee` | Brand logo marquee |
 | `react-toastify` | Toast notifications |
-| `recharts` | Charts for customer/admin analytics dashboards |
+| `recharts` | Analytics dashboard charts |
 
 ---
 
@@ -124,17 +149,15 @@ To design and build a realistic, end-to-end electronics e-commerce platform — 
 Create a `.env.local` file in the project root:
 
 ```env
-# Backend API base URL — used in both server and client contexts
+# Backend API base URL
 NEXT_PUBLIC_API_URL=your_backend_api_base_url
 
 # better-auth
 BETTER_AUTH_SECRET=your_auth_secret
 BETTER_AUTH_URL=your_app_url
-
-# Shared with the backend — the backend verifies JWTs against this origin's JWKS endpoint
 NEXT_PUBLIC_CLIENT_URL=your_app_url
 
-# MongoDB (used by the better-auth adapter for the user collection)
+# MongoDB
 MONGODB_URI=your_mongodb_atlas_connection_string
 DATABASE=your_database_name
 
@@ -143,47 +166,44 @@ GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 ```
 
-> Never commit `.env.local` to version control.
->
-> ⚠️ `NEXT_PUBLIC_*` variables are baked into the JavaScript bundle at **build time** — rebuild after changing one.
+> ⚠️ Never commit `.env.local`. `NEXT_PUBLIC_*` variables are baked in at build time — rebuild after changing one.
 
 ---
 
 ## 🚀 Getting Started
 
 ```bash
-# Clone the repository
-git clone https://github.com/nihalxofficial/Electro-Electronic-store.git
-cd Electro-Electronic-store
+# 1. Clone the repository
+git clone https://github.com/demoprojectbdsoft/Sparq-Electronics-Store.git
+cd Sparq-Electronics-Store
 
-# Install dependencies
+# 2. Install dependencies
 npm install
 
-# Start development server
+# 3. Start development server
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-> Make sure the [Electro-Server](https://github.com/nihalxofficial/Electro-Server) backend is running and `NEXT_PUBLIC_API_URL` points to it — most pages (categories, products, cart, orders, dashboards) depend on it.
+> 💡 The [Sparq-Server](https://github.com/demoprojectbdsoft/Sparq-Server) backend must be running and reachable at `NEXT_PUBLIC_API_URL`.
 
 ---
 
 ## 🗺️ Future Roadmap
 
-Planned/possible enhancements beyond the current scope:
-
-- [ ] **Live delivery tracking** — a rider/courier role with real-time GPS tracking on the order map, not just a status label.
-- [ ] **"Lucky Box" gamification** — a points-based mystery-box reward system customers can open using earned loyalty points.
-- [ ] **Real-time settings sync** — admin settings (currently a placeholder page) wired to live, instantly-applied store configuration.
-- [ ] **Live chat support** — in-app chat between customers and store support/admins.
-- [ ] **Coupons & promo codes** — percentage/flat discount codes applied at checkout.
-- [ ] **Real payment gateway integration** — actual Stripe/SSLCommerz/bKash API integration in place of the current simulated OTP flow.
-- [ ] **Push / email notifications** — order status changes and promotional alerts.
-- [ ] **Product comparison** — side-by-side spec comparison between products.
+- [ ] **Live delivery tracking** — real-time GPS tracking for a rider/courier role.
+- [ ] **"Lucky Box" gamification** — a points-based mystery-box reward.
+- [ ] **Points-redeemable discounts** — spending loyalty points directly at checkout.
+- [ ] **Real-time settings sync** — live, instantly-applied store configuration.
+- [ ] **Live chat support** — in-app chat with store support/admins.
+- [ ] **Coupons & promo codes** — discount codes applied at checkout.
+- [ ] **Real payment gateway integration** — Stripe/SSLCommerz/bKash, replacing the simulated flow.
+- [ ] **Push / email notifications** — order and promotional alerts.
+- [ ] **Product comparison** — side-by-side spec comparison.
 
 ---
 
 ## 🎓 About This Project
 
-This is an **internship project** built for learning and demonstration purposes — it is not distributed under an open-source license. Feel free to explore the code, but please reach out before reusing or redistributing it.
+An internship project for learning and demonstration — not distributed under an open-source license. Feel free to explore the code, but please reach out before reusing or redistributing it.
