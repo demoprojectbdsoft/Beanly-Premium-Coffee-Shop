@@ -119,8 +119,9 @@ Role checks run on both sides — frontend route guards and backend middleware b
 
 - **Shared JWT auth** — the frontend owns authentication via better-auth and exposes a JWKS endpoint; the backend verifies every request against it, with no shared secret.
 - **Role-isolated dashboard access** — route guards keep each role confined to its own dashboard.
-- **Guarded review eligibility** — only signed-in users who purchased and received the product can review it, once per product.
-- **Suspended-account restrictions** — a suspended user can't add new items to cart, but can still check out existing ones.
+- **Guarded review eligibility** — only signed-in users can review; admins and the product's own owner are blocked from reviewing it; a review can only be left after the reviewer has actually purchased the product and that order has been delivered; and each user can leave only one review per product.
+- **Suspended-account restrictions** — a suspended user can't add new items to cart or check out, including items already in the cart.
+- **Demo admin mode** — a demo admin can log in and explore the full admin dashboard, but create/update/delete actions are disabled, so the live data can't be changed.
 - **Self-service account deletion** — requires password re-verification.
 - **Server-trusted money math** — prices, discounts, shipping fees, and totals are always computed server-side.
 
