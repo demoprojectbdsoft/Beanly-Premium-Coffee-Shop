@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { MapPin, Truck, Sparkles } from 'lucide-react';
 import { TopBarItem } from '@/types';
+import LanguageTranslator from './LanguageTranslator';
 
 // Top Bar Specific Data Array
 export const TOP_BAR_ITEMS: TopBarItem[] = [
@@ -28,11 +29,10 @@ export default function TopBar() {
           </p>
         </div>
 
-        {/* Right Side: Links */}
+        {/* Right Side: Links & Language Switcher */}
         <div className="flex items-center justify-center gap-1 sm:gap-2 shrink-0">
-          {TOP_BAR_ITEMS.map((item, index) => {
+          {TOP_BAR_ITEMS.map((item) => {
             const Icon = item.icon;
-            const isLast = index === TOP_BAR_ITEMS.length - 1;
 
             return (
               <React.Fragment key={item.label}>
@@ -44,12 +44,12 @@ export default function TopBar() {
                   <span>{item.label}</span>
                 </Link>
 
-                {!isLast && (
-                  <span className="text-white/30 dark:text-gray-700 text-[10px] sm:text-xs select-none">|</span>
-                )}
+                <span className="text-white/30 dark:text-gray-700 text-[10px] sm:text-xs select-none">|</span>
               </React.Fragment>
             );
           })}
+
+          <LanguageTranslator variant="topbar" />
         </div>
       </div>
     </div>

@@ -122,3 +122,42 @@ select option {
 }
 /* Stack both range inputs so thumbs don't overlap the track */
 .range-thumb { pointer-events: none; }
+
+/* ─── Google Translate UI Cleaner ───────────────────────────────────── */
+.goog-te-banner-frame.skiptranslate,
+.goog-te-banner-frame,
+iframe.goog-te-banner-frame {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+}
+
+body {
+  top: 0px !important;
+  position: static !important;
+}
+
+#google_translate_element {
+  display: none !important;
+}
+
+.goog-tooltip,
+.goog-tooltip:hover {
+  display: none !important;
+}
+
+.goog-text-highlight {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+#goog-gt-tt,
+.goog-te-balloon-frame {
+  display: none !important;
+}
+
+.VIpgJd-ZVi9dl-ORHb-OEVmcd,
+.VIpgJd-ZVi9dl-x3G2ab {
+  display: none !important;
+}

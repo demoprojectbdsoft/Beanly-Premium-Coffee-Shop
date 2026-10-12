@@ -16,6 +16,7 @@ import {
 import { Category, SubCategory } from "@/types";
 import MobileCategories from "./MobileCategories";
 import { ThemeSwitch } from "./Switcher";
+import LanguageTranslator from "./LanguageTranslator";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "react-toastify";
 
@@ -161,6 +162,9 @@ export default function MobileMenuContent({
           </div>
           <ThemeSwitch variant="inline" />
         </div>
+
+        {/* 2b. Language Translator (Mobile / PWA) */}
+        <LanguageTranslator variant="inline" />
 
         {/* 3. Explore Pages (About, Services, Contact) */}
         <div className="space-y-1">

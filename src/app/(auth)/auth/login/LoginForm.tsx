@@ -92,6 +92,7 @@ export function LoginForm() {
       const res = await authClient.signIn.social({
         provider: "google",
         callbackURL: callbackUrl,
+        newUserCallbackURL: callbackUrl,
       });
 
       if (res?.error) {
