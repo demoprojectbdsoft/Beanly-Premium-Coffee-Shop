@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
@@ -117,6 +117,38 @@ export default function ProductCard({
   const [showSuspendedAlert, setShowSuspendedAlert] = useState<boolean>(false);
 
   const isSuspended = ((user as { status?: string })?.status || "").toLowerCase() === "suspended";
+
+  // ── Deal Countdown ───────────────────────────────────────────────────────
+  const offerTarget = useMemo(() => {
+    if (!product?.offerEndDate) return null;
+    const d = new Date(product.offerEndDate);
+    return isNaN(d.getTime()) ? null : d;
+  }, [product?.offerEndDate]);
+
+  const [dealTime, setDealTime] = useState({ d: 0, h: 0, m: 0, s: 0, active: false });
+
+  useEffect(() => {
+    if (!offerTarget) return;
+    const tick = () => {
+      const diff = offerTarget.getTime() - Date.now();
+      if (diff > 0) {
+        setDealTime({
+          d: Math.floor(diff / 86_400_000),
+          h: Math.floor((diff / 3_600_000) % 24),
+          m: Math.floor((diff / 60_000) % 60),
+          s: Math.floor((diff / 1_000) % 60),
+          active: true,
+        });
+      } else {
+        setDealTime({ d: 0, h: 0, m: 0, s: 0, active: false });
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [offerTarget]);
+
+  const showDealBadge = offerTarget !== null && dealTime.active;
 
   // ── Fetch Live Reviews, Wishlist & Cart Status ─────────────────────────────
   // 1. Queries latest reviews to calculate dynamic average rating & review count.
@@ -336,6 +368,18 @@ export default function ProductCard({
           className="absolute top-2 sm:top-3 left-2 sm:left-3 z-10 p-1 sm:p-1.5 rounded-full bg-red-50 dark:bg-red-950/80 text-red-500 border border-red-200 dark:border-red-800 shadow-sm"
         >
           <Heart className="w-3 h-3 fill-red-500 text-red-500" />
+        </div>
+      )}
+
+      {/* Deal Countdown Badge — top-left, below wishlist if wishlisted */}
+      {showDealBadge && (
+        <div className={`absolute ${isWishlisted ? "top-9 sm:top-11" : "top-2 sm:top-3"} left-2 sm:left-3 z-10`}>
+          <div className="flex items-center gap-0.5 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-full px-1.5 py-0.5 shadow-md shadow-red-500/30 border border-red-400/30">
+            <span className="text-[8px] font-black uppercase tracking-wide mr-0.5 opacity-80">⏱</span>
+            <span className="text-[9px] sm:text-[10px] font-black tabular-nums leading-none">
+              {dealTime.d > 0 && `${String(dealTime.d).padStart(2, "0")}d `}{String(dealTime.h).padStart(2, "0")}:{String(dealTime.m).padStart(2, "0")}:{String(dealTime.s).padStart(2, "0")}
+            </span>
+          </div>
         </div>
       )}
 

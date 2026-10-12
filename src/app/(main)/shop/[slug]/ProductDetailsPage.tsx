@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
@@ -77,6 +77,38 @@ export default function ProductDetailsPage({
   const [isInCart, setIsInCart] = useState<boolean>(false);
   const [isWishlistLoading, setIsWishlistLoading] = useState<boolean>(false);
   const [showSuspendedAlert, setShowSuspendedAlert] = useState<boolean>(false);
+
+  // ── Countdown Timer ────────────────────────────────────────────────────────
+  const offerTarget = useMemo(() => {
+    if (!product?.offerEndDate) return null;
+    const d = new Date(product.offerEndDate);
+    return isNaN(d.getTime()) ? null : d;
+  }, [product?.offerEndDate]);
+
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, ended: true });
+
+  useEffect(() => {
+    if (!offerTarget) return;
+    const tick = () => {
+      const diff = offerTarget.getTime() - Date.now();
+      if (diff > 0) {
+        setCountdown({
+          days: Math.floor(diff / 86_400_000),
+          hours: Math.floor((diff / 3_600_000) % 24),
+          minutes: Math.floor((diff / 60_000) % 60),
+          seconds: Math.floor((diff / 1_000) % 60),
+          ended: false,
+        });
+      } else {
+        setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0, ended: true });
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [offerTarget]);
+
+  const showCountdown = offerTarget !== null && !countdown.ended;
 
   // Early return after all hooks
   if (!product) {
@@ -597,29 +629,62 @@ export default function ProductDetailsPage({
             </div>
 
             {/* Price Banner */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-sky-50/90 via-blue-50/40 to-slate-50 dark:from-slate-900 dark:via-sky-950/40 dark:to-slate-900 border border-sky-100 dark:border-sky-900/40 flex items-center justify-between shadow-xs">
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-sky-50/90 via-blue-50/40 to-slate-50 dark:from-slate-900 dark:via-sky-950/40 dark:to-slate-900 border border-sky-100 dark:border-sky-900/40 shadow-xs flex items-center justify-between gap-4 flex-wrap">
+              {/* Left: Price */}
               <div>
                 <span className="text-xs text-slate-500 dark:text-slate-400 block mb-0.5">
-                  Total Price
+                  {showCountdown ? "Deal Price" : "Price"}
                 </span>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-black text-slate-900 dark:text-white">
                     {formattedPrice}
                   </span>
-                  {formattedOriginalPrice && (
+                  {formattedOriginalPrice && !countdown.ended && (
                     <span className="text-sm text-slate-400 line-through">
                       {formattedOriginalPrice}
+                    </span>
+                  )}
+                  {discountPercent && discountPercent > 0 && showCountdown && (
+                    <span className="text-xs font-extrabold text-white bg-gradient-to-r from-red-500 to-rose-500 px-2 py-0.5 rounded-full shadow-sm">
+                      -{discountPercent}%
                     </span>
                   )}
                 </div>
               </div>
 
-              {product.badges?.includes("value-of-the-day") && (
-                <div className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700/60 shadow-xs">
+              {/* Right: Countdown OR Value-of-Day badge */}
+              {showCountdown ? (
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-red-500 dark:text-red-400 flex items-center gap-1">
+                    <Zap className="w-2.5 h-2.5 fill-red-500" /> Deal ends in
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {[
+                      { v: countdown.days, l: "D" },
+                      { v: countdown.hours, l: "H" },
+                      { v: countdown.minutes, l: "M" },
+                      { v: countdown.seconds, l: "S" },
+                    ].map(({ v, l }, i, arr) => (
+                      <div key={l} className="flex items-center gap-1.5">
+                        <div className="flex flex-col items-center">
+                          <span className="min-w-[34px] text-center text-sm font-black text-white bg-gradient-to-b from-sky-500 to-blue-600 rounded-lg px-1.5 py-1 shadow-md shadow-sky-500/30 tabular-nums">
+                            {String(v).padStart(2, "0")}
+                          </span>
+                          <span className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">{l}</span>
+                        </div>
+                        {i < arr.length - 1 && (
+                          <span className="text-slate-400 font-bold text-base mb-3">:</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : product.badges?.includes("value-of-the-day") ? (
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700/60 shadow-xs">
                   <Zap className="w-4 h-4 fill-amber-500 text-amber-500" />
                   Value of the Day
                 </div>
-              )}
+              ) : null}
             </div>
 
             {/* Quick Description */}
