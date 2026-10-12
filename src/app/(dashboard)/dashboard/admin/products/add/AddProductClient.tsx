@@ -30,6 +30,7 @@ import HeroUIDateTimePicker from "@/components/shared/HeroUIDateTimePicker";
 import { addProduct } from "@/lib/action/products";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
+import { useDemoAdmin } from "@/hooks/useDemoAdmin";
 
 interface AddProductClientProps {
   categories?: Category[];
@@ -83,6 +84,7 @@ export default function AddProductClient({
   subcategories = [],
 }: AddProductClientProps) {
   const router = useRouter();
+  const { guardDemo } = useDemoAdmin();
 
   // ── Basic product fields ────────────────────────────────────────────────────
   const [formState, setFormState] = useState({
@@ -238,6 +240,7 @@ export default function AddProductClient({
   // ── Form submit ─────────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (guardDemo()) return;
 
     if (!selectedCategoryId) {
       toast.error("Please select a primary category");

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -31,6 +31,14 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [demoMessage, setDemoMessage] = useState<string | null>(null);
+
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+
+  const fillDemoCredentials = () => {
+    if (emailRef.current) emailRef.current.value = "demoadmin@gmail.com";
+    if (passwordRef.current) passwordRef.current.value = "root@123";
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -197,6 +205,7 @@ export function LoginForm() {
                 <div className="relative w-full">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
                   <Input
+                    ref={emailRef}
                     name="email"
                     type="email"
                     placeholder="john@example.com"
@@ -223,6 +232,7 @@ export function LoginForm() {
                 <div className="relative w-full">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
                   <Input
+                    ref={passwordRef}
                     name="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
@@ -290,6 +300,30 @@ export function LoginForm() {
                 )}
               </Button>
             </Form>
+
+            {/* Demo Credentials Banner */}
+            <div className="rounded-xl border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/30 p-3">
+              <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400 mb-1.5 flex items-center gap-1">
+                <span>🔐</span> Demo Admin Access
+              </p>
+              <div className="flex items-center justify-between gap-2">
+                <div className="space-y-0.5">
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                    <span className="font-semibold">Email:</span> demoadmin@gmail.com
+                  </p>
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                    <span className="font-semibold">Password:</span> root@123
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={fillDemoCredentials}
+                  className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors cursor-pointer shrink-0"
+                >
+                  Use Demo
+                </button>
+              </div>
+            </div>
 
             <div className="text-center text-xs text-slate-500 dark:text-slate-400 pt-2">
               Don&apos;t have an account?{" "}

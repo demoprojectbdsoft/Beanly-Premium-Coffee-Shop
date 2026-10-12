@@ -19,6 +19,7 @@ import { toast } from "react-toastify";
 import { authClient } from "@/lib/auth-client";
 import { updateUser } from "@/lib/action/user";
 import ImageUploader from "@/components/shared/ImageUploader";
+import { useDemoAdmin } from "@/hooks/useDemoAdmin";
 
 export interface AdminProfileData {
   id: string;
@@ -41,12 +42,14 @@ interface AdminProfileClientProps {
 export default function AdminProfileClient({
   initialProfile,
 }: AdminProfileClientProps) {
+  const { guardDemo } = useDemoAdmin();
   const [profile, setProfile] = useState<AdminProfileData>(initialProfile);
   const [avatarUrl, setAvatarUrl] = useState<string>(initialProfile.avatar || "");
   const [isSaving, setIsSaving] = useState(false);
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (guardDemo()) return;
     if (!profile.firstName.trim() || !profile.lastName.trim()) {
       toast.error("First name and last name are required.");
       return;

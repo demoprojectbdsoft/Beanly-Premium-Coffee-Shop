@@ -35,6 +35,7 @@ import { toast } from "react-toastify";
 import { Product, SlideItem } from "@/types";
 import { addSlide, updateSlide, deleteSlide } from "@/lib/action/slides";
 import HeroUIDateTimePicker from "@/components/shared/HeroUIDateTimePicker";
+import { useDemoAdmin } from "@/hooks/useDemoAdmin";
 
 interface HomeSliderClientProps {
   initialSlides: SlideItem[];
@@ -92,6 +93,7 @@ export default function HomeSliderClient({
   products = [],
 }: HomeSliderClientProps) {
   const router = useRouter();
+  const { guardDemo } = useDemoAdmin();
 
   const [slides, setSlides] = useState<SlideItem[]>(
     Array.isArray(initialSlides) ? initialSlides : []
@@ -211,6 +213,7 @@ export default function HomeSliderClient({
   // Submit Add/Edit Form
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (guardDemo()) return;
 
     if (!formData.productId) {
       toast.error("Please select a target product for this slide");
@@ -294,6 +297,7 @@ export default function HomeSliderClient({
   const handleToggleActive = async (slide: SlideItem, newStatus: boolean) => {
     const id = slide.id || slide._id;
     if (!id) return;
+    if (guardDemo()) return;
 
     try {
       const res = await updateSlide(id, { isActive: newStatus });
@@ -321,6 +325,7 @@ export default function HomeSliderClient({
 
   const handleConfirmDelete = async () => {
     if (!slideToDelete) return;
+    if (guardDemo()) return;
     const id = slideToDelete.id || slideToDelete._id;
     if (!id) return;
 

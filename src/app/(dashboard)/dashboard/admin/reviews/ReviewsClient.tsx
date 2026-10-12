@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { deleteReview } from "@/lib/action/reviews";
+import { useDemoAdmin } from "@/hooks/useDemoAdmin";
 
 const RATING_FILTER_TABS = ["All", "5 Stars", "4 Stars", "3 Stars", "2 Stars", "1 Star"];
 
@@ -73,6 +74,7 @@ export default function ReviewsClient({
 }: ReviewsClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { guardDemo } = useDemoAdmin();
   const [isPending, startTransition] = useTransition();
 
   const [reviews, setReviews] = useState<ReviewItem[]>(initialReviews);
@@ -130,6 +132,7 @@ export default function ReviewsClient({
   };
 
   const handleDelete = async (reviewId: string) => {
+    if (guardDemo()) return;
     if (!confirm("Are you sure you want to delete this review?")) return;
     setIsDeleting(true);
     try {

@@ -35,6 +35,7 @@ import {
 import { toast } from "react-toastify";
 import { updateUser } from "@/lib/action/user";
 import { getUserOrdersAction } from "@/lib/action/orders";
+import { useDemoAdmin } from "@/hooks/useDemoAdmin";
 
 const ROLE_OPTIONS = [
   { id: "admin", label: "Admin", icon: ShieldCheck, desc: "Full administrative access to the platform" },
@@ -198,6 +199,7 @@ export default function UsersClient({
 }: UsersClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { guardDemo } = useDemoAdmin();
   const [isPending, startTransition] = useTransition();
 
   const [users, setUsers] = useState<UserItem[]>(initialUsers);
@@ -301,6 +303,7 @@ export default function UsersClient({
   // Role change
   const handleRoleChange = async (userId: string, newRole: string) => {
     if (!userId || !newRole) return;
+    if (guardDemo()) return;
     setIsUpdating(true);
     try {
       const res = await updateUser(userId, { role: newRole });
@@ -326,6 +329,7 @@ export default function UsersClient({
   // Status change
   const handleStatusChange = async (userId: string, newStatus: string) => {
     if (!userId || !newStatus) return;
+    if (guardDemo()) return;
     setIsUpdating(true);
     try {
       const res = await updateUser(userId, { status: newStatus });

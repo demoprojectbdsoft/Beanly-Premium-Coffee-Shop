@@ -76,10 +76,11 @@ export default function UserAccountMenu() {
     }
   };
 
+  const isAdminOrDemo = userRole === "admin" || userRole === "demoadmin";
   const profileHref = `/dashboard/profile`;
-  const dashboardHref = `/dashboard/${userRole}`;
+  const dashboardHref = isAdminOrDemo ? `/dashboard/admin` : `/dashboard/${userRole}`;
   const settingsHref = `/dashboard/settings`;
-  const ordersHref = userRole === "admin" ? "/dashboard/admin/orders" : "/dashboard/customer/orders";
+  const ordersHref = isAdminOrDemo ? "/dashboard/admin/orders" : "/dashboard/customer/orders";
 
   // Loading state placeholder
   if (isPending) {

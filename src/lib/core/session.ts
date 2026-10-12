@@ -27,7 +27,11 @@ export const getRequiredRole = async (role: Role) => {
     redirect("/auth/login");
   }
 
-  if (user.role !== role) {
+  if (role === "admin") {
+    if (user.role !== "admin" && (user.role as string)?.toLowerCase() !== "demoadmin") {
+      redirect("/forbidden");
+    }
+  } else if (user.role !== role) {
     redirect("/forbidden");
   }
 

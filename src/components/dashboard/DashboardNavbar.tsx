@@ -110,7 +110,7 @@ export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProp
               {displayName}
             </p>
             <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 leading-none capitalize">
-              {userRole === "admin" ? "Store Admin" : "Customer Account"}
+              {userRole === "demoadmin" ? "Demo Admin" : userRole === "admin" ? "Store Admin" : "Customer Account"}
             </p>
           </div>
         </Link>

@@ -38,6 +38,7 @@ import ImageUploader from "@/components/shared/ImageUploader";
 import HeroUIDateTimePicker from "@/components/shared/HeroUIDateTimePicker";
 import { Product, Category, SubCategory } from "@/types";
 import { updateProduct, deleteProduct } from "@/lib/action/products";
+import { useDemoAdmin } from "@/hooks/useDemoAdmin";
 
 const AVAILABLE_BADGES = [
   { id: "new", label: "New" },
@@ -91,6 +92,7 @@ export default function ProductsClient({
 }: ProductsClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { guardDemo } = useDemoAdmin();
   const [isPending, startTransition] = useTransition();
 
   const [products, setProducts] = useState<Product[]>(initialProducts);
@@ -284,6 +286,7 @@ export default function ProductsClient({
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProductId) return;
+    if (guardDemo()) return;
 
     setIsUpdating(true);
 
@@ -354,6 +357,7 @@ export default function ProductsClient({
   // Confirm Delete
   const handleConfirmDelete = async () => {
     if (!deletingProduct) return;
+    if (guardDemo()) return;
     const id = deletingProduct.id || (deletingProduct as any)._id;
     setIsDeleting(true);
 

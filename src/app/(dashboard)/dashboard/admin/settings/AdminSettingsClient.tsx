@@ -23,6 +23,7 @@ import {
   Save,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { useDemoAdmin } from "@/hooks/useDemoAdmin";
 
 const SETTING_TABS = [
   { id: "store", label: "Store & System", icon: Store },
@@ -71,6 +72,7 @@ interface AdminSettingsClientProps {
 export default function AdminSettingsClient({
   initialSettings,
 }: AdminSettingsClientProps) {
+  const { guardDemo } = useDemoAdmin();
   const [activeTab, setActiveTab] = useState("store");
 
   // Store & System State
@@ -149,16 +151,19 @@ export default function AdminSettingsClient({
 
   const handleStoreSave = (e: React.FormEvent) => {
     e.preventDefault();
+    if (guardDemo()) return;
     toast.success("Store & system settings saved successfully!");
   };
 
   const handleNotificationsSave = (e: React.FormEvent) => {
     e.preventDefault();
+    if (guardDemo()) return;
     toast.success("Admin notification alerts updated!");
   };
 
   const handlePasswordChange = (e: React.FormEvent) => {
     e.preventDefault();
+    if (guardDemo()) return;
     if (newPassword !== confirmPassword) {
       toast.error("New passwords do not match!");
       return;
@@ -174,11 +179,13 @@ export default function AdminSettingsClient({
   };
 
   const handleRevokeSession = (sessionId: string) => {
+    if (guardDemo()) return;
     setActiveSessions((prev) => prev.filter((s) => s.id !== sessionId));
     toast.success("Session revoked successfully.");
   };
 
   const handleClearCache = () => {
+    if (guardDemo()) return;
     toast.success("Application and redis cache cleared successfully!");
   };
 
