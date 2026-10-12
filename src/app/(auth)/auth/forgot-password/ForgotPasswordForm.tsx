@@ -16,6 +16,7 @@ import {
   AlertDescription,
 } from "@heroui/react";
 import { Mail, ArrowLeft, Send, CheckCircle2 } from "lucide-react";
+import SparqLogo from "@/components/shared/SparqLogo";
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
@@ -49,10 +50,8 @@ export function ForgotPasswordForm() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-gray-950">
       <div className="w-full max-w-md space-y-4">
         {/* Brand logo & tagline */}
-        <div className="text-center space-y-1">
-          <Link href="/" className="inline-flex items-center text-3xl font-extrabold tracking-tight text-[#333e48] dark:text-white">
-            electro<span className="text-primary text-4xl leading-none">.</span>
-          </Link>
+        <div className="text-center space-y-2 flex flex-col items-center">
+          <SparqLogo size="lg" />
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Password Recovery Service
           </p>

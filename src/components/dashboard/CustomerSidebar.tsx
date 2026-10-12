@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "react-toastify";
+import SparqLogo from "@/components/shared/SparqLogo";
 
 const CUSTOMER_NAV_ITEMS = [
   { name: "Overview", href: "/dashboard/customer", icon: LayoutDashboard },
@@ -136,15 +137,12 @@ export default function CustomerSidebar({ isOpen, onClose }: CustomerSidebarProp
         <div className="p-6 space-y-6 overflow-y-auto">
           {/* Header & Close Button */}
           <div className="flex items-center justify-between">
-            <Link href="/" className="inline-flex items-baseline group">
-              <span className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-sky-500 to-blue-600 bg-clip-text text-transparent">
-                electro
-              </span>
-              <span className="text-2xl font-black text-blue-600 dark:text-sky-400">.</span>
-              <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 border border-sky-200/60 dark:border-sky-800/50 px-2 py-0.5 rounded-md">
+            <div className="flex items-center gap-2">
+              <SparqLogo size="sm" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 border border-sky-200/60 dark:border-sky-800/50 px-2 py-0.5 rounded-md">
                 Customer
               </span>
-            </Link>
+            </div>
 
             <button
               onClick={onClose}
@@ -229,7 +227,7 @@ export default function CustomerSidebar({ isOpen, onClose }: CustomerSidebarProp
                   {memberTier}
                 </p>
                 <p className="text-[10px] text-sky-600 dark:text-sky-400 font-semibold mt-1">
-                  {userPoints} Electro Pts
+                  {userPoints} Sparq Pts
                 </p>
               </div>
             </div>

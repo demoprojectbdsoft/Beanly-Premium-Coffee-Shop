@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Electro - Electronics Store",
-    short_name: "Electro",
+    name: "Sparq - Electronics Store",
+    short_name: "Sparq",
     description: "Premium Worldwide Electronics & Gadgets Store",
     start_url: "/",
     display: "standalone",

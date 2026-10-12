@@ -25,7 +25,7 @@ export default function Loading() {
         {/* 2. Text Indicator */}
         <div className="text-center space-y-1.5">
           <h3 className="text-base md:text-lg font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 dark:from-sky-400 dark:via-blue-400 dark:to-indigo-400 uppercase animate-pulse">
-            Loading Electro
+            Loading Sparq
           </h3>
           <p className="text-xs font-medium text-gray-400 dark:text-gray-500 tracking-wider">
             Preparing your experience...

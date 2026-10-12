@@ -25,7 +25,7 @@ const FALLBACK_IMAGE =
 
 // ─── Countdown Hook ──────────────────────────────────────────────────────────
 function useCountdown(targetDate?: Date) {
-  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
+  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0, ended: false });
 
   useEffect(() => {
     if (!targetDate) return;
@@ -36,9 +36,10 @@ function useCountdown(targetDate?: Date) {
           hours: Math.floor(diff / 3_600_000),
           minutes: Math.floor((diff / 60_000) % 60),
           seconds: Math.floor((diff / 1_000) % 60),
+          ended: false,
         });
       } else {
-        setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, ended: true });
       }
     };
     tick();
@@ -142,7 +143,7 @@ export default function HeroSlider({ initialSlides = [] }: HeroSliderProps) {
 
   const activeIndex = currentSlide < slides.length ? currentSlide : 0;
   const slide = slides[activeIndex];
-  const { hours, minutes, seconds } = useCountdown(slide?.targetDate);
+  const { hours, minutes, seconds, ended: countdownEnded } = useCountdown(slide?.targetDate);
 
   return (
     <div className="w-full">
@@ -212,7 +213,7 @@ export default function HeroSlider({ initialSlides = [] }: HeroSliderProps) {
 
             <div className="flex items-baseline justify-center md:justify-start gap-2">
               <span className="text-3xl font-normal text-red-500 dark:text-red-400">{slide.price}</span>
-              {slide.originalPrice && (
+              {slide.originalPrice && !countdownEnded && (
                 <span className="text-sm text-gray-400 dark:text-gray-500 line-through">{slide.originalPrice}</span>
               )}
             </div>

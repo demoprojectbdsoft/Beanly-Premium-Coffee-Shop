@@ -45,13 +45,13 @@ export default function AboutPage() {
       {/* Hero Header */}
       <div className="text-center max-w-3xl mx-auto space-y-4">
         <span className="text-xs font-bold text-primary uppercase tracking-wider bg-primary/10 px-3 py-1.5 rounded-full">
-          About Electro
+          About Sparq
         </span>
         <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight">
           We Provide High Quality Electronics & Tech Gadgets
         </h1>
         <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 leading-relaxed">
-          Welcome to Electro, your number one destination for premium consumer electronics, smart gadgets, computers, audio equipment, and tech accessories. We are dedicated to giving you the best online shopping experience.
+          Welcome to Sparq, your number one destination for premium consumer electronics, smart gadgets, computers, audio equipment, and tech accessories. We are dedicated to giving you the best online shopping experience.
         </p>
       </div>
 

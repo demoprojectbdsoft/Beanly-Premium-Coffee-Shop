@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <!-- Background Gradient for dark app icon -->
+    <linearGradient id="bgDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b1220" />
+      <stop offset="100%" stop-color="#070c16" />
+    </linearGradient>
+
+    <!-- Handle Gradient: Cyan to Bright Blue -->
+    <linearGradient id="handleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00D2FE" />
+      <stop offset="50%" stop-color="#06B6D4" />
+      <stop offset="100%" stop-color="#3B82F6" />
+    </linearGradient>
+
+    <!-- Top Ribbon Gradient: Cyan to Royal Blue -->
+    <linearGradient id="topRibbonGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00E5FF" />
+      <stop offset="40%" stop-color="#06B6D4" />
+      <stop offset="100%" stop-color="#3B82F6" />
+    </linearGradient>
+
+    <!-- Fold / Shadow Gradient: Deep Blue Underfold -->
+    <linearGradient id="foldShadow" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1D4ED8" />
+      <stop offset="60%" stop-color="#1E3A8A" />
+      <stop offset="100%" stop-color="#2563EB" />
+    </linearGradient>
+
+    <!-- Middle to Bottom Ribbon Gradient: Royal Blue to Violet Purple -->
+    <linearGradient id="bottomRibbonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB" />
+      <stop offset="30%" stop-color="#4F46E5" />
+      <stop offset="70%" stop-color="#7C3AED" />
+      <stop offset="100%" stop-color="#A855F7" />
+    </linearGradient>
+
+    <!-- Wheel Gradient: Deep Blue to Purple -->
+    <linearGradient id="wheelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#7C3AED" />
+    </linearGradient>
+
+    <!-- Subtle Glow Filter -->
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#3B82F6" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Optional Background Squircle (matches dark app icon in reference) -->
+  <rect width="512" height="512" rx="128" fill="url(#bgDark)"/>
+  <rect x="8" y="8" width="496" height="496" rx="120" stroke="#1e293b" stroke-width="2" stroke-opacity="0.5"/>
+
+  <!-- S-Cart Icon centered in 512x512 -->
+  <g transform="translate(48, 56) scale(2.6)" filter="url(#softGlow)">
+    <!-- 1. Cart Push Handle (Leftmost horizontal bar angling into rear strut) -->
+    <path
+      d="M 12 34 
+         L 32 34 
+         C 38 34, 43 38, 46 45 
+         L 54 62"
+      fill="none"
+      stroke="url(#handleGrad)"
+      stroke-width="12"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <!-- 2. Bottom Loop of 'S' (Lower basket body and tray) -->
+    <path
+      d="M 52 82
+         C 40 86, 34 96, 36 108
+         C 38 120, 50 128, 66 128
+         L 104 128
+         C 114 128, 122 120, 122 112
+         C 122 104, 114 98, 102 98
+         L 68 98
+         C 58 98, 54 92, 56 86
+         Z"
+      fill="url(#bottomRibbonGrad)"
+    />
+
+    <!-- 3. Top Loop of 'S' (Upper basket rim and swoosh) -->
+    <path
+      d="M 52 60
+         L 98 60
+         C 112 60, 122 52, 122 42
+         C 122 32, 112 24, 96 24
+         L 48 24
+         C 38 24, 32 30, 32 38
+         C 32 46, 38 52, 46 54
+         L 78 58
+         C 90 60, 94 68, 92 76
+         L 52 82
+         Z"
+      fill="url(#topRibbonGrad)"
+    />
+
+    <!-- 4. Wheels -->
+    <circle cx="56" cy="146" r="11" fill="url(#wheelGrad)" />
+    <circle cx="98" cy="146" r="11" fill="url(#wheelGrad)" />
+  </g>
+</svg>

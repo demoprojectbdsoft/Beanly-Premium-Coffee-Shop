@@ -23,6 +23,7 @@ import { Category, SubCategory } from "@/types";
 import { getCategories } from "@/lib/api/categories";
 import { getSubCategories } from "@/lib/api/subCategories";
 import BottomNavbar from "./BottomNavbar";
+import SparqLogo from "./SparqLogo";
 import MobileBottomNav from "./MobileBottomNav";
 import MobileFloatingActions from "./MobileFloatingActions";
 import MobileMenuContent from "./MobileMenuContent";
@@ -125,12 +126,7 @@ export default function Navbar() {
           <div className="w-full px-3 sm:px-4 md:px-14 py-3 flex items-center justify-between gap-2 sm:gap-4 md:gap-8">
 
             {/* Logo */}
-            <Link
-              href="/"
-              className="flex-shrink-0 flex items-center text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-[#333e48] dark:text-white"
-            >
-              electro<span className="text-primary text-2xl sm:text-3xl md:text-4xl leading-none">.</span>
-            </Link>
+            <SparqLogo size="md" />
 
             {/* Search Bar */}
             <div className="relative flex flex-1 items-center max-w-3xl min-w-0 mx-1 sm:mx-2">
@@ -238,13 +234,9 @@ export default function Navbar() {
             <div className="absolute inset-0 bg-white dark:bg-gray-950 shadow-2xl animate-in slide-in-from-top-2 duration-200 flex flex-col overflow-hidden">
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-900/50 shrink-0">
-                <Link
-                  href="/"
-                  onClick={closeAllMenus}
-                  className="text-2xl font-extrabold tracking-tight text-[#333e48] dark:text-white"
-                >
-                  electro<span className="text-primary text-3xl leading-none">.</span>
-                </Link>
+                <div onClick={closeAllMenus}>
+                  <SparqLogo size="sm" />
+                </div>
                 <button
                   type="button"
                   aria-label="Close menu"
@@ -280,13 +272,9 @@ export default function Navbar() {
             >
               <DrawerDialog className="flex flex-col h-full outline-none">
                 <DrawerHeader className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-900/50 shrink-0">
-                  <Link
-                    href="/"
-                    onClick={closeAllMenus}
-                    className="text-2xl font-extrabold tracking-tight text-[#333e48] dark:text-white"
-                  >
-                    electro<span className="text-primary text-3xl leading-none">.</span>
-                  </Link>
+                  <div onClick={closeAllMenus}>
+                    <SparqLogo size="sm" />
+                  </div>
                   <DrawerCloseTrigger className="p-2 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/60 dark:hover:bg-gray-800 transition-colors cursor-pointer">
                     <X className="w-5 h-5" />
                   </DrawerCloseTrigger>

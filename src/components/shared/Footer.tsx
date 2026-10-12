@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { Headphones } from "lucide-react";
+import SparqLogo from "./SparqLogo";
 import {
   FaFacebookF,
   FaXTwitter,
@@ -33,14 +34,7 @@ export default function Footer() {
           <div className="lg:col-span-5 space-y-6">
             
             {/* Logo matching site design language */}
-            <Link href="/" className="inline-flex items-baseline group">
-              <span className="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-sky-500 to-blue-600 bg-clip-text text-transparent">
-                electro
-              </span>
-              <span className="text-3xl md:text-4xl font-black text-blue-600 dark:text-sky-400">
-                .
-              </span>
-            </Link>
+            <SparqLogo size="lg" showSlogan />
 
             {/* 24/7 Call Center Hotline Block (Gradient Blue Accents) */}
             <div className="flex items-center gap-4 py-2">
@@ -173,7 +167,7 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-600 dark:text-gray-400">
           
           <p className="text-center md:text-left">
-            © <strong className="font-semibold text-gray-800 dark:text-gray-200">Electro</strong> - All Rights Reserved
+            © <strong className="font-semibold text-gray-800 dark:text-gray-200">Sparq</strong>. All rights reserved.
           </p>
 
           <div className="flex items-center gap-3 opacity-80 hover:opacity-100 transition-opacity">

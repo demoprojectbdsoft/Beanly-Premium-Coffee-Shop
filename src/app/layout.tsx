@@ -33,16 +33,16 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "Electro - Premium Electronics Store",
-    template: "%s | Electro",
+    default: "Sparq - Premium Electronics Store",
+    template: "%s | Sparq",
   },
-  description: "Worldwide Electronics Store with best deals, fast shipping, and top-tier tech products.",
+  description: "Sparq - Premium Worldwide Electronics Store with best deals, fast shipping, and top-tier tech products.",
   manifest: "/manifest.webmanifest",
-  applicationName: "Electro",
+  applicationName: "Sparq",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Electro",
+    title: "Sparq",
   },
   formatDetection: {
     telephone: false,
