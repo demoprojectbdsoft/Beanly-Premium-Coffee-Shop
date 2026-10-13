@@ -117,6 +117,7 @@ export default function ProductCard({
   const [showSuspendedAlert, setShowSuspendedAlert] = useState<boolean>(false);
 
   const isSuspended = ((user as { status?: string })?.status || "").toLowerCase() === "suspended";
+  const isOutOfStock = product.inStock === false || (product.stockQuantity !== undefined && product.stockQuantity <= 0);
 
   // ── Deal Countdown ───────────────────────────────────────────────────────
   const offerTarget = useMemo(() => {
@@ -205,6 +206,13 @@ export default function ProductCard({
 
   // Add 1 quantity of this product to cart and immediately notify Navbar via "cart-updated"
   const handleAddToCart = async () => {
+    if (isOutOfStock) {
+      toast.warning(`"${product.title}" is currently out of stock!`, {
+        icon: <span>⚠️</span>,
+      });
+      return;
+    }
+
     if (!user) {
       toast.info("Please log in to add items to your cart", {
         icon: <span>🔒</span>,
@@ -406,7 +414,9 @@ export default function ProductCard({
                 "https://smartview.com.bd/uploads/products/1742452515.webp"
               );
             }}
-            className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+            className={`object-cover transition-transform duration-500 ease-out group-hover:scale-105 ${
+              isOutOfStock ? "grayscale-[20%] opacity-90" : ""
+            }`}
           />
         </Link>
 
@@ -501,20 +511,47 @@ export default function ProductCard({
           )}
         </div>
 
-        {/* Add To Cart Button — displays in active state when already in cart */}
-        <button
-          type="button"
-          aria-label={isInCart ? "Already in cart" : "Add to cart"}
-          onClick={handleAddToCart}
-          className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full shadow-xs flex items-center justify-center transition-all duration-300 ${
-            isInCart
-              ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white border-transparent shadow-lg shadow-sky-500/30 cursor-default"
-              : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-sky-100 dark:border-gray-700 hover:bg-gradient-to-r hover:from-sky-500 hover:to-blue-600 hover:text-white hover:border-transparent hover:shadow-lg hover:shadow-sky-500/30 hover:scale-105 active:scale-95 cursor-pointer"
-          }`}
-          title={isInCart ? "Already in cart" : "Add to cart"}
-        >
-          <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2]" />
-        </button>
+        {/* Cart Action Area — Out of Stock badge displayed beside button */}
+        <div className="flex items-center gap-2">
+          {isOutOfStock && (
+            <span
+              title="Out of stock"
+              className="inline-flex items-center text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 whitespace-nowrap"
+            >
+              Out of stock
+            </span>
+          )}
+
+          {/* Add To Cart Button — disabled when out of stock or already in cart */}
+          <button
+            type="button"
+            aria-label={
+              isOutOfStock
+                ? "Out of stock"
+                : isInCart
+                ? "Already in cart"
+                : "Add to cart"
+            }
+            onClick={handleAddToCart}
+            disabled={isOutOfStock || isInCart}
+            className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full shadow-xs flex items-center justify-center transition-all duration-300 ${
+              isOutOfStock
+                ? "bg-gray-100 dark:bg-gray-800/60 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700/60 cursor-not-allowed opacity-60 shadow-none"
+                : isInCart
+                ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white border-transparent shadow-lg shadow-sky-500/30 cursor-default"
+                : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-sky-100 dark:border-gray-700 hover:bg-gradient-to-r hover:from-sky-500 hover:to-blue-600 hover:text-white hover:border-transparent hover:shadow-lg hover:shadow-sky-500/30 hover:scale-105 active:scale-95 cursor-pointer"
+            }`}
+            title={
+              isOutOfStock
+                ? "Out of stock"
+                : isInCart
+                ? "Already in cart"
+                : "Add to cart"
+            }
+          >
+            <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2]" />
+          </button>
+        </div>
       </div>
     </div>
     </>
