@@ -7,7 +7,14 @@ import { RadioGroup, Radio, Switch } from "@heroui/react";
 import { ProductsSidebarFilterProps } from "@/types";
 
 const DISCOUNT_TABS = ["0-20", "20-40", "40-60", "60-80", "80-100"] as const;
-const BADGE_OPTIONS = ["new", "hot", "sale", "discount"] as const;
+const BADGE_OPTIONS = [
+  { id: "new", label: "New" },
+  { id: "hot", label: "Hot" },
+  { id: "popular", label: "Popular" },
+  { id: "trending", label: "Trending" },
+  { id: "top-seller", label: "Top Seller" },
+  { id: "value-of-the-day", label: "Value of the Day" },
+] as const;
 const RATING_OPTIONS = [4, 3, 2, 1] as const;
 
 const MIN_PRICE = 0;
@@ -170,25 +177,39 @@ export default function ProductsSidebarFilter({}: ProductsSidebarFilterProps) {
       {/* Badge Filter */}
       <div className="space-y-2.5 pt-2 border-t border-sky-100/80 dark:border-gray-800">
         <label className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-1.5">
-          <Tag className="w-3.5 h-3.5 text-sky-500" /> Badge
+          <Tag className="w-3.5 h-3.5 text-sky-500" /> Badges
         </label>
         <div className="flex flex-wrap gap-1.5">
           {BADGE_OPTIONS.map((badge) => {
-            const isActive = activeBadge === badge;
+            const isActive = activeBadge.toLowerCase() === badge.id.toLowerCase();
             const badgeColors: Record<string, string> = {
-              new:      isActive ? "bg-emerald-500 text-white" : "border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50",
-              hot:      isActive ? "bg-red-500 text-white"     : "border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50",
-              sale:     isActive ? "bg-orange-500 text-white"  : "border border-orange-200 dark:border-orange-800 text-orange-600 dark:text-orange-400 hover:bg-orange-50",
-              discount: isActive ? "bg-sky-500 text-white"     : "border border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400 hover:bg-sky-50",
+              new: isActive
+                ? "bg-emerald-500 text-white shadow-xs border-emerald-500"
+                : "border-emerald-200 dark:border-emerald-800/80 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40",
+              hot: isActive
+                ? "bg-red-500 text-white shadow-xs border-red-500"
+                : "border-red-200 dark:border-red-800/80 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40",
+              popular: isActive
+                ? "bg-amber-500 text-white shadow-xs border-amber-500"
+                : "border-amber-200 dark:border-amber-800/80 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40",
+              trending: isActive
+                ? "bg-purple-600 text-white shadow-xs border-purple-600"
+                : "border-purple-200 dark:border-purple-800/80 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40",
+              "top-seller": isActive
+                ? "bg-sky-500 text-white shadow-xs border-sky-500"
+                : "border-sky-200 dark:border-sky-800/80 text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40",
+              "value-of-the-day": isActive
+                ? "bg-orange-500 text-white shadow-xs border-orange-500"
+                : "border-orange-200 dark:border-orange-800/80 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/40",
             };
             return (
               <button
-                key={badge}
+                key={badge.id}
                 type="button"
-                onClick={() => updateParams({ badge: isActive ? null : badge })}
-                className={`text-xs font-semibold px-3 py-1 rounded-full transition-all cursor-pointer capitalize ${badgeColors[badge]}`}
+                onClick={() => updateParams({ badge: isActive ? null : badge.id })}
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-all cursor-pointer border ${badgeColors[badge.id] || (isActive ? "bg-sky-500 text-white" : "border-gray-200 text-gray-600")}`}
               >
-                {badge}
+                {badge.label}
               </button>
             );
           })}
