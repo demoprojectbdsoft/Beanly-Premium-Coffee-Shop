@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { ShoppingBag, Heart, Repeat, Eye, Star } from "lucide-react";
+import { ShoppingBag, Heart, Repeat, Eye, Star, Sparkles } from "lucide-react";
 import { toast } from "react-toastify";
 import { Button } from "@heroui/react";
 import { authClient } from "@/lib/auth-client";
@@ -383,7 +383,7 @@ export default function ProductCard({
         </div>
       )}
 
-      {/* Discount Badge */}
+      {/* Top-Right Badge: Discount Only */}
       {showDiscountBadge && discountPercent && discountPercent > 0 ? (
         <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10 px-1.5 sm:px-2 py-0.5 rounded-full bg-gradient-to-r from-sky-500 to-blue-600 text-white text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider shadow-sm shadow-sky-500/20">
           -{discountPercent}%
@@ -453,9 +453,20 @@ export default function ProductCard({
 
       {/* Below Image: Category, Title, Rating & Description */}
       <div className="flex-1 flex flex-col space-y-1 mb-2 sm:mb-3">
-        <p className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider text-sky-600/80 dark:text-sky-400/80 truncate">
-          {categoryText}
-        </p>
+        <div className="flex items-center justify-between gap-1">
+          <p className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider text-sky-600/80 dark:text-sky-400/80 truncate">
+            {categoryText}
+          </p>
+          {product.isFeatured && (
+            <span
+              title="Featured Product"
+              className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/15 dark:bg-amber-400/20 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-600/50 shadow-2xs shrink-0"
+            >
+              <Sparkles className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+              Featured
+            </span>
+          )}
+        </div>
         <Link href={`/shop/${product.slug}`} className="block group/title">
           {/* Star Rating */}
           <StarRating rating={rating} reviewCount={reviewCount} />

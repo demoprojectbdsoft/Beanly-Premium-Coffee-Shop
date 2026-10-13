@@ -25,6 +25,7 @@ import {
   Send,
   User as UserIcon,
   ShieldAlert,
+  Sparkles,
 } from "lucide-react";
 import { Button, Card, Tabs, Tab, TabList, TabPanel } from "@heroui/react";
 import { toast } from "react-toastify";
@@ -514,6 +515,13 @@ export default function ProductDetailsPage({
             
             {/* Badges */}
             <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5">
+              {product.isFeatured && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 text-white text-xs font-black uppercase tracking-wider shadow-md shadow-amber-500/40 border border-amber-300/50">
+                  <Sparkles className="w-3.5 h-3.5 fill-white text-white drop-shadow-xs" />
+                  Featured Product
+                </span>
+              )}
+
               {discountPercent && discountPercent > 0 ? (
                 <span className="px-2.5 py-1 rounded-full bg-gradient-to-r from-sky-500 to-blue-600 text-white text-xs font-extrabold uppercase tracking-wider shadow-sm shadow-sky-500/30 border border-sky-400/30">
                   -{discountPercent}% OFF
@@ -614,7 +622,7 @@ export default function ProductDetailsPage({
 
                 <span className="text-gray-300 dark:text-gray-700">•</span>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   {product.inStock ? (
                     <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/50">
                       <CheckCircle2 className="w-3.5 h-3.5" /> In Stock {product.stockQuantity !== undefined ? `(${product.stockQuantity} units)` : ""}
@@ -622,6 +630,13 @@ export default function ProductDetailsPage({
                   ) : (
                     <span className="flex items-center gap-1 text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-2.5 py-1 rounded-full border border-red-200 dark:border-red-800/50">
                       <XCircle className="w-3.5 h-3.5" /> Out of Stock
+                    </span>
+                  )}
+
+                  {product.isFeatured && (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/60 dark:to-yellow-950/60 text-amber-600 dark:text-amber-400 border border-amber-300/60 dark:border-amber-800/50 shadow-xs">
+                      <Sparkles className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                      Featured Item
                     </span>
                   )}
                 </div>
