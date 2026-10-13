@@ -88,6 +88,14 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
     0
   );
 
+  // Check if any cart item is out of stock or exceeds available inventory
+  const hasInventoryIssues = items.some((item) => {
+    const p = item.product;
+    const isOOS = p?.inStock === false || (p?.stockQuantity !== undefined && p?.stockQuantity <= 0);
+    const exceeds = p?.stockQuantity !== undefined && item.quantity > p.stockQuantity;
+    return isOOS || exceeds;
+  });
+
   // Coupon calculation
   let discountValue = 0;
   let isCouponFreeShipping = false;
@@ -115,9 +123,24 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
   const grandTotal = Math.max(0, subtotal - discountValue + shippingCost);
 
   // ── Quantity & Item Actions ──────────────────────────────────────────────────
-  const handleQuantityChange = async (productId: string, currentQty: number, delta: number) => {
+  const handleQuantityChange = async (
+    productId: string,
+    currentQty: number,
+    delta: number,
+    maxStock?: number,
+    productTitle?: string
+  ) => {
     const newQty = currentQty + delta;
     if (newQty < 1) return;
+
+    // Prevent increasing beyond available stock
+    if (delta > 0 && maxStock !== undefined && newQty > maxStock) {
+      toast.warning(
+        `Only ${maxStock} unit${maxStock === 1 ? "" : "s"} available in stock for "${productTitle || "this product"}"`,
+        { icon: <span>⚠️</span> }
+      );
+      return;
+    }
 
     // Optimistic UI update
     setCart((prev) => {
@@ -485,6 +508,11 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
                     const originalPrice = product?.originalPrice ? Number(product.originalPrice) : null;
                     const primaryCategory = product?.categories?.[0] || "Electronics";
 
+                    // Stock calculations
+                    const isOutOfStock = product?.inStock === false || (product?.stockQuantity !== undefined && product?.stockQuantity <= 0);
+                    const maxStock = product?.stockQuantity !== undefined ? product.stockQuantity : (isOutOfStock ? 0 : 99);
+                    const exceedsStock = maxStock !== undefined && item.quantity > maxStock;
+
                     return (
                       <div
                         key={item.id || productId}
@@ -522,10 +550,20 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
                               >
                                 {product?.title || "Unnamed Product"}
                               </Link>
-                              <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
-                                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium text-[11px]">
-                                  <CheckCircle2 className="w-3 h-3" /> In Stock
-                                </span>
+                              <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400 flex-wrap">
+                                {isOutOfStock ? (
+                                  <span className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold text-[11px] bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-900/60">
+                                    <AlertCircle className="w-3 h-3 text-rose-500" /> Out of Stock
+                                  </span>
+                                ) : exceedsStock ? (
+                                  <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-bold text-[11px] bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-900/60">
+                                    <AlertCircle className="w-3 h-3 text-amber-500" /> Only {maxStock} in stock
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium text-[11px]">
+                                    <CheckCircle2 className="w-3 h-3" /> In Stock {product?.stockQuantity !== undefined ? `(${product.stockQuantity} available)` : ""}
+                                  </span>
+                                )}
                                 {product?.sku && (
                                   <span className="text-[11px]">SKU: {product.sku}</span>
                                 )}
@@ -547,34 +585,49 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
 
                           {/* Quantity Controls (Col 2) */}
                           <div className="col-span-2 flex items-center justify-center">
-                            <div className="inline-flex items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800 p-1 shadow-2xs">
-                              <button
-                                type="button"
-                                disabled={item.quantity <= 1 || isUpdating}
-                                onClick={() => handleQuantityChange(productId, item.quantity, -1)}
-                                aria-label="Decrease quantity"
-                                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                              >
-                                <Minus className="w-3.5 h-3.5" />
-                              </button>
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="inline-flex items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800 p-1 shadow-2xs">
+                                <button
+                                  type="button"
+                                  disabled={item.quantity <= 1 || isUpdating}
+                                  onClick={() => handleQuantityChange(productId, item.quantity, -1, maxStock, product?.title)}
+                                  aria-label="Decrease quantity"
+                                  className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                >
+                                  <Minus className="w-3.5 h-3.5" />
+                                </button>
 
-                              <span className="w-9 text-center text-xs font-bold text-slate-900 dark:text-white">
-                                {isUpdating ? (
-                                  <RefreshCw className="w-3 h-3 animate-spin mx-auto text-sky-500" />
-                                ) : (
-                                  item.quantity
-                                )}
-                              </span>
+                                <span className="w-9 text-center text-xs font-bold text-slate-900 dark:text-white">
+                                  {isUpdating ? (
+                                    <RefreshCw className="w-3 h-3 animate-spin mx-auto text-sky-500" />
+                                  ) : (
+                                    item.quantity
+                                  )}
+                                </span>
 
-                              <button
-                                type="button"
-                                disabled={isUpdating}
-                                onClick={() => handleQuantityChange(productId, item.quantity, 1)}
-                                aria-label="Increase quantity"
-                                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                              >
-                                <Plus className="w-3.5 h-3.5" />
-                              </button>
+                                <button
+                                  type="button"
+                                  disabled={isUpdating || isOutOfStock || (maxStock !== undefined && item.quantity >= maxStock)}
+                                  onClick={() => handleQuantityChange(productId, item.quantity, 1, maxStock, product?.title)}
+                                  aria-label="Increase quantity"
+                                  title={
+                                    isOutOfStock
+                                      ? "Out of stock"
+                                      : maxStock !== undefined && item.quantity >= maxStock
+                                      ? `Max ${maxStock} in stock`
+                                      : "Increase quantity"
+                                  }
+                                  className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+
+                              {exceedsStock && (
+                                <span className="text-[10px] text-rose-500 font-semibold text-center">
+                                  Max {maxStock} available
+                                </span>
+                              )}
                             </div>
                           </div>
 
@@ -624,6 +677,22 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
                                 >
                                   {product?.title || "Unnamed Product"}
                                 </Link>
+
+                                <div className="flex items-center gap-2 mt-1">
+                                  {isOutOfStock ? (
+                                    <span className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold text-[10px] bg-rose-50 dark:bg-rose-950/60 px-1.5 py-0.5 rounded-full border border-rose-200 dark:border-rose-900/60">
+                                      <AlertCircle className="w-2.5 h-2.5 text-rose-500" /> Out of Stock
+                                    </span>
+                                  ) : exceedsStock ? (
+                                    <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-bold text-[10px] bg-amber-50 dark:bg-amber-950/60 px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-900/60">
+                                      <AlertCircle className="w-2.5 h-2.5 text-amber-500" /> Only {maxStock} in stock
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium text-[10px]">
+                                      <CheckCircle2 className="w-2.5 h-2.5" /> In Stock {product?.stockQuantity !== undefined ? `(${product.stockQuantity} avail)` : ""}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                               <button
                                 type="button"
@@ -647,26 +716,40 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
                                 )}
                               </div>
 
-                              <div className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800 p-0.5">
-                                <button
-                                  type="button"
-                                  disabled={item.quantity <= 1 || isUpdating}
-                                  onClick={() => handleQuantityChange(productId, item.quantity, -1)}
-                                  className="w-6 h-6 rounded flex items-center justify-center text-slate-600 dark:text-slate-300 disabled:opacity-30"
-                                >
-                                  <Minus className="w-3 h-3" />
-                                </button>
-                                <span className="w-7 text-center text-xs font-bold text-slate-900 dark:text-white">
-                                  {isUpdating ? "..." : item.quantity}
-                                </span>
-                                <button
-                                  type="button"
-                                  disabled={isUpdating}
-                                  onClick={() => handleQuantityChange(productId, item.quantity, 1)}
-                                  className="w-6 h-6 rounded flex items-center justify-center text-slate-600 dark:text-slate-300 disabled:opacity-30"
-                                >
-                                  <Plus className="w-3 h-3" />
-                                </button>
+                              <div className="flex flex-col items-end gap-1">
+                                <div className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800 p-0.5">
+                                  <button
+                                    type="button"
+                                    disabled={item.quantity <= 1 || isUpdating}
+                                    onClick={() => handleQuantityChange(productId, item.quantity, -1, maxStock, product?.title)}
+                                    className="w-6 h-6 rounded flex items-center justify-center text-slate-600 dark:text-slate-300 disabled:opacity-30"
+                                  >
+                                    <Minus className="w-3 h-3" />
+                                  </button>
+                                  <span className="w-7 text-center text-xs font-bold text-slate-900 dark:text-white">
+                                    {isUpdating ? "..." : item.quantity}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    disabled={isUpdating || isOutOfStock || (maxStock !== undefined && item.quantity >= maxStock)}
+                                    onClick={() => handleQuantityChange(productId, item.quantity, 1, maxStock, product?.title)}
+                                    title={
+                                      isOutOfStock
+                                        ? "Out of stock"
+                                        : maxStock !== undefined && item.quantity >= maxStock
+                                        ? `Max ${maxStock} in stock`
+                                        : "Increase quantity"
+                                    }
+                                    className="w-6 h-6 rounded flex items-center justify-center text-slate-600 dark:text-slate-300 disabled:opacity-30"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                </div>
+                                {exceedsStock && (
+                                  <span className="text-[9px] text-rose-500 font-semibold text-right">
+                                    Max {maxStock} available
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -887,7 +970,28 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
 
                 {/* Checkout CTA */}
                 <div className="mt-6 space-y-3">
-                  {isSuspended ? (
+                  {hasInventoryIssues && (
+                    <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2.5">
+                      <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold">Stock issues detected</p>
+                        <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-0.5">
+                          Some items are out of stock or exceed available inventory. Please adjust quantities or remove out-of-stock items before checkout.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {hasInventoryIssues ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full h-12 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-extrabold text-sm flex items-center justify-center gap-2 cursor-not-allowed opacity-80"
+                    >
+                      <Lock className="w-4 h-4" />
+                      Resolve Stock Issues to Checkout
+                    </button>
+                  ) : isSuspended ? (
                     <button
                       type="button"
                       onClick={() => setShowSuspendedCheckoutAlert(true)}

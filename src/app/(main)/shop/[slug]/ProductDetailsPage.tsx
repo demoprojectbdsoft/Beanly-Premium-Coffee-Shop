@@ -623,13 +623,13 @@ export default function ProductDetailsPage({
                 <span className="text-gray-300 dark:text-gray-700">•</span>
 
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {product.inStock ? (
-                    <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/50">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> In Stock {product.stockQuantity !== undefined ? `(${product.stockQuantity} units)` : ""}
-                    </span>
-                  ) : (
+                  {(!product.inStock || (product.stockQuantity !== undefined && product.stockQuantity !== null && product.stockQuantity <= 0)) ? (
                     <span className="flex items-center gap-1 text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-2.5 py-1 rounded-full border border-red-200 dark:border-red-800/50">
                       <XCircle className="w-3.5 h-3.5" /> Out of Stock
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/50">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> In Stock {product.stockQuantity !== undefined ? `(${product.stockQuantity} units)` : ""}
                     </span>
                   )}
 
@@ -715,7 +715,7 @@ export default function ProductDetailsPage({
                   <button
                     type="button"
                     onClick={() => handleQuantityChange("dec")}
-                    disabled={quantity <= 1 || !product.inStock}
+                    disabled={quantity <= 1 || !product.inStock || (product.stockQuantity !== undefined && product.stockQuantity !== null && product.stockQuantity <= 0)}
                     className="h-full px-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors flex items-center justify-center"
                   >
                     <Minus className="w-4 h-4" />
@@ -726,7 +726,7 @@ export default function ProductDetailsPage({
                   <button
                     type="button"
                     onClick={() => handleQuantityChange("inc")}
-                    disabled={(product.stockQuantity !== undefined && quantity >= product.stockQuantity) || !product.inStock}
+                    disabled={!product.inStock || (product.stockQuantity !== undefined && product.stockQuantity !== null && (product.stockQuantity <= 0 || quantity >= product.stockQuantity))}
                     className="h-full px-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors flex items-center justify-center"
                   >
                     <Plus className="w-4 h-4" />
@@ -735,11 +735,13 @@ export default function ProductDetailsPage({
 
                 {/* Add To Cart Button */}
                 <Button
-                  isDisabled={!product.inStock}
+                  isDisabled={!product.inStock || (product.stockQuantity !== undefined && product.stockQuantity !== null && product.stockQuantity <= 0)}
                   onClick={handleAddToCart}
                   className={`flex-1 h-12 font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 ${
                     isInCart
                       ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/25 cursor-default"
+                      : (!product.inStock || (product.stockQuantity !== undefined && product.stockQuantity !== null && product.stockQuantity <= 0))
+                      ? "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 shadow-none cursor-not-allowed"
                       : "bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white shadow-sky-500/25 cursor-pointer"
                   } disabled:cursor-not-allowed`}
                 >
@@ -747,6 +749,11 @@ export default function ProductDetailsPage({
                     <>
                       <CheckCircle2 className="w-5 h-5" />
                       Added to Cart
+                    </>
+                  ) : (!product.inStock || (product.stockQuantity !== undefined && product.stockQuantity !== null && product.stockQuantity <= 0)) ? (
+                    <>
+                      <XCircle className="w-5 h-5" />
+                      Out of Stock
                     </>
                   ) : (
                     <>
