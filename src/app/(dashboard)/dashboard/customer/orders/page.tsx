@@ -147,6 +147,14 @@ export default async function CustomerOrdersPage() {
                 ? item.productId
                 : null;
 
+            const prodId =
+              prod?._id?.toString() ||
+              prod?.id?.toString() ||
+              (item.productId?._id ? item.productId._id.toString() : "") ||
+              (typeof item.productId === "string"
+                ? item.productId
+                : item.productId?.toString?.() || "");
+
             const image =
               item.image ||
               prod?.image ||
@@ -161,6 +169,7 @@ export default async function CustomerOrdersPage() {
 
             return {
               id: item._id || `${order._id}-${idx}`,
+              productId: prodId,
               name: item.title || prod?.title || `Item #${idx + 1}`,
               slug,
               image,

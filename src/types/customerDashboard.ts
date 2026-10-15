@@ -53,6 +53,7 @@ export interface OrderTimelineStep {
 
 export interface CustomerOrderItem {
   id: string;
+  productId?: string;
   name: string;
   slug: string;
   image: string;

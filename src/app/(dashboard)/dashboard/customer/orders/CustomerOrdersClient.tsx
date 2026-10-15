@@ -28,8 +28,9 @@ import {
 import { toast } from "react-toastify";
 import { authClient } from "@/lib/auth-client";
 import SuspendedAccountModal from "@/components/shared/SuspendedAccountModal";
-import { CustomerOrder } from "@/types/customerDashboard";
+import { CustomerOrder, CustomerOrderItem } from "@/types/customerDashboard";
 import { submitCustomerOrderResponse } from "@/lib/action/orders";
+import { addToCart } from "@/lib/action/cart";
 
 const STATUS_TABS = ["All Orders", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled"];
 
@@ -66,16 +67,46 @@ export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrd
     return matchesTab && matchesSearch;
   });
 
+  const userRole = ((user as { role?: string })?.role || "").toLowerCase();
+  const [loadingItemId, setLoadingItemId] = useState<string | null>(null);
+
   const handleDownloadInvoice = (orderNumber: string) => {
     toast.success(`Downloading Invoice for order ${orderNumber}...`);
   };
 
-  const handleBuyAgain = (item: { name: string }) => {
+  const handleBuyAgain = async (item: CustomerOrderItem) => {
     if (isSuspended) {
       setShowSuspendedAlert(true);
       return;
     }
-    toast.success(`"${item.name}" added to cart for reorder!`);
+
+    if (userRole === "admin") {
+      toast.warning("Admin cannot add products to cart!");
+      return;
+    }
+
+    const productId = item.productId || item.id;
+    if (!productId) {
+      toast.error("Product information unavailable to reorder.");
+      return;
+    }
+
+    try {
+      setLoadingItemId(item.id);
+      const res = await addToCart(productId, 1);
+      if (res?.success !== false) {
+        toast.success(`"${item.name}" added to cart!`, {
+          icon: <span>🛒</span>,
+        });
+        window.dispatchEvent(new CustomEvent("cart-updated"));
+      } else {
+        toast.error(res?.message || "Failed to add to cart");
+      }
+    } catch {
+      toast.error("Failed to add product to cart");
+    } finally {
+      setLoadingItemId(null);
+    }
   };
 
   const copyTracking = (tracking: string) => {
@@ -344,6 +375,8 @@ export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrd
                     <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                       <Button
                         size="sm"
+                        isLoading={loadingItemId === item.id}
+                        isDisabled={loadingItemId === item.id}
                         onClick={() => handleBuyAgain(item)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-gray-800 hover:bg-slate-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-semibold transition-colors cursor-pointer h-8"
                       >
