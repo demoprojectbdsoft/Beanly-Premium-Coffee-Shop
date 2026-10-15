@@ -14,6 +14,7 @@ function capitalizeFirst(str: string): string {
 /** Map a backend orderStatus string to the CustomerOrder status union */
 function mapOrderStatus(status: string): CustomerOrder["status"] {
   const s = (status || "").toLowerCase();
+  if (s === "confirmed") return "Confirmed";
   if (s === "shipped") return "Shipped";
   if (s === "delivered") return "Delivered";
   if (s === "cancelled") return "Cancelled";
@@ -73,24 +74,32 @@ function buildTimeline(
     ];
   }
 
-  // Active / Completed Delivery Progression
-  const isShipped = ["shipped", "delivered"].includes(s);
-  const isDelivered = s === "delivered";
-  const isProcessing = ["processing", "confirmed", "shipped", "delivered"].includes(s);
+  // Status progression flags
+  const isConfirmed  = ["confirmed", "processing", "shipped", "delivered"].includes(s);
+  const isProcessing = ["processing", "shipped", "delivered"].includes(s);
+  const isShipped    = ["shipped", "delivered"].includes(s);
+  const isDelivered  = s === "delivered";
 
   return [
     {
       title: "Order Placed",
       date: createdTime,
       completed: true,
-      description: "Order received and confirmed.",
+      description: "Order received and payment verified.",
+    },
+    {
+      title: "Confirmed",
+      date: isConfirmed ? (isProcessing ? createdTime : updatedTime) : "",
+      completed: isProcessing || isShipped || isDelivered,
+      current: s === "confirmed",
+      description: "Your order has been confirmed and is queued for processing.",
     },
     {
       title: "Processing",
       date: isProcessing ? (isShipped ? createdTime : updatedTime) : "",
       completed: isShipped || isDelivered,
-      current: s === "processing" || s === "confirmed",
-      description: "Order verified, packed, and prepared for dispatch.",
+      current: s === "processing",
+      description: "Order is being packed and prepared for dispatch.",
     },
     {
       title: "Shipped",
@@ -98,8 +107,8 @@ function buildTimeline(
       completed: isDelivered,
       current: s === "shipped",
       description: isShipped
-        ? "Package handed over to carrier and in transit."
-        : "Carrier will pick up package once packed.",
+        ? "Package is in transit with the carrier."
+        : "Carrier will pick up the package once packed.",
     },
     {
       title: "Delivered",
@@ -107,7 +116,7 @@ function buildTimeline(
       completed: isDelivered,
       current: false,
       description: isDelivered
-        ? "Package successfully delivered to your shipping address."
+        ? "Package successfully delivered to your address."
         : "Package will be delivered to your doorstep.",
     },
   ];

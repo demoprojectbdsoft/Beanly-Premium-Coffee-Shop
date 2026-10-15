@@ -64,7 +64,7 @@ export interface CustomerOrder {
   id: string;
   orderNumber: string;
   date: string;
-  status: "Processing" | "Shipped" | "Delivered" | "Cancelled" | "Refunded" | "Pending";
+  status: "Confirmed" | "Processing" | "Shipped" | "Delivered" | "Cancelled" | "Refunded" | "Pending";
   rawStatus?: string;
   customerResponse?: "received" | "not_received" | "cancelled" | null;
   customerResponseNote?: string;

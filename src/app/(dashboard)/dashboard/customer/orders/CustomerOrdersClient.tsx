@@ -31,7 +31,7 @@ import SuspendedAccountModal from "@/components/shared/SuspendedAccountModal";
 import { CustomerOrder } from "@/types/customerDashboard";
 import { submitCustomerOrderResponse } from "@/lib/action/orders";
 
-const STATUS_TABS = ["All Orders", "Processing", "Shipped", "Delivered", "Cancelled"];
+const STATUS_TABS = ["All Orders", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled"];
 
 interface CustomerOrdersClientProps {
   initialOrders: CustomerOrder[];
@@ -287,10 +287,12 @@ export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrd
                       order.status === "Delivered"
                         ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40"
                         : order.status === "Shipped"
-                          ? "bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-200/50 dark:border-sky-800/40"
-                          : order.status === "Processing"
-                            ? "bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/40"
-                            : "bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-800/40"
+                          ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/40"
+                          : order.status === "Confirmed"
+                            ? "bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-200/50 dark:border-sky-800/40"
+                            : order.status === "Processing"
+                              ? "bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/40"
+                              : "bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-800/40"
                     }`}
                   >
                     {order.status}

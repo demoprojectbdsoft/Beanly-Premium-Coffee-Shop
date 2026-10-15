@@ -37,11 +37,11 @@ import { updateOrderStatus } from "@/lib/action/orders";
 import { useDemoAdmin } from "@/hooks/useDemoAdmin";
 
 const STATUS_OPTIONS = [
-  { id: "confirmed", label: "Confirmed", color: "sky" },
+  { id: "confirmed",  label: "Confirmed",  color: "sky" },
   { id: "processing", label: "Processing", color: "amber" },
-  { id: "shipped", label: "Shipped", color: "blue" },
-  { id: "delivered", label: "Delivered", color: "emerald" },
-  { id: "cancelled", label: "Cancelled", color: "rose" },
+  { id: "shipped",    label: "Shipped",    color: "blue" },
+  { id: "delivered",  label: "Delivered",  color: "emerald" },
+  { id: "cancelled",  label: "Cancelled",  color: "rose" },
 ];
 
 const FILTER_TABS = ["All", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled"];
@@ -191,10 +191,10 @@ export default function OrdersClient({
     if (
       currentStatus === "shipped" &&
       !selectedOrder.customerResponse &&
-      (newStatus === "delivered" || newStatus === "cancelled")
+      newStatus === "cancelled"
     ) {
       toast.warning(
-        "Customer response is required before marking this shipped order as Delivered or Cancelled."
+        "Customer response is required before cancelling this shipped order."
       );
       return;
     }
@@ -630,9 +630,13 @@ export default function OrdersClient({
                   <Modal.Body className="space-y-6">
                     {/* Status Changer Bar */}
                     {(() => {
-                      const isShipped =
-                        (selectedOrder.orderStatus || selectedOrder.status || "").toLowerCase() === "shipped";
-                      const isDeliveredOrCancelledLocked = isShipped && !selectedOrder.customerResponse;
+                      const currentStatus = (selectedOrder.orderStatus || selectedOrder.status || "").toLowerCase();
+                      const isShipped    = currentStatus === "shipped";
+                      const cancelLocked = isShipped && !selectedOrder.customerResponse;
+                      // Only show "delivered" once the order has been shipped
+                      const visibleOptions = STATUS_OPTIONS.filter(
+                        (opt) => opt.id !== "delivered" || isShipped
+                      );
 
                       return (
                         <div className="space-y-3">
@@ -654,7 +658,7 @@ export default function OrdersClient({
                                 }
                                 onSelectionChange={(key) => key && handleStatusChange(String(key))}
                                 isDisabled={isUpdatingStatus}
-                                disabledKeys={isDeliveredOrCancelledLocked ? ["delivered", "cancelled"] : []}
+                                disabledKeys={cancelLocked ? ["cancelled"] : []}
                                 placeholder="Select Status"
                               >
                                 <Select.Trigger className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs font-semibold text-gray-700 dark:text-gray-200 flex items-center justify-between gap-1.5 cursor-pointer hover:border-sky-400 transition-colors shadow-xs [&>span]:text-xs [&>span]:font-semibold">
@@ -662,12 +666,9 @@ export default function OrdersClient({
                                   <Select.Indicator className="[&>svg]:w-3.5 [&>svg]:h-3.5 text-gray-400 shrink-0" />
                                 </Select.Trigger>
                                 <Select.Popover className="w-56 p-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50">
-                                  <ListBox disabledKeys={isDeliveredOrCancelledLocked ? ["delivered", "cancelled"] : []}>
-                                    {STATUS_OPTIONS.map((opt) => {
-                                      const isLocked =
-                                        isDeliveredOrCancelledLocked &&
-                                        (opt.id === "delivered" || opt.id === "cancelled");
-
+                                  <ListBox disabledKeys={cancelLocked ? ["cancelled"] : []}>
+                                    {visibleOptions.map((opt) => {
+                                      const isLocked = cancelLocked && opt.id === "cancelled";
                                       return (
                                         <ListBox.Item
                                           key={opt.id}
@@ -707,7 +708,7 @@ export default function OrdersClient({
                               <div className="flex-1">
                                 <p className="font-bold">Awaiting Customer Response</p>
                                 <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 mt-0.5 leading-relaxed">
-                                  This order is marked as <strong>Shipped</strong>. <strong>Delivered</strong> and <strong>Cancelled</strong> options will automatically become available once the customer responds on their dashboard.
+                                  This order is marked as <strong>Shipped</strong>. The <strong>Cancelled</strong> option will become available once the customer confirms or reports their order status on their dashboard.
                                 </p>
                               </div>
                             </div>
