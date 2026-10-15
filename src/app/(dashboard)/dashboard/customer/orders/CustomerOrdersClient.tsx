@@ -85,6 +85,17 @@ export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrd
       return;
     }
 
+    const isOutOfStock =
+      item.inStock === false ||
+      (item.stockQuantity != null && item.stockQuantity <= 0);
+
+    if (isOutOfStock) {
+      toast.warning(`"${item.name}" is currently out of stock!`, {
+        icon: <span>⚠️</span>,
+      });
+      return;
+    }
+
     const productId = item.productId || item.id;
     if (!productId) {
       toast.error("Product information unavailable to reorder.");
@@ -94,13 +105,23 @@ export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrd
     try {
       setLoadingItemId(item.id);
       const res = await addToCart(productId, 1);
-      if (res?.success !== false) {
+      if (res?.success) {
         toast.success(`"${item.name}" added to cart!`, {
           icon: <span>🛒</span>,
         });
         window.dispatchEvent(new CustomEvent("cart-updated"));
       } else {
-        toast.error(res?.message || "Failed to add to cart");
+        const errorMsg = res?.message || "Failed to add to cart";
+        if (
+          errorMsg.toLowerCase().includes("out of stock") ||
+          errorMsg.toLowerCase().includes("stock")
+        ) {
+          toast.warning(errorMsg, {
+            icon: <span>⚠️</span>,
+          });
+        } else {
+          toast.error(errorMsg);
+        }
       }
     } catch {
       toast.error("Failed to add product to cart");
@@ -373,12 +394,21 @@ export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrd
                     </div>
 
                     <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                      {item.inStock === false && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50">
+                          Out of Stock
+                        </span>
+                      )}
                       <Button
                         size="sm"
                         isLoading={loadingItemId === item.id}
                         isDisabled={loadingItemId === item.id}
                         onClick={() => handleBuyAgain(item)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-gray-800 hover:bg-slate-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-semibold transition-colors cursor-pointer h-8"
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer h-8 ${
+                          item.inStock === false
+                            ? "bg-rose-50/80 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200/80 dark:border-rose-900/40"
+                            : "bg-slate-100 dark:bg-gray-800 hover:bg-slate-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+                        }`}
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
                         <span>Buy Again</span>

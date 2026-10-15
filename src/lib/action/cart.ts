@@ -5,7 +5,7 @@ import { getUserSession } from "../core/session";
 
 export const addToCart = async (productId: string, quantity = 1) => {
   const user = await getUserSession();
-  if (!user?.id) return null;
+  if (!user?.id) return { success: false, message: "Please log in to add items to your cart" };
   return serverMutation("/cart", { userId: user.id, productId, quantity });
 };
 

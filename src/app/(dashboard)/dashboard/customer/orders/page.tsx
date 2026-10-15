@@ -167,6 +167,11 @@ export default async function CustomerOrdersPage() {
                 .toLowerCase()
                 .replace(/\s+/g, "-");
 
+            const inStock =
+              prod
+                ? prod.inStock !== false && (prod.stockQuantity == null || prod.stockQuantity > 0)
+                : true;
+
             return {
               id: item._id || `${order._id}-${idx}`,
               productId: prodId,
@@ -175,6 +180,8 @@ export default async function CustomerOrdersPage() {
               image,
               price: item.price ?? prod?.price ?? 0,
               quantity: item.quantity ?? 1,
+              inStock,
+              stockQuantity: prod?.stockQuantity,
             };
           }
         );

@@ -59,6 +59,8 @@ export interface CustomerOrderItem {
   image: string;
   price: number;
   quantity: number;
+  inStock?: boolean;
+  stockQuantity?: number;
 }
 
 export interface CustomerOrder {

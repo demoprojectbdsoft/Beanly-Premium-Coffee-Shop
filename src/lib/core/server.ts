@@ -72,6 +72,6 @@ export const serverMutation = async (
     return await handleResponse(res);
   } catch (err) {
     console.error("fetch failed:", (err as Error).message);
-    return null;
+    return { success: false, message: (err as Error).message };
   }
 };

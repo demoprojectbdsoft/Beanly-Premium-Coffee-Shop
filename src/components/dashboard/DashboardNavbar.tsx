@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Search, Bell, User, Menu, Sun, Moon } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import CartButton from "@/components/shared/CartButton";
 
 import { useTheme } from "next-themes";
 
@@ -83,6 +84,12 @@ export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProp
           <Bell className="w-4 h-4" />
           <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500" />
         </button>
+
+        {/* Cart Item Count & Dollar Total */}
+        <CartButton
+          showTotal={true}
+          className="px-2 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors"
+        />
 
         <div className="h-5 w-px bg-slate-200 dark:bg-gray-800 hidden sm:block" />
 

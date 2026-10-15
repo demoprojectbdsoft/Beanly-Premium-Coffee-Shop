@@ -64,7 +64,7 @@ export default function CartButton({
       href={user ? "/cart" : "/auth/login?callbackUrl=/cart"}
       onClick={onClick}
       aria-label="Shopping Cart"
-      className={`relative flex items-center gap-1.5 text-gray-700 dark:text-gray-200 hover:text-primary transition-colors ${className}`}
+      className={`group relative flex items-center gap-1.5 text-gray-700 dark:text-gray-200 hover:text-primary transition-colors ${className}`}
     >
       <div className="relative p-0.5">
         <ShoppingCart className="w-5 h-5 stroke-[1.8]" />
@@ -78,7 +78,7 @@ export default function CartButton({
 
       {/* Optional subtotal price display */}
       {Boolean(user) && showTotal && (
-        <span className="text-xs sm:text-sm font-bold text-[#333e48] dark:text-gray-100 group-hover:text-primary transition-colors">
+        <span className="text-xs sm:text-sm font-bold text-[#333e48] dark:text-gray-100 group-hover:text-primary transition-colors whitespace-nowrap">
           {total}
         </span>
       )}
