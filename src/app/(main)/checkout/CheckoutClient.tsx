@@ -431,7 +431,7 @@ export default function CheckoutClient({
       // The backend returns { success, data: <order document>, message }
       const createdOrder = response?.data as { _id: string } | undefined;
       if (!createdOrder?._id) {
-        throw new Error("Order created but no ID returned from server.");
+        throw new Error("Order couldn't be placed..Please check cart!");
       }
 
       toast.success("Order placed successfully! Redirecting...");

@@ -29,6 +29,7 @@ import {
   Phone,
   ArrowUpDown,
   RotateCcw,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { Order } from "@/types";
@@ -185,6 +186,19 @@ export default function OrdersClient({
   const handleStatusChange = async (newStatus: string) => {
     if (!selectedOrder || !newStatus) return;
     if (guardDemo()) return;
+
+    const currentStatus = (selectedOrder.orderStatus || selectedOrder.status || "").toLowerCase();
+    if (
+      currentStatus === "shipped" &&
+      !selectedOrder.customerResponse &&
+      (newStatus === "delivered" || newStatus === "cancelled")
+    ) {
+      toast.warning(
+        "Customer response is required before marking this shipped order as Delivered or Cancelled."
+      );
+      return;
+    }
+
     const orderId = selectedOrder._id || selectedOrder.id;
     if (!orderId) return;
     setIsUpdatingStatus(true);
@@ -471,7 +485,31 @@ export default function OrdersClient({
 
                       {/* Status */}
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        {getStatusBadge(order.orderStatus || order.status)}
+                        <div className="flex flex-col items-center gap-1">
+                          {getStatusBadge(order.orderStatus || order.status)}
+                          {((order.orderStatus || order.status || "").toLowerCase() === "shipped" || order.customerResponse) && (
+                            order.customerResponse ? (
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  order.customerResponse === "received"
+                                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40"
+                                    : order.customerResponse === "not_received"
+                                    ? "bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/40"
+                                    : "bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200/50 dark:border-rose-800/40"
+                                }`}
+                              >
+                                {order.customerResponse === "received" && "✓ Received"}
+                                {order.customerResponse === "not_received" && "⚠ Not Received"}
+                                {order.customerResponse === "cancelled" && "✕ Cancelled"}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500 dark:bg-gray-800 dark:text-gray-400 border border-slate-200/60 dark:border-gray-700">
+                                <Clock className="w-2.5 h-2.5" />
+                                Awaiting Response
+                              </span>
+                            )
+                          )}
+                        </div>
                       </td>
 
                       {/* Date */}
@@ -591,48 +629,152 @@ export default function OrdersClient({
 
                   <Modal.Body className="space-y-6">
                     {/* Status Changer Bar */}
-                    <div className="p-4 bg-slate-50 dark:bg-gray-800/50 rounded-2xl border border-slate-200/70 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-bold text-gray-900 dark:text-white">
-                          Update Fulfillment Status
-                        </p>
-                        <p className="text-[11px] text-gray-400">
-                          Select the new stage for this customer order
-                        </p>
-                      </div>
+                    {(() => {
+                      const isShipped =
+                        (selectedOrder.orderStatus || selectedOrder.status || "").toLowerCase() === "shipped";
+                      const isDeliveredOrCancelledLocked = isShipped && !selectedOrder.customerResponse;
 
-                      <div className="w-48 shrink-0">
-                        <Select
-                          aria-label="Update Fulfillment Status"
-                          selectedKey={
-                            (selectedOrder.orderStatus || selectedOrder.status || "processing").toLowerCase()
-                          }
-                          onSelectionChange={(key) => key && handleStatusChange(String(key))}
-                          isDisabled={isUpdatingStatus}
-                          placeholder="Select Status"
-                        >
-                          <Select.Trigger className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs font-semibold text-gray-700 dark:text-gray-200 flex items-center justify-between gap-1.5 cursor-pointer hover:border-sky-400 transition-colors shadow-xs [&>span]:text-xs [&>span]:font-semibold">
-                            <Select.Value className="text-xs font-semibold truncate capitalize" />
-                            <Select.Indicator className="[&>svg]:w-3.5 [&>svg]:h-3.5 text-gray-400 shrink-0" />
-                          </Select.Trigger>
-                          <Select.Popover className="w-48 p-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50">
-                            <ListBox>
-                              {STATUS_OPTIONS.map((opt) => (
-                                <ListBox.Item
-                                  key={opt.id}
-                                  id={opt.id}
-                                  textValue={opt.label}
-                                  className="text-xs font-medium px-3 py-2 rounded-lg hover:bg-sky-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 cursor-pointer flex items-center justify-between"
+                      return (
+                        <div className="space-y-3">
+                          <div className="p-4 bg-slate-50 dark:bg-gray-800/50 rounded-2xl border border-slate-200/70 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-bold text-gray-900 dark:text-white">
+                                Update Fulfillment Status
+                              </p>
+                              <p className="text-[11px] text-gray-400">
+                                Select the new stage for this customer order
+                              </p>
+                            </div>
+
+                            <div className="w-56 shrink-0">
+                              <Select
+                                aria-label="Update Fulfillment Status"
+                                selectedKey={
+                                  (selectedOrder.orderStatus || selectedOrder.status || "processing").toLowerCase()
+                                }
+                                onSelectionChange={(key) => key && handleStatusChange(String(key))}
+                                isDisabled={isUpdatingStatus}
+                                disabledKeys={isDeliveredOrCancelledLocked ? ["delivered", "cancelled"] : []}
+                                placeholder="Select Status"
+                              >
+                                <Select.Trigger className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs font-semibold text-gray-700 dark:text-gray-200 flex items-center justify-between gap-1.5 cursor-pointer hover:border-sky-400 transition-colors shadow-xs [&>span]:text-xs [&>span]:font-semibold">
+                                  <Select.Value className="text-xs font-semibold truncate capitalize" />
+                                  <Select.Indicator className="[&>svg]:w-3.5 [&>svg]:h-3.5 text-gray-400 shrink-0" />
+                                </Select.Trigger>
+                                <Select.Popover className="w-56 p-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50">
+                                  <ListBox disabledKeys={isDeliveredOrCancelledLocked ? ["delivered", "cancelled"] : []}>
+                                    {STATUS_OPTIONS.map((opt) => {
+                                      const isLocked =
+                                        isDeliveredOrCancelledLocked &&
+                                        (opt.id === "delivered" || opt.id === "cancelled");
+
+                                      return (
+                                        <ListBox.Item
+                                          key={opt.id}
+                                          id={opt.id}
+                                          textValue={opt.label}
+                                          isDisabled={isLocked}
+                                          className={`text-xs font-medium px-3 py-2 rounded-lg flex items-center justify-between ${
+                                            isLocked
+                                              ? "opacity-45 cursor-not-allowed bg-slate-50 dark:bg-gray-800/40 text-gray-400"
+                                              : "hover:bg-sky-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 cursor-pointer"
+                                          }`}
+                                        >
+                                          <div className="flex items-center gap-1.5">
+                                            <span>{opt.label}</span>
+                                            {isLocked && (
+                                              <span className="text-[10px] text-amber-500 font-bold">
+                                                (Awaiting customer)
+                                              </span>
+                                            )}
+                                          </div>
+                                          <ListBox.ItemIndicator />
+                                        </ListBox.Item>
+                                      );
+                                    })}
+                                  </ListBox>
+                                </Select.Popover>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {/* Customer Response Status Banner */}
+                          {isShipped && !selectedOrder.customerResponse && (
+                            <div className="p-3.5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-3 shadow-xs">
+                              <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5">
+                                <Clock className="w-4 h-4" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-bold">Awaiting Customer Response</p>
+                                <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 mt-0.5 leading-relaxed">
+                                  This order is marked as <strong>Shipped</strong>. <strong>Delivered</strong> and <strong>Cancelled</strong> options will automatically become available once the customer responds on their dashboard.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {selectedOrder.customerResponse && (
+                            <div
+                              className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs ${
+                                selectedOrder.customerResponse === "received"
+                                  ? "bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-200"
+                                  : selectedOrder.customerResponse === "not_received"
+                                  ? "bg-amber-50/80 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50 text-amber-900 dark:text-amber-200"
+                                  : "bg-rose-50/80 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/50 text-rose-900 dark:text-rose-200"
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div
+                                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                                    selectedOrder.customerResponse === "received"
+                                      ? "bg-emerald-500 text-white"
+                                      : selectedOrder.customerResponse === "not_received"
+                                      ? "bg-amber-500 text-white"
+                                      : "bg-rose-500 text-white"
+                                  }`}
                                 >
-                                  {opt.label}
-                                  <ListBox.ItemIndicator />
-                                </ListBox.Item>
-                              ))}
-                            </ListBox>
-                          </Select.Popover>
-                        </Select>
-                      </div>
-                    </div>
+                                  {selectedOrder.customerResponse === "received" && (
+                                    <CheckCircle2 className="w-4 h-4" />
+                                  )}
+                                  {selectedOrder.customerResponse === "not_received" && (
+                                    <AlertTriangle className="w-4 h-4" />
+                                  )}
+                                  {selectedOrder.customerResponse === "cancelled" && (
+                                    <XCircle className="w-4 h-4" />
+                                  )}
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="font-extrabold text-xs">
+                                      Customer Response:{" "}
+                                      {selectedOrder.customerResponse === "received"
+                                        ? "Order Received"
+                                        : selectedOrder.customerResponse === "not_received"
+                                        ? "Order Not Received"
+                                        : "Order Cancelled / Rejected"}
+                                    </span>
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-white/70 dark:bg-gray-800/70 border border-current">
+                                      Delivered &amp; Cancelled Unlocked
+                                    </span>
+                                  </div>
+                                  {selectedOrder.customerResponseNote && (
+                                    <p className="text-[11px] text-gray-700 dark:text-gray-300 italic">
+                                      "{selectedOrder.customerResponseNote}"
+                                    </p>
+                                  )}
+                                  {selectedOrder.customerResponseAt && (
+                                    <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                                      Submitted:{" "}
+                                      {new Date(selectedOrder.customerResponseAt).toLocaleString()}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Order Items List */}
                     <div className="space-y-3">

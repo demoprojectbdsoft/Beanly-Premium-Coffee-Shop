@@ -21,11 +21,15 @@ import {
   Star,
   ChevronRight,
   Copy,
+  XCircle,
+  PackageCheck,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { authClient } from "@/lib/auth-client";
 import SuspendedAccountModal from "@/components/shared/SuspendedAccountModal";
 import { CustomerOrder } from "@/types/customerDashboard";
+import { submitCustomerOrderResponse } from "@/lib/action/orders";
 
 const STATUS_TABS = ["All Orders", "Processing", "Shipped", "Delivered", "Cancelled"];
 
@@ -45,6 +49,12 @@ export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrd
   const [selectedTab, setSelectedTab] = useState("All Orders");
   const [searchQuery, setSearchQuery] = useState("");
   const [trackingModalOrder, setTrackingModalOrder] = useState<CustomerOrder | null>(null);
+
+  // Customer Response State
+  const [responseModalOrder, setResponseModalOrder] = useState<CustomerOrder | null>(null);
+  const [selectedResponse, setSelectedResponse] = useState<"received" | "not_received" | "cancelled">("received");
+  const [responseNote, setResponseNote] = useState("");
+  const [isSubmittingResponse, setIsSubmittingResponse] = useState(false);
 
   const filteredOrders = orders.filter((order) => {
     const matchesTab =
@@ -72,6 +82,55 @@ export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrd
     if (navigator.clipboard) {
       navigator.clipboard.writeText(tracking);
       toast.info(`Tracking #${tracking} copied to clipboard!`);
+    }
+  };
+
+  const handleOpenResponseModal = (order: CustomerOrder) => {
+    setResponseModalOrder(order);
+    setSelectedResponse(order.customerResponse || "received");
+    setResponseNote(order.customerResponseNote || "");
+  };
+
+  const handleSubmitResponse = async () => {
+    if (!responseModalOrder) return;
+    setIsSubmittingResponse(true);
+
+    try {
+      const res = await submitCustomerOrderResponse(
+        responseModalOrder.id,
+        selectedResponse,
+        responseNote.trim()
+      );
+
+      if (res?.success !== false) {
+        toast.success(
+          selectedResponse === "received"
+            ? "Thank you! Your delivery confirmation has been sent to the store."
+            : selectedResponse === "not_received"
+            ? "Your report has been submitted. The store admin has been alerted."
+            : "Cancellation request submitted. The store admin has been alerted."
+        );
+
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === responseModalOrder.id
+              ? {
+                  ...o,
+                  customerResponse: selectedResponse,
+                  customerResponseNote: responseNote.trim(),
+                  customerResponseAt: new Date().toISOString(),
+                }
+              : o
+          )
+        );
+        setResponseModalOrder(null);
+      } else {
+        toast.error(res?.message || "Failed to submit response");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error submitting response");
+    } finally {
+      setIsSubmittingResponse(false);
     }
   };
 
@@ -304,6 +363,108 @@ export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrd
                 ))}
               </div>
 
+              {/* ── Customer Delivery Response Banner (Available when Shipped) ── */}
+              {((order.status === "Shipped" || (order as any).rawStatus === "shipped") || order.customerResponse) && (
+                <div className="px-4 sm:px-5">
+                  {!order.customerResponse ? (
+                    <div className="p-4 rounded-2xl bg-gradient-to-r from-sky-50 via-blue-50 to-indigo-50 dark:from-sky-950/40 dark:via-blue-950/30 dark:to-indigo-950/40 border border-sky-200/80 dark:border-sky-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5 sm:mt-0">
+                          <PackageCheck className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
+                              Shipment in Transit — Response Requested
+                            </h4>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-500 text-white animate-pulse">
+                              Action Required
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5">
+                            Please submit a response confirming whether you received your package, did not receive it, or want to cancel.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => handleOpenResponseModal(order)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer self-start sm:self-auto h-9 shrink-0"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Submit Response</span>
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs ${
+                        order.customerResponse === "received"
+                          ? "bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-200"
+                          : order.customerResponse === "not_received"
+                          ? "bg-amber-50/80 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50 text-amber-900 dark:text-amber-200"
+                          : "bg-rose-50/80 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/50 text-rose-900 dark:text-rose-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                            order.customerResponse === "received"
+                              ? "bg-emerald-500 text-white"
+                              : order.customerResponse === "not_received"
+                              ? "bg-amber-500 text-white"
+                              : "bg-rose-500 text-white"
+                          }`}
+                        >
+                          {order.customerResponse === "received" && <CheckCircle2 className="w-4 h-4" />}
+                          {order.customerResponse === "not_received" && <AlertTriangle className="w-4 h-4" />}
+                          {order.customerResponse === "cancelled" && <XCircle className="w-4 h-4" />}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-xs">
+                              Your Response:{" "}
+                              {order.customerResponse === "received"
+                                ? "Order Received"
+                                : order.customerResponse === "not_received"
+                                ? "Order Not Received"
+                                : "Order Cancelled"}
+                            </span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-white/70 dark:bg-gray-800/70 border border-current">
+                              Admin Notified
+                            </span>
+                          </div>
+                          {order.customerResponseNote && (
+                            <p className="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5 italic">
+                              "{order.customerResponseNote}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-2 self-end sm:self-auto">
+                        {order.customerResponseAt && (
+                          <span>
+                            {new Date(order.customerResponseAt).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        )}
+                        {(order.status === "Shipped" || (order as any).rawStatus === "shipped") && (
+                          <button
+                            onClick={() => handleOpenResponseModal(order)}
+                            className="text-sky-600 dark:text-sky-400 hover:underline font-semibold text-[11px] cursor-pointer ml-1"
+                          >
+                            Update
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Order Footer with Tracking CTA */}
               <div className="p-4 sm:p-5 pt-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400">
                 <div>
@@ -423,6 +584,197 @@ export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrd
                 className="px-4 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-bold transition-all cursor-pointer shrink-0 h-9"
               >
                 Close
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ── Order Delivery Response Modal ── */}
+      {responseModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-950/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <Card className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-gray-800 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <span>Order Delivery Feedback</span>
+                  <span className="text-xs font-mono text-sky-600 dark:text-sky-400">
+                    {responseModalOrder.orderNumber}
+                  </span>
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Let the store know if you received this package or have an issue.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                isIconOnly
+                variant="ghost"
+                onClick={() => setResponseModalOrder(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-sm font-bold p-1 h-8 w-8 min-w-0"
+              >
+                ✕
+              </Button>
+            </div>
+
+            {/* Response Options */}
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
+                Select Your Delivery Status:
+              </label>
+
+              {/* Option 1: Received */}
+              <div
+                onClick={() => setSelectedResponse("received")}
+                className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
+                  selectedResponse === "received"
+                    ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 shadow-xs"
+                    : "border-slate-200 dark:border-gray-800 hover:border-slate-300 dark:hover:border-gray-700 bg-white dark:bg-gray-900"
+                }`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                    selectedResponse === "received"
+                      ? "bg-emerald-500 text-white"
+                      : "bg-slate-100 dark:bg-gray-800 text-gray-500"
+                  }`}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-gray-900 dark:text-white">
+                      Order Received
+                    </p>
+                    <input
+                      type="radio"
+                      name="orderResponse"
+                      checked={selectedResponse === "received"}
+                      onChange={() => setSelectedResponse("received")}
+                      className="accent-emerald-600 cursor-pointer"
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                    I have received my package safely with all items in good condition.
+                  </p>
+                </div>
+              </div>
+
+              {/* Option 2: Not Received */}
+              <div
+                onClick={() => setSelectedResponse("not_received")}
+                className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
+                  selectedResponse === "not_received"
+                    ? "border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 shadow-xs"
+                    : "border-slate-200 dark:border-gray-800 hover:border-slate-300 dark:hover:border-gray-700 bg-white dark:bg-gray-900"
+                }`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                    selectedResponse === "not_received"
+                      ? "bg-amber-500 text-white"
+                      : "bg-slate-100 dark:bg-gray-800 text-gray-500"
+                  }`}
+                >
+                  <AlertTriangle className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-gray-900 dark:text-white">
+                      Order Not Received
+                    </p>
+                    <input
+                      type="radio"
+                      name="orderResponse"
+                      checked={selectedResponse === "not_received"}
+                      onChange={() => setSelectedResponse("not_received")}
+                      className="accent-amber-600 cursor-pointer"
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                    The shipment has not arrived yet, courier was unavailable, or delivery failed.
+                  </p>
+                </div>
+              </div>
+
+              {/* Option 3: Cancelled / Return */}
+              <div
+                onClick={() => setSelectedResponse("cancelled")}
+                className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
+                  selectedResponse === "cancelled"
+                    ? "border-rose-500 bg-rose-50/50 dark:bg-rose-950/20 shadow-xs"
+                    : "border-slate-200 dark:border-gray-800 hover:border-slate-300 dark:hover:border-gray-700 bg-white dark:bg-gray-900"
+                }`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                    selectedResponse === "cancelled"
+                      ? "bg-rose-500 text-white"
+                      : "bg-slate-100 dark:bg-gray-800 text-gray-500"
+                  }`}
+                >
+                  <XCircle className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-gray-900 dark:text-white">
+                      Cancel Order / Reject Delivery
+                    </p>
+                    <input
+                      type="radio"
+                      name="orderResponse"
+                      checked={selectedResponse === "cancelled"}
+                      onChange={() => setSelectedResponse("cancelled")}
+                      className="accent-rose-600 cursor-pointer"
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                    I want to reject the parcel, request return, or cancel this shipment.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Optional Note / Remarks */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center justify-between">
+                <span>Notes or Details (Optional):</span>
+                <span className="text-[10px] text-gray-400 font-normal">Visible to store admin</span>
+              </label>
+              <textarea
+                value={responseNote}
+                onChange={(e) => setResponseNote(e.target.value)}
+                rows={3}
+                placeholder={
+                  selectedResponse === "received"
+                    ? "e.g., Everything arrived in perfect condition, thank you!"
+                    : selectedResponse === "not_received"
+                    ? "e.g., Courier contacted me earlier but didn't show up today..."
+                    : "e.g., Need to cancel due to damaged box or wrong timing..."
+                }
+                className="w-full p-3 rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-xs text-gray-900 dark:text-white focus:outline-hidden focus:border-sky-500 resize-none shadow-xs"
+              />
+            </div>
+
+            {/* Modal Actions */}
+            <div className="pt-3 border-t border-slate-100 dark:border-gray-800 flex items-center justify-end gap-2.5">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setResponseModalOrder(null)}
+                isDisabled={isSubmittingResponse}
+                className="px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer h-9"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSubmitResponse}
+                isDisabled={isSubmittingResponse}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white text-xs font-bold shadow-md cursor-pointer h-9"
+              >
+                {isSubmittingResponse ? "Submitting..." : "Submit Response"}
               </Button>
             </div>
           </Card>

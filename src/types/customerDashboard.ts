@@ -65,6 +65,10 @@ export interface CustomerOrder {
   orderNumber: string;
   date: string;
   status: "Processing" | "Shipped" | "Delivered" | "Cancelled" | "Refunded" | "Pending";
+  rawStatus?: string;
+  customerResponse?: "received" | "not_received" | "cancelled" | null;
+  customerResponseNote?: string;
+  customerResponseAt?: string | Date | null;
   paymentStatus: "Paid" | "Pending" | "Failed" | "Refunded";
   paymentMethod: string;
   total: number;

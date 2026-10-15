@@ -77,6 +77,9 @@ export interface Order {
   orderStatus?: "confirmed" | "processing" | "shipped" | "delivered" | "cancelled";
   /** Legacy / frontend-only status field */
   status?: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+  customerResponse?: "received" | "not_received" | "cancelled" | null;
+  customerResponseNote?: string;
+  customerResponseAt?: string | Date | null;
   pointsEarned?: number;
   createdAt?: string;
   updatedAt?: string;

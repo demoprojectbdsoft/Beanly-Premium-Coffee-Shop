@@ -240,6 +240,10 @@ export default async function CustomerDashboardPage() {
           })
         : "Recent",
       status: mapOrderStatus(order.orderStatus || "processing"),
+      rawStatus: order.orderStatus,
+      customerResponse: order.customerResponse || null,
+      customerResponseNote: order.customerResponseNote || "",
+      customerResponseAt: order.customerResponseAt || null,
       paymentStatus: "Paid",
       paymentMethod: mapPaymentMethod(order.paymentMethod),
       total: order.totalAmount ?? 0,
