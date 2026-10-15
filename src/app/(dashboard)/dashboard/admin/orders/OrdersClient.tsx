@@ -191,10 +191,10 @@ export default function OrdersClient({
     if (
       currentStatus === "shipped" &&
       !selectedOrder.customerResponse &&
-      newStatus === "cancelled"
+      (newStatus === "cancelled" || newStatus === "delivered")
     ) {
       toast.warning(
-        "Customer response is required before cancelling this shipped order."
+        `Customer response is required before marking this shipped order as "${newStatus}".`
       );
       return;
     }
@@ -631,12 +631,13 @@ export default function OrdersClient({
                     {/* Status Changer Bar */}
                     {(() => {
                       const currentStatus = (selectedOrder.orderStatus || selectedOrder.status || "").toLowerCase();
-                      const isShipped    = currentStatus === "shipped";
-                      const cancelLocked = isShipped && !selectedOrder.customerResponse;
+                      const isShipped = currentStatus === "shipped";
+                      const isResponseLocked = isShipped && !selectedOrder.customerResponse;
                       // Only show "delivered" once the order has been shipped
                       const visibleOptions = STATUS_OPTIONS.filter(
                         (opt) => opt.id !== "delivered" || isShipped
                       );
+                      const disabledKeys = isResponseLocked ? ["cancelled", "delivered"] : [];
 
                       return (
                         <div className="space-y-3">
@@ -658,7 +659,7 @@ export default function OrdersClient({
                                 }
                                 onSelectionChange={(key) => key && handleStatusChange(String(key))}
                                 isDisabled={isUpdatingStatus}
-                                disabledKeys={cancelLocked ? ["cancelled"] : []}
+                                disabledKeys={disabledKeys}
                                 placeholder="Select Status"
                               >
                                 <Select.Trigger className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs font-semibold text-gray-700 dark:text-gray-200 flex items-center justify-between gap-1.5 cursor-pointer hover:border-sky-400 transition-colors shadow-xs [&>span]:text-xs [&>span]:font-semibold">
@@ -666,9 +667,9 @@ export default function OrdersClient({
                                   <Select.Indicator className="[&>svg]:w-3.5 [&>svg]:h-3.5 text-gray-400 shrink-0" />
                                 </Select.Trigger>
                                 <Select.Popover className="w-56 p-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50">
-                                  <ListBox disabledKeys={cancelLocked ? ["cancelled"] : []}>
+                                  <ListBox disabledKeys={disabledKeys}>
                                     {visibleOptions.map((opt) => {
-                                      const isLocked = cancelLocked && opt.id === "cancelled";
+                                      const isLocked = isResponseLocked && (opt.id === "cancelled" || opt.id === "delivered");
                                       return (
                                         <ListBox.Item
                                           key={opt.id}
@@ -708,7 +709,7 @@ export default function OrdersClient({
                               <div className="flex-1">
                                 <p className="font-bold">Awaiting Customer Response</p>
                                 <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 mt-0.5 leading-relaxed">
-                                  This order is marked as <strong>Shipped</strong>. The <strong>Cancelled</strong> option will become available once the customer confirms or reports their order status on their dashboard.
+                                  This order is marked as <strong>Shipped</strong>. The <strong>Delivered</strong> and <strong>Cancelled</strong> options will become available once the customer confirms or reports their order status on their dashboard.
                                 </p>
                               </div>
                             </div>

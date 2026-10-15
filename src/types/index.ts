@@ -137,6 +137,7 @@ export interface Product {
   additionalImages?: string[];
   inStock: boolean;
   stockQuantity?: number;
+  sellCount?: number;
   rating?: number;
   reviewCount?: number;
   badges?: string[];
