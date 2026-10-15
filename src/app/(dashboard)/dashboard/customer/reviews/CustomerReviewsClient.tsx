@@ -23,6 +23,7 @@ import {
   ShoppingBag,
   MessageSquare,
   Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { deleteReview } from "@/lib/action/reviews";
@@ -79,6 +80,8 @@ export default function CustomerReviewsClient({
   const [selectedReview, setSelectedReview] = useState<ReviewItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [reviewToDelete, setReviewToDelete] = useState<ReviewItem | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
     setReviews(Array.isArray(initialReviews) ? initialReviews : []);
@@ -129,8 +132,16 @@ export default function CustomerReviewsClient({
     });
   };
 
-  const handleDelete = async (reviewId: string) => {
-    if (!confirm("Are you sure you want to delete this review?")) return;
+  const promptDelete = (review: ReviewItem) => {
+    setReviewToDelete(review);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!reviewToDelete) return;
+    const reviewId = reviewToDelete.id || reviewToDelete._id;
+    if (!reviewId) return;
+
     setIsDeleting(true);
     try {
       const res = await deleteReview(reviewId);
@@ -141,6 +152,8 @@ export default function CustomerReviewsClient({
           setIsModalOpen(false);
           setSelectedReview(null);
         }
+        setIsDeleteModalOpen(false);
+        setReviewToDelete(null);
         router.refresh();
       } else {
         toast.error(res?.message || "Failed to delete review");
@@ -461,7 +474,7 @@ export default function CustomerReviewsClient({
                             isIconOnly
                             size="sm"
                             variant="ghost"
-                            onPress={() => handleDelete(id)}
+                            onPress={() => promptDelete(rev)}
                             className="w-8 h-8 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
                             aria-label="Delete Review"
                           >
@@ -648,7 +661,7 @@ export default function CustomerReviewsClient({
                     <Button
                       size="sm"
                       variant="danger-soft"
-                      onPress={() => handleDelete(selectedReview.id || selectedReview._id!)}
+                      onPress={() => promptDelete(selectedReview)}
                       isDisabled={isDeleting}
                       className="px-3.5 h-9 rounded-xl font-bold text-xs cursor-pointer inline-flex items-center gap-1.5"
                     >
@@ -666,6 +679,75 @@ export default function CustomerReviewsClient({
                   </Modal.Footer>
                 </>
               )}
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
+
+      {/* ════════════════════════════════════════════════════════
+          DELETE REVIEW CONFIRMATION MODAL
+      ════════════════════════════════════════════════════════ */}
+      <Modal isOpen={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <Modal.Backdrop>
+          <Modal.Container size="sm">
+            <Modal.Dialog className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-3xl p-6 shadow-2xl space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto border border-rose-100 dark:border-rose-900/40">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+
+              <div className="text-center space-y-2">
+                <h3 className="text-base font-extrabold text-gray-900 dark:text-white">
+                  Delete Review?
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Are you sure you want to delete your review? This action cannot be undone.
+                </p>
+
+                {reviewToDelete && (
+                  <div className="p-3 bg-slate-50 dark:bg-gray-800/60 border border-slate-200/80 dark:border-gray-700/60 rounded-2xl text-left space-y-1.5 mt-2">
+                    <p className="text-xs font-bold text-gray-900 dark:text-white line-clamp-1">
+                      {reviewToDelete.productTitle || "Product Review"}
+                    </p>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-3 h-3 ${
+                            star <= reviewToDelete.rating
+                              ? "fill-amber-400 text-amber-400"
+                              : "text-slate-300 dark:text-gray-600"
+                          }`}
+                        />
+                      ))}
+                      <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 ml-1">
+                        ({reviewToDelete.rating}/5)
+                      </span>
+                    </div>
+                    {reviewToDelete.comment && (
+                      <p className="text-[11px] text-gray-600 dark:text-gray-300 italic line-clamp-2">
+                        "{reviewToDelete.comment}"
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <Button
+                  onPress={() => setIsDeleteModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold text-xs cursor-pointer transition-colors"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onPress={handleConfirmDelete}
+                  isDisabled={isDeleting}
+                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm cursor-pointer transition-colors inline-flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isDeleting ? "Deleting..." : "Yes, Delete"}</span>
+                </Button>
+              </div>
             </Modal.Dialog>
           </Modal.Container>
         </Modal.Backdrop>
