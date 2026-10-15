@@ -9,11 +9,13 @@ import {
   Mail,
   Calendar,
   ShieldCheck,
+  ShieldX,
   Save,
   Coins,
   Crown,
   Phone,
   RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { authClient } from "@/lib/auth-client";
@@ -211,10 +213,17 @@ export default function CustomerProfileClient({
               </h2>
 
               {/* Account Status Badge */}
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                {profile.status === "active" ? "Active Customer" : "Account Suspended"}
-              </span>
+              {profile.status === "suspended" ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60">
+                  <ShieldX className="w-3.5 h-3.5 text-rose-500" />
+                  Account Suspended
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                  Active Customer
+                </span>
+              )}
 
               {/* Member Tier Badge — live data */}
               <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${tierColors.badge}`}>
@@ -256,6 +265,30 @@ export default function CustomerProfileClient({
           </div>
         </div>
       </Card>
+
+      {/* ── Suspended Account Alert Banner ── */}
+      {profile.status === "suspended" && (
+        <div className="flex items-start gap-4 p-5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 shadow-xs">
+          <div className="shrink-0 w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/60 border border-rose-200 dark:border-rose-800/60 flex items-center justify-center">
+            <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-extrabold text-rose-700 dark:text-rose-300 mb-0.5">
+              Your account has been suspended
+            </p>
+            <p className="text-xs text-rose-600/90 dark:text-rose-400/90 leading-relaxed">
+              Access to purchases, cart, and checkout has been restricted. If you believe this is a mistake or need further assistance, please{" "}
+              <a
+                href="mailto:support@sparq.com"
+                className="underline underline-offset-2 font-bold hover:text-rose-800 dark:hover:text-rose-200 transition-colors"
+              >
+                contact our support team
+              </a>
+              {" "}or reach out to the store admin directly.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Main Content Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

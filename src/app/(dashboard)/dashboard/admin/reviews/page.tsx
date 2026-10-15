@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 interface AdminReviewsPageProps {
   searchParams: Promise<{
     search?: string;
+    rating?: string;
     sort?: string;
     page?: string;
     limit?: string;
@@ -21,6 +22,7 @@ export default async function AdminReviewsPage({ searchParams }: AdminReviewsPag
   // Build query string here in page.tsx
   const query = new URLSearchParams();
   if (params?.search) query.set("search", params.search);
+  if (params?.rating) query.set("rating", params.rating);
   if (params?.sort) query.set("sort", params.sort);
   query.set("page", String(page));
   query.set("limit", String(limit));

@@ -37,6 +37,7 @@ export default async function CustomerReviewsPage({
       const query = new URLSearchParams();
       query.set("userId", user.id);
       if (params?.search) query.set("search", params.search);
+      if (params?.rating) query.set("rating", params.rating);
       if (params?.sort) query.set("sort", params.sort);
       query.set("page", String(page));
       query.set("limit", String(limit));
