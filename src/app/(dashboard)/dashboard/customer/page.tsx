@@ -7,6 +7,8 @@ import { getTransactionsByUserId } from "@/lib/api/transactions";
 import { getSiteSettings } from "@/lib/api/siteSettings";
 import { getCurrencySymbol } from "@/lib/currency";
 import { aggregateCustomerDashboard } from "@/lib/dashboard-helpers";
+import { asApplication, getMyVendorApplication } from "@/lib/api/vendor";
+import VendorCallout from "@/components/vendor/VendorCallout";
 import {
   CustomerOrder,
   CustomerOrderItem,
@@ -302,20 +304,28 @@ export default async function CustomerDashboardPage() {
     };
   });
 
+  // The conversion banner: a customer who never applied is invited, one with an
+  // open or rejected application is told exactly where it stands.
+  const vendorApplication = user?.id ? asApplication(await getMyVendorApplication()) : null;
+
   return (
-    <CustomerOverviewClient
-      stats={aggregated.stats}
-      spendingData={aggregated.spendingData}
-      spendingVsSavingsData={aggregated.spendingVsSavingsData}
-      categoryData={aggregated.categoryData}
-      orderStatusData={aggregated.orderStatusData}
-      paymentMethodData={aggregated.paymentMethodData}
-      recentOrders={customerOrders}
-      wishlistItems={wishlistItems}
-      recentTransactions={customerTransactions}
-      userName={userName}
-      rewardPoints={aggregated.rewardPoints}
-      membershipTier={aggregated.membershipTier}
-    />
+    <>
+      <VendorCallout application={vendorApplication} />
+
+      <CustomerOverviewClient
+        stats={aggregated.stats}
+        spendingData={aggregated.spendingData}
+        spendingVsSavingsData={aggregated.spendingVsSavingsData}
+        categoryData={aggregated.categoryData}
+        orderStatusData={aggregated.orderStatusData}
+        paymentMethodData={aggregated.paymentMethodData}
+        recentOrders={customerOrders}
+        wishlistItems={wishlistItems}
+        recentTransactions={customerTransactions}
+        userName={userName}
+        rewardPoints={aggregated.rewardPoints}
+        membershipTier={aggregated.membershipTier}
+      />
+    </>
   );
 }

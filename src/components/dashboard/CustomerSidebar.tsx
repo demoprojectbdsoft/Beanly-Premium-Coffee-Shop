@@ -18,6 +18,7 @@ import {
   LogOut,
   Star,
   Bell,
+  Store,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "react-toastify";
@@ -36,6 +37,9 @@ const CUSTOMER_NAV_ITEMS = [
 const CUSTOMER_ACCOUNT_ITEMS = [
   { name: "My Profile", href: "/dashboard/customer/profile", icon: User },
   { name: "Settings", href: "/dashboard/customer/settings", icon: Settings },
+  // The conversion entry: an existing customer opens the marketplace
+  // application from the account they already have, never a second signup.
+  { name: "Become a Vendor", href: "/become-a-vendor", icon: Store },
 ];
 
 /** Maps raw member string to a proper display label */
