@@ -22,6 +22,7 @@ import {
   Mail,
   Megaphone,
   Truck,
+  Store,
   type LucideIcon,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
@@ -65,7 +66,10 @@ const NAV_GROUPS = [
   },
   {
     title: "People",
-    items: [{ name: "Users", href: "/dashboard/admin/users", icon: Users }],
+    items: [
+      { name: "Users", href: "/dashboard/admin/users", icon: Users },
+      { name: "Vendor applications", href: "/dashboard/admin/vendors", icon: Store },
+    ],
   },
   {
     title: "Support",

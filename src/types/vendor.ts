@@ -176,3 +176,47 @@ export interface VendorApplicationStatusView {
   history: VendorApplicationEvent[];
   plan: VendorPlanId;
 }
+
+/** Paging, identical in shape to the other admin boards. */
+export interface VendorPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+/** One row of the review queue: the application as the table needs it. */
+export interface VendorApplicationListResult {
+  applications: VendorApplication[];
+  total: number;
+  /** How many applications sit in each state, for the filter chips. */
+  typeCounts: Record<string, number>;
+  pagination: VendorPagination;
+}
+
+/** The account that applied, as the review screen names it. */
+export interface VendorApplicantSummary {
+  _id: string;
+  name: string;
+  email: string;
+  image?: string;
+  phone?: string;
+  role?: string;
+  status?: string;
+  createdAt?: string;
+}
+
+/** The store the approval created, when there is one. */
+export interface VendorStoreSummary {
+  _id: string;
+  slug: string;
+  status?: string;
+  isVisible?: boolean;
+}
+
+/** The review screen's single read: the file plus who and what it made. */
+export interface VendorApplicationDetail {
+  application: VendorApplication;
+  applicant: VendorApplicantSummary | null;
+  store: VendorStoreSummary | null;
+}
