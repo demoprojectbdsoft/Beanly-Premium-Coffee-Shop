@@ -7,6 +7,10 @@ export default async function DashboardProfileRedirectPage() {
 
   if (role === "admin" || role === "demoadmin") {
     redirect("/dashboard/admin/profile");
+  } else if (role === "rider") {
+    redirect("/dashboard/rider/profile");
+  } else if (role === "vendor") {
+    redirect("/dashboard/vendor/profile");
   } else {
     redirect("/dashboard/customer/profile");
   }

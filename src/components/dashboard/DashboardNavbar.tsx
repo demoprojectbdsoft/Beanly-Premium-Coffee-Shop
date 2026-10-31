@@ -28,7 +28,8 @@ export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProp
   const user = session?.user;
   const isCustomerRoute = pathname.startsWith("/dashboard/customer");
   const isRiderRoute = pathname.startsWith("/dashboard/rider");
-  const userRole = ((user as { role?: string })?.role || (isRiderRoute ? "rider" : isCustomerRoute ? "customer" : "admin")).toLowerCase();
+  const isVendorRoute = pathname.startsWith("/dashboard/vendor");
+  const userRole = ((user as { role?: string })?.role || (isRiderRoute ? "rider" : isVendorRoute ? "vendor" : isCustomerRoute ? "customer" : "admin")).toLowerCase();
   // The store's feed names other people's orders and accounts, which is why it
   // is the store's own board and not something a customer could ever read.
   const isAdminView = userRole === "admin" || userRole === "demoadmin";
@@ -45,19 +46,23 @@ export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProp
   const userImage = user?.image || (user as { avatar?: string })?.avatar;
   // No invented name while the session loads: the header names the role and
   // swaps to the real account name the moment it arrives.
-  const displayName = user?.name || (isAdminView ? "Store Admin" : isRiderRoute ? "Rider" : "Customer");
+  const displayName = user?.name || (isAdminView ? "Store Admin" : isRiderRoute ? "Rider" : isVendorRoute ? "Vendor" : "Customer");
   const profileHref = isRiderRoute
     ? "/dashboard/rider/profile"
-    : isCustomerRoute
-      ? "/dashboard/customer/profile"
-      : "/dashboard/admin/profile";
+    : isVendorRoute
+      ? "/dashboard/vendor/profile"
+      : isCustomerRoute
+        ? "/dashboard/customer/profile"
+        : "/dashboard/admin/profile";
   const roleLabel = isAdminView
     ? userRole === "demoadmin"
       ? "Demo Admin"
       : "Store Admin"
     : userRole === "rider"
       ? "Rider Account"
-      : "Customer Account";
+      : userRole === "vendor"
+        ? "Vendor Account"
+        : "Customer Account";
 
   const isDark = (resolvedTheme || theme) === "dark";
 
