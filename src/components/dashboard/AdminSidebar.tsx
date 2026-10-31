@@ -18,6 +18,7 @@ import {
   LogOut,
   Star,
   Shield,
+  Bell,
   Mail,
   Megaphone,
   Truck,
@@ -34,6 +35,14 @@ const OVERVIEW_ITEM = {
   name: "Overview",
   href: "/dashboard/admin",
   icon: LayoutDashboard,
+};
+
+// The store's activity feed. It sits beside the overview rather than inside a
+// group, because it is read every day and a group heading only adds a line.
+const NOTIFICATIONS_ITEM = {
+  name: "Notifications",
+  href: "/dashboard/admin/notifications",
+  icon: Bell,
 };
 
 const NAV_GROUPS = [
@@ -171,6 +180,12 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             <SidebarLink
               {...OVERVIEW_ITEM}
               isActive={isActiveLink(OVERVIEW_ITEM.href)}
+              onClose={onClose}
+            />
+
+            <SidebarLink
+              {...NOTIFICATIONS_ITEM}
+              isActive={isActiveLink(NOTIFICATIONS_ITEM.href)}
               onClose={onClose}
             />
 

@@ -11,6 +11,7 @@ interface RiderRecord {
   id?: string;
   name?: string | null;
   email?: string | null;
+  image?: string | null;
   phone?: string | null;
   bio?: string | null;
   vehicleType?: string | null;
@@ -50,6 +51,7 @@ export default async function RiderProfilePage() {
     id: merged._id || merged.id || session.id,
     name: merged.name || session.name || "",
     email: merged.email || session.email || "",
+    image: merged.image || "",
     phone: merged.phone || "",
     bio: merged.bio || "",
     vehicleType: merged.vehicleType || "",

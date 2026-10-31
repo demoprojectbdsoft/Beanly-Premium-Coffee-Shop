@@ -8,6 +8,7 @@ import { authClient } from "@/lib/auth-client";
 import CartButton from "@/components/shared/CartButton";
 import UserAvatar from "@/components/shared/UserAvatar";
 import NotificationBell from "@/components/dashboard/NotificationBell";
+import type { NotificationView } from "@/lib/notifications";
 import { canShop } from "@/lib/core/roles";
 
 import { useTheme } from "next-themes";
@@ -28,9 +29,18 @@ export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProp
   const isCustomerRoute = pathname.startsWith("/dashboard/customer");
   const isRiderRoute = pathname.startsWith("/dashboard/rider");
   const userRole = ((user as { role?: string })?.role || (isRiderRoute ? "rider" : isCustomerRoute ? "customer" : "admin")).toLowerCase();
-  // The activity feed names other people's orders and accounts, so only the
-  // store team gets the bell. Customers keep a clean header.
+  // The store's feed names other people's orders and accounts, which is why it
+  // is the store's own board and not something a customer could ever read.
   const isAdminView = userRole === "admin" || userRole === "demoadmin";
+  // One bell for every role: the view only decides the copy and the links, the
+  // API decides whose lines come back. A seller workspace reuses it as is.
+  const notificationView: NotificationView = isAdminView
+    ? "store"
+    : userRole === "rider"
+      ? "rider"
+      : userRole === "vendor"
+        ? "vendor"
+        : "customer";
   const canUserShop = canShop((user as { role?: string | null } | undefined) ?? null);
   const userImage = user?.image || (user as { avatar?: string })?.avatar;
   // No invented name while the session loads: the header names the role and
@@ -94,12 +104,9 @@ export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProp
           </button>
         )}
 
-        {/* Notifications — one bell for every role; the scope decides whose
-            feed it reads */}
-        <NotificationBell
-          scope={isAdminView ? "store" : "personal"}
-          role={isRiderRoute ? "rider" : "customer"}
-        />
+        {/* Notifications — one bell for every role; the view decides the copy
+            and the links, the API decides whose lines are read. */}
+        <NotificationBell view={notificationView} />
 
         {/* Cart Item Count & Dollar Total — buyers only */}
         {canUserShop && (

@@ -1,9 +1,13 @@
 /**
- * What happened, as far as the notification bell is concerned. The API and the
- * app have to agree on these names, because the bell picks the icon and the
- * screen to open from the type.
+ * What happened, as far as the notification feed is concerned.
+ *
+ * The store's lines and each person's own lines are the same document in the
+ * same collection — only an owner separates them — so they are one type here
+ * too. The API and the app have to agree on these names, because the feed picks
+ * the icon and the screen to open from the type.
  */
-export type AdminActivityType =
+export type NotificationType =
+  // Addressed to the store team.
   | "order"
   | "transaction"
   | "user"
@@ -11,67 +15,71 @@ export type AdminActivityType =
   | "order_cancelled"
   | "warranty"
   | "message"
-  | "review";
-
-/** One line in the admin activity feed, exactly as the API returns it. */
-export interface AdminActivity {
-  _id: string;
-  type: AdminActivityType;
-  /** "New order #ORD-A1B2C3" */
-  title: string;
-  /** "Nihal Ahmed · 2 items · $129.00" */
-  detail?: string;
-  /** The value the matching list screen can search for. */
-  ref?: string;
-  createdAt: string;
-}
-
-/**
- * What a customer or rider can be told about. Same collection as the store
- * feed; these are the lines addressed to one person.
- */
-export type PersonalNotificationType =
+  | "review"
+  | "delivery"
+  // Addressed to one account.
   | "order_placed"
   | "order_confirmed"
   | "order_processing"
   | "order_shipped"
   | "order_delivered"
-  | "order_cancelled"
   | "delivery_assigned"
   | "delivery_update"
   | "delivery_declined";
 
-/** One line in a customer's or rider's own feed. */
-export interface PersonalNotification {
+/** One line, exactly as the API returns it. */
+export interface NotificationItem {
   _id: string;
-  type: PersonalNotificationType;
+  type: NotificationType;
+  /** "New order #ORD-A1B2C3" */
   title: string;
+  /** "Nihal Ahmed · 2 items · $129.00" */
   detail?: string;
-  /** An order id, a delivery id — whatever the matching screen searches for. */
+  /** The value the matching screen can search for. */
   ref?: string;
-  /** Null until its owner opens it. */
+  /**
+   * When its owner opened it. Empty until they do — and always empty on a
+   * shared store line, whose dot is kept on the device instead.
+   */
   readAt?: string | null;
   createdAt: string;
 }
 
-/** One read of a personal feed, newest first. */
-export interface PersonalNotificationFeed {
-  notifications: PersonalNotification[];
-  unreadCount: number;
-  /** ISO timestamp of the API at the moment it answered. */
-  serverTime: string;
-  /** False when the read failed, so the bell keeps what it already has. */
-  ok: boolean;
+/**
+ * Who a personal feed can belong to. The seller side ships later and reuses the
+ * same feed, so it is already a first-class audience here.
+ */
+export type NotificationAudience = "customer" | "rider" | "vendor";
+
+/** Where a paged feed is: what the pager prints. */
+export interface NotificationPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
+/** How many lines of each kind the current filters would hold, per chip. */
+export type NotificationTypeCounts = Record<string, number>;
+
 /**
- * One read of the feed: the lines plus the API clock that wrote them.
- *
- * The clock travels with the lines so "3m ago" is measured with the same clock
- * that stamped them, whatever the visitor's system time happens to say.
+ * One read of the feed: a page of lines plus everything the screen needs to
+ * draw itself — the totals, the per-type counts, and the API clock that stamped
+ * the lines (so "3m ago" is measured with the same clock, whatever the
+ * visitor's system time happens to say).
  */
-export interface AdminActivityFeed {
-  activities: AdminActivity[];
+export interface NotificationPage {
+  items: NotificationItem[];
+  total: number;
+  /** Unread lines for this account. Always 0 on a shared list. */
+  unreadCount: number;
+  /**
+   * True when these are the store team's shared lines. Their read marks live on
+   * the device, because one admin's read must not clear the whole team's.
+   */
+  shared: boolean;
+  typeCounts: NotificationTypeCounts;
+  pagination: NotificationPagination;
   /** ISO timestamp of the API at the moment it answered. */
   serverTime: string;
   /**

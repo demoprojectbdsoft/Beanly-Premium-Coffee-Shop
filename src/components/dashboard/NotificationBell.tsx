@@ -2,64 +2,35 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  Bell,
-  CircleX,
-  CreditCard,
-  Mail,
-  ShieldCheck,
-  ShoppingBag,
-  Star,
-  UserPlus,
-  UserX,
-} from "lucide-react";
+import { Bell } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { getActivities } from "@/lib/action/activity";
 import {
-  loadMyNotifications,
+  loadMyFeed,
   markAllNotificationsRead,
   markNotificationRead,
 } from "@/lib/action/notifications";
+import {
+  forgetLegacyStoreReadKeys,
+  isStoreActivitySeen,
+  markStoreActivitiesSeen,
+} from "@/lib/activityReads";
 import { formatOrderDateTime, formatTimeAgo } from "@/lib/dateTime";
 import {
-  PERSONAL_NOTIFICATION_EMPTY,
-  PERSONAL_NOTIFICATION_FALLBACK_ICON,
-  PERSONAL_NOTIFICATION_ICONS,
-  personalNotificationLink,
+  NOTIFICATION_CENTRE_HREF,
+  NOTIFICATION_EMPTY,
+  NOTIFICATION_FALLBACK_ICON,
+  NOTIFICATION_ICONS,
+  NOTIFICATION_PANEL_TITLE,
+  notificationHref,
+  type NotificationView,
 } from "@/lib/notifications";
-import type { AdminActivity, AdminActivityType } from "@/types";
 
 /** How often the bell asks for new lines while the dashboard is open. */
 const POLL_MS = 60_000;
-/** How many lines the panel shows; the full personal feed has its own page. */
+/** How many lines the panel shows; the notifications page has the full list. */
 const PANEL_LIMIT = 8;
 
-/**
- * The ids of the store lines this browser has already read.
- *
- * One id per line, because every line carries its own dot: reading one leaves
- * the rest untouched. The store feed is shared by every admin, so its read
- * state stays on the device rather than becoming somebody else's "read".
- */
-const SEEN_IDS_KEY = "sparq:activities:seen-ids";
-/** Keys written by earlier versions of the bell; removed so they cannot linger. */
-const LEGACY_KEYS = ["sparq:activities:seen", "sparq:activities:seen-at"];
-/** How many read ids are remembered; the panel itself only shows the newest few. */
-const SEEN_IDS_LIMIT = 300;
-
-/** One icon per kind of store activity, so a glance tells the story. */
-const STORE_ICONS: Record<AdminActivityType, LucideIcon> = {
-  order: ShoppingBag,
-  transaction: CreditCard,
-  user: UserPlus,
-  user_deleted: UserX,
-  order_cancelled: CircleX,
-  warranty: ShieldCheck,
-  message: Mail,
-  review: Star,
-};
-
-/** One line, whichever feed it came from: the panel renders this shape only. */
+/** One line as the panel draws it, whichever feed it came from. */
 interface BellItem {
   id: string;
   title: string;
@@ -67,91 +38,30 @@ interface BellItem {
   createdAt: string;
   href: string;
   icon: LucideIcon;
-  unread: boolean;
-}
-
-/** Milliseconds of a stored timestamp, or 0 when it is missing or unreadable. */
-function timeOf(value: string | undefined): number {
-  if (!value) return 0;
-  const ms = new Date(value).getTime();
-  return Number.isNaN(ms) ? 0 : ms;
-}
-
-/** The ids saved by previous visits, or an empty list when the value is junk. */
-function readSeenIds(): string[] {
-  try {
-    const raw = localStorage.getItem(SEEN_IDS_KEY);
-    const parsed: unknown = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed)
-      ? parsed.filter((id): id is string => typeof id === "string")
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Where one store line sends the admin.
- *
- * The API only stores the value to look for, never a route, so a line saved
- * months ago still opens the right page after the dashboard changes.
- */
-function storeLinkFor(activity: AdminActivity): string {
-  const ref = encodeURIComponent(activity.ref || "");
-
-  switch (activity.type) {
-    case "order":
-    case "order_cancelled":
-      // The orders list searches ids, so the full order id finds exactly one.
-      return `/dashboard/admin/orders${ref ? `?search=${ref}` : ""}`;
-    case "transaction":
-      return `/dashboard/admin/transactions${ref ? `?search=${ref}` : ""}`;
-    case "user":
-      return `/dashboard/admin/users${ref ? `?search=${ref}` : ""}`;
-    case "user_deleted":
-      // The account is gone, so there is nothing left to search for.
-      return "/dashboard/admin/users";
-    case "warranty":
-      // "all" because new coverage is not claimed yet, and the claims view that
-      // the page opens on would hide exactly the record this line is about.
-      return `/dashboard/admin/warranties?status=all${ref ? `&orderId=${ref}` : ""}`;
-    case "message":
-      return `/dashboard/admin/messages${ref ? `?search=${ref}` : ""}`;
-    case "review":
-      // The reviews list searches by id too, so one line opens one review.
-      return `/dashboard/admin/reviews${ref ? `?search=${ref}` : ""}`;
-    default:
-      return "/dashboard/admin";
-  }
+  /** The server's read mark. Only a personal line ever carries one. */
+  read: boolean;
 }
 
 export interface NotificationBellProps {
-  /**
-   * Which feed the bell reads.
-   *
-   * "store" is the shared activity feed every admin sees; "personal" is the
-   * lines addressed to one customer or rider.
-   */
-  scope?: "store" | "personal";
-  /** Needed by the personal scope to build links and copy. */
-  role?: "customer" | "rider";
+  /** Which side of the app the bell is standing in; decides the copy and links. */
+  view: NotificationView;
 }
 
 /**
  * The dashboard notification bell, for every role.
  *
  * The panel, the dots, the polling and the relative labels are the same
- * everywhere; only the feed behind them changes. A store line's read state is
- * kept on the device (the feed is shared), while a personal line's read state
- * is the server's, so it clears on every device the account is signed in on.
+ * everywhere; the API decides whose lines come back, and says whether they are
+ * shared. A shared line's read mark is kept on this device (the list belongs to
+ * the whole team), while a personal line's is the server's, so it clears on
+ * every device the account is signed in on.
  */
-export default function NotificationBell({ scope = "store", role = "customer" }: NotificationBellProps) {
-  const isStore = scope === "store";
-
+export default function NotificationBell({ view }: NotificationBellProps) {
   const [items, setItems] = useState<BellItem[]>([]);
-  // A personal feed shows one page of lines, so its unread total comes from the
-  // API. The store feed is a fixed head of the list, so its total is derived.
-  const [personalUnread, setPersonalUnread] = useState(0);
+  const [shared, setShared] = useState(false);
+  // A personal feed's unread total covers lines the panel never loaded, so it
+  // comes from the API; a shared feed has no such total and counts its head.
+  const [serverUnread, setServerUnread] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   // How far this device's clock is ahead of the API clock. Every "3m ago"
   // below is computed against the API clock, via this offset.
@@ -160,75 +70,37 @@ export default function NotificationBell({ scope = "store", role = "customer" }:
   const [now, setNow] = useState(() => Date.now());
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  const unreadCount = isStore ? items.filter((line) => line.unread).length : personalUnread;
+  const isUnread = (item: BellItem) =>
+    shared ? !isStoreActivitySeen(item.id, item.createdAt) : !item.read;
 
-  /** Reads the given store lines: their dots go, the others keep theirs. */
-  const markSeen = useCallback((ids: string[]) => {
-    if (!ids.length) return;
+  const unreadCount = shared ? items.filter(isUnread).length : serverUnread;
 
-    const current = readSeenIds();
-    const merged = Array.from(new Set([...ids, ...current])).slice(0, SEEN_IDS_LIMIT);
-    localStorage.setItem(SEEN_IDS_KEY, JSON.stringify(merged));
-
-    const seenSet = new Set(merged);
-    setItems((lines) =>
-      lines.map((line) => (seenSet.has(line.id) ? { ...line, unread: false } : line))
-    );
-  }, []);
-
-  /** The store feed: the newest lines, plus the API clock that stamped them. */
-  const loadStore = useCallback(async () => {
-    const feed = await getActivities(PANEL_LIMIT);
+  /** The head of the feed, plus the API clock that stamped the lines. */
+  const load = useCallback(async () => {
+    const feed = await loadMyFeed(PANEL_LIMIT);
 
     // A failed read is not an empty feed: keep the lines already on screen.
     if (!feed.ok) return;
 
-    // Another tab may have read some of these lines already.
-    const seenSet = new Set(readSeenIds());
+    setShared(feed.shared);
+    setServerUnread(feed.unreadCount);
     setItems(
-      feed.activities.map((activity) => ({
-        id: activity._id,
-        title: activity.title,
-        detail: activity.detail,
-        createdAt: activity.createdAt,
-        href: storeLinkFor(activity),
-        icon: STORE_ICONS[activity.type] || Bell,
-        unread: !seenSet.has(activity._id),
-      }))
-    );
-    return feed.serverTime;
-  }, []);
-
-  /** The personal feed: only the caller's own lines, newest first. */
-  const loadPersonal = useCallback(async () => {
-    const feed = await loadMyNotifications(PANEL_LIMIT);
-
-    // A failed read is not an empty feed: keep the lines already on screen.
-    if (!feed.ok) return;
-
-    setItems(
-      feed.notifications.map((line) => ({
+      feed.items.map((line) => ({
         id: line._id,
         title: line.title,
         detail: line.detail,
         createdAt: line.createdAt,
-        href: personalNotificationLink(line, role),
-        icon: PERSONAL_NOTIFICATION_ICONS[line.type] || PERSONAL_NOTIFICATION_FALLBACK_ICON,
-        unread: !line.readAt,
+        href: notificationHref(line, view),
+        icon: NOTIFICATION_ICONS[line.type] || NOTIFICATION_FALLBACK_ICON,
+        read: Boolean(line.readAt),
       }))
     );
-    setPersonalUnread(feed.unreadCount);
-    return feed.serverTime;
-  }, [role]);
-
-  const load = useCallback(async () => {
-    const serverTime = await (isStore ? loadStore() : loadPersonal());
 
     // The API hands over its own clock with the lines. Remember the gap once,
     // so a device with a wrong system time still shows the real "3m ago".
-    const serverMs = timeOf(serverTime);
-    if (serverMs) setClockOffset(Date.now() - serverMs);
-  }, [isStore, loadStore, loadPersonal]);
+    const serverMs = new Date(feed.serverTime).getTime();
+    if (!Number.isNaN(serverMs)) setClockOffset(Date.now() - serverMs);
+  }, [view]);
 
   // The bell lives in the dashboard navbar, so it refreshes itself instead of
   // asking every page to hand it a list. The first read goes through a timer
@@ -260,20 +132,21 @@ export default function NotificationBell({ scope = "store", role = "customer" }:
     return () => clearInterval(timer);
   }, []);
 
-  // The store's read state is per device, so it has to be shared between tabs.
+  // A shared feed's read state is per device, so it has to be shared between
+  // tabs. Re-rendering the same lines is enough: each dot is judged from the
+  // device at render time.
   useEffect(() => {
-    if (!isStore) return;
+    if (!shared) return;
 
-    LEGACY_KEYS.forEach((key) => localStorage.removeItem(key));
+    forgetLegacyStoreReadKeys();
 
     const onStorage = (event: StorageEvent) => {
-      if (event.key !== SEEN_IDS_KEY) return;
-      const seenSet = new Set(readSeenIds());
-      setItems((lines) => lines.map((line) => ({ ...line, unread: !seenSet.has(line.id) })));
+      if (!event.key || !event.key.startsWith("sparq:activities:")) return;
+      setItems((lines) => lines.map((line) => ({ ...line })));
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, [isStore]);
+  }, [shared]);
 
   // A menu should close the way every other menu on the site closes.
   useEffect(() => {
@@ -302,26 +175,32 @@ export default function NotificationBell({ scope = "store", role = "customer" }:
 
   /** Clears one dot here and, for a personal line, on the server too. */
   const readOne = (item: BellItem) => {
-    if (isStore) {
-      markSeen([item.id]);
+    if (!isUnread(item)) return;
+
+    if (shared) {
+      markStoreActivitiesSeen([item.id]);
+      setItems((lines) => lines.map((line) => ({ ...line })));
       return;
     }
 
     setItems((lines) =>
-      lines.map((line) => (line.id === item.id ? { ...line, unread: false } : line))
+      lines.map((line) => (line.id === item.id ? { ...line, read: true } : line))
     );
-    setPersonalUnread((count) => Math.max(0, count - 1));
+    setServerUnread((count) => Math.max(0, count - 1));
     void markNotificationRead(item.id).catch(() => void load());
   };
 
   const readAll = () => {
-    if (isStore) {
-      markSeen(items.filter((line) => line.unread).map((line) => line.id));
+    if (shared) {
+      // Only the head of the list is on screen, so only its dots can go here;
+      // the page's own button writes the watermark that covers everything.
+      markStoreActivitiesSeen(items.filter(isUnread).map((line) => line.id));
+      setItems((lines) => lines.map((line) => ({ ...line })));
       return;
     }
 
-    setItems((lines) => lines.map((line) => ({ ...line, unread: false })));
-    setPersonalUnread(0);
+    setItems((lines) => lines.map((line) => ({ ...line, read: true })));
+    setServerUnread(0);
     void markAllNotificationsRead().catch(() => void load());
   };
 
@@ -334,21 +213,6 @@ export default function NotificationBell({ scope = "store", role = "customer" }:
       void load();
     }
   };
-
-  // Only the words change between the two feeds; the panel below is one panel.
-  const copy = isStore
-    ? {
-        title: "Recent activity",
-        emptyText: "Orders, payments, new users, warranties and messages show up here.",
-        footerHref: "/dashboard/admin",
-        footerLabel: "Go to the dashboard",
-      }
-    : {
-        title: "Notifications",
-        emptyText: PERSONAL_NOTIFICATION_EMPTY[role],
-        footerHref: `/dashboard/${role}/notifications`,
-        footerLabel: "See all notifications",
-      };
 
   return (
     <div className="relative" ref={wrapRef}>
@@ -371,12 +235,14 @@ export default function NotificationBell({ scope = "store", role = "customer" }:
       {isOpen && (
         <div
           role="menu"
-          aria-label={copy.title}
+          aria-label={NOTIFICATION_PANEL_TITLE[view]}
           className="absolute right-0 top-[calc(100%+10px)] z-50 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] shadow-xl overflow-hidden"
         >
           <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-[var(--border-color)]">
             <div className="min-w-0">
-              <p className="text-xs font-bold text-[var(--foreground)]">{copy.title}</p>
+              <p className="text-xs font-bold text-[var(--foreground)]">
+                {NOTIFICATION_PANEL_TITLE[view]}
+              </p>
               <p className="text-[10px] font-semibold text-[var(--foreground-muted)]">
                 {items.length === 0
                   ? "Nothing yet"
@@ -399,14 +265,14 @@ export default function NotificationBell({ scope = "store", role = "customer" }:
 
           {items.length === 0 ? (
             <p className="px-4 py-8 text-center text-xs text-[var(--foreground-muted)]">
-              {copy.emptyText}
+              {NOTIFICATION_EMPTY[view]}
             </p>
           ) : (
             <ul className="max-h-80 overflow-y-auto divide-y divide-[var(--border-color)]/60">
               {items.map((item) => {
                 const Icon = item.icon;
                 // Each line stands alone: only its own click clears its dot.
-                const isUnread = item.unread;
+                const unread = isUnread(item);
 
                 return (
                   <li key={item.id}>
@@ -414,7 +280,7 @@ export default function NotificationBell({ scope = "store", role = "customer" }:
                       href={item.href}
                       role="menuitem"
                       onClick={() => {
-                        if (isUnread) readOne(item);
+                        readOne(item);
                         setIsOpen(false);
                       }}
                       className="flex gap-3 px-4 py-3 hover:bg-[var(--surface-alt)] transition-colors"
@@ -426,7 +292,7 @@ export default function NotificationBell({ scope = "store", role = "customer" }:
                       <span className="min-w-0 flex-1">
                         <span
                           className={`block text-xs leading-snug truncate ${
-                            isUnread ? "font-bold" : "font-semibold"
+                            unread ? "font-bold" : "font-semibold"
                           } text-[var(--foreground)]`}
                         >
                           {item.title}
@@ -444,7 +310,7 @@ export default function NotificationBell({ scope = "store", role = "customer" }:
                         </span>
                       </span>
 
-                      {isUnread && (
+                      {unread && (
                         <span
                           aria-hidden="true"
                           className="mt-1.5 w-1.5 h-1.5 shrink-0 rounded-full bg-red-500"
@@ -459,11 +325,11 @@ export default function NotificationBell({ scope = "store", role = "customer" }:
 
           <div className="px-4 py-2.5 border-t border-[var(--border-color)] bg-[var(--surface-alt)]/40">
             <Link
-              href={copy.footerHref}
+              href={NOTIFICATION_CENTRE_HREF[view]}
               onClick={() => setIsOpen(false)}
               className="text-[11px] font-semibold text-[var(--brand-flat)] hover:underline"
             >
-              {copy.footerLabel}
+              See all notifications
             </Link>
           </div>
         </div>

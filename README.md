@@ -533,15 +533,15 @@ A fourth role, `rider`, works the deliveries the admin ships. `vendor` is reserv
 - **Roles** — `admin`, `customer`, `rider`, `vendor`. An admin changes a role from **Users**; the API re-reads the role from the database on every request, so a change applies immediately instead of waiting for the token to expire.
 - **Access** — riders land on `/dashboard/rider` after login and cannot open admin or customer workspaces; layout guards and backend role checks both enforce it.
 - **Shopping is for customers** — admin, demo admin, riders and vendors cannot add to cart, add to wishlist or post reviews. The action refuses first, and the API refuses again if the request is replayed.
-- **Notifications** — one bell for every role. The store team reads the shared activity feed; a customer or rider reads only their own lines (order placed, shipped, delivered, cancelled, delivery requests) and each one is also emailed. The same `NotificationBell` component serves both, switched by its `scope` prop, and the read state is remembered on the server so it clears on every device.
+- **Notifications** — one bell, one page and one set of rules for every role; only the data differs. The store team reads the shared activity board, a customer or rider reads only their own lines (order placed, shipped, delivered, cancelled, delivery requests) and each one is also emailed. A vendor slot is already wired for when the seller workspace ships. `/dashboard/<role>/notifications` is the same `NotificationCenter` everywhere: search, type chips with counts, sort, an unread-only switch, dots and a pager. One endpoint serves all of it — the API reads the role from the token and answers `shared`, which is what tells the app where a read mark lives: on the server for a personal line (so it clears on every device), on the device for the shared board (because one admin's read must not clear everybody's dot).
 - **Live tracking** — Leaflet + OpenStreetMap (free) on a transport that works on Vercel: the tracking page refreshes every 8 seconds, and optional Ably keys push the same update instantly.
 - **Rider workspace** — `/dashboard/rider` opens on eight live stat cards (total, completed, active, pending requests, cancelled, total earnings, this month, average delivery time), an earnings-versus-delivered chart, a pipeline breakdown and the latest jobs. The sidebar adds **Requests**, **Deliveries**, **Active**, **History**, **Earnings**, **Profile** and **Settings**, each on real data.
 - **Lists you can actually narrow** — every list supports search, sort (newest, oldest, highest fee), page size and, where it makes sense, a status filter. Assigned jobs past their expiry window are labelled *Expired* on the server so no client clock can disagree.
 - **Earnings** — the rider's own fees: total, this month, last 30 days and average per job, with the delivered jobs that produced them.
-- **Profile & settings** — name, phone, bio, vehicle type, vehicle number and licence save through the same user API; availability is an online/offline toggle that stops new offers; password change revokes other sessions.
+- **Profile & settings** — name, phone, bio, vehicle type, vehicle number and licence save through the same user API, and the profile photo is uploaded or replaced from the same page (ImgBB upload or a direct URL, just like the customer profile); availability is an online/offline toggle that stops new offers; password change revokes other sessions.
 - **Exports** — the overview downloads as CSV and as a charted PDF (tiles, earnings bars with a delivered line, pipeline donut, recent jobs), using the store's own site name and currency.
 
-**Progress:** Phase 1 ✅ roles & RBAC. Notifications ✅ customer and rider feed + email. Phase 2 ✅ rider workspace (overview, lists, earnings, profile, settings, exports). Phases 3–7 (admin assignment, delivery lifecycle, tracking, OTP, hardening) follow.
+**Progress:** Phase 1 ✅ roles & RBAC. Notifications ✅ one feed for every role (bell, page, email). Phase 2 ✅ rider workspace (overview, lists, earnings, profile, settings, exports). Phases 3–7 (admin assignment, delivery lifecycle, tracking, OTP, hardening) follow.
 
 ---
 
@@ -562,7 +562,7 @@ A fourth role, `rider`, works the deliveries the admin ships. `vendor` is reserv
 | Customer dashboard with analytics and data export | ✅ Complete |
 | Rider role, rider login redirect and ride/deliver RBAC | ✅ Complete |
 | Rider workspace: overview, lists, earnings, profile, settings, CSV/PDF | ✅ Phase 2 of 7 |
-| Notifications — customer & rider feed, bell and transactional email | ✅ Complete |
+| Notifications — one feed, bell and page for every role, plus transactional email | ✅ Complete |
 | Admin dashboard with CSV and charted PDF reports | ✅ Complete |
 | Site settings: branding, About page copy, opening hours, maintenance mode | ✅ Complete |
 | Demo admin sandbox with daily restore | ✅ Complete |

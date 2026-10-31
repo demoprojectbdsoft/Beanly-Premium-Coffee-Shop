@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button, Card, Chip } from "@heroui/react";
 import {
@@ -15,12 +16,14 @@ import {
   WifiOff,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import ImageUploader from "@/components/shared/ImageUploader";
 import { updateUser } from "@/lib/action/user";
 
 export interface RiderProfile {
   id: string;
   name: string;
   email: string;
+  image: string;
   phone: string;
   bio: string;
   vehicleType: string;
@@ -39,6 +42,9 @@ export default function RiderProfileClient({ initialProfile }: { initialProfile:
   const router = useRouter();
 
   const [name, setName] = useState(initialProfile.name);
+  // The photo is saved with the rest of the details, so the card on the left
+  // shows the new face the moment it is uploaded.
+  const [image, setImage] = useState(initialProfile.image);
   const [phone, setPhone] = useState(initialProfile.phone);
   const [bio, setBio] = useState(initialProfile.bio);
   const [vehicleType, setVehicleType] = useState(initialProfile.vehicleType);
@@ -67,6 +73,7 @@ export default function RiderProfileClient({ initialProfile }: { initialProfile:
     try {
       const res = await updateUser(initialProfile.id, {
         name: name.trim(),
+        image: image.trim(),
         phone: phone.trim(),
         bio: bio.trim(),
         vehicleType: vehicleType.trim(),
@@ -142,8 +149,19 @@ export default function RiderProfileClient({ initialProfile }: { initialProfile:
         {/* ── Identity card ── */}
         <Card className="bg-[var(--surface)] border border-[var(--border-color)] rounded-2xl p-6 shadow-xs space-y-5 h-fit">
           <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-brand-gradient text-[var(--on-grad-text)] flex items-center justify-center text-lg font-black shadow-xs">
-              {initials || <User className="w-5 h-5" />}
+            <div className="relative w-14 h-14 shrink-0 rounded-2xl bg-brand-gradient text-[var(--on-grad-text)] flex items-center justify-center text-lg font-black shadow-xs overflow-hidden">
+              {image ? (
+                <Image
+                  src={image}
+                  alt={name || "Rider"}
+                  fill
+                  sizes="56px"
+                  className="object-cover"
+                  unoptimized
+                />
+              ) : (
+                initials || <User className="w-5 h-5" />
+              )}
             </div>
             <div className="min-w-0">
               <p className="text-sm font-bold text-[var(--foreground)] truncate">
@@ -222,9 +240,16 @@ export default function RiderProfileClient({ initialProfile }: { initialProfile:
             <div>
               <h3 className="text-base font-bold text-[var(--foreground)]">Personal details</h3>
               <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
-                Customers see your name and phone while you are carrying their parcel.
+                Customers see your name, photo and phone while you are carrying their parcel.
               </p>
             </div>
+
+            <ImageUploader
+              label="Profile photo"
+              value={image}
+              onChange={setImage}
+              urlPlaceholder="https://images.unsplash.com/..."
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
