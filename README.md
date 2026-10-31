@@ -211,7 +211,7 @@ confirmed ──▶ processing ──▶ shipped ──▶ delivered
 
 ## 🏪 Vendor Dashboard
 
-A customer the store team approves as a seller gets a workspace of their own at `/dashboard/vendor` — a fourth dashboard with its own layout guard and sidebar (**Overview, Orders, Products, Analytics, Coupons, Store Profile, Plan & Billing, Notifications**). A vendor cannot open the admin or the customer dashboard, and a customer who is only an applicant cannot open any of them.
+A customer the store team approves as a seller gets a workspace of their own at `/dashboard/vendor` — a fourth dashboard with its own layout guard and sidebar (**Overview, Orders, Products, Analytics, Coupons, Promotions, Store Profile, Plan & Billing, Notifications**). A vendor cannot open the admin or the customer dashboard, and a customer who is only an applicant cannot open any of them.
 
 ### Becoming a vendor
 
@@ -234,13 +234,14 @@ A customer the store team approves as a seller gets a workspace of their own at 
 | **Products** | The shop's own catalogue with per-status tabs, search and the plan usage line above the table — the number that explains why a publish may be refused. One shared editor (`VendorProductForm`) serves *Add product* and every later edit: images, price, stock, category and subcategories, specifications, variants, shipping. **Save draft** never touches the plan limit; **Publish** does, so the form says so before the request instead of after a failed one. Deleting archives a listing, so past orders and warranties keep pointing at a real product |
 | **Analytics** | The seller's own sales report for 7 / 30 / 90 / 365 days: revenue earned on delivery with the previous window beside it, delivered orders, units, average order value, value still on the way, the plan's commission and the net payout, a revenue-and-orders chart per day (per month on a yearly window), the order pipeline, top products and the last groups moved. Exportable to **CSV** and **PDF** |
 | **Coupons** | The shop's own discount codes: the plan allowance line, tabs for *live / upcoming / expired / stopped* (states the API derives from the dates and the switch, never a stored label), a search box, and one inline editor for writing and amending a code. A seller can only name products from their own shop, so the picker lists exactly those, and store-wide category codes are not offered here at all. Stopping a code keeps it; a code that has already been spent cannot be deleted, because past orders still quote it |
+| **Promotions** | The shelf space the plan rents by the day. The allowance line says how many slots are held and how long each placement runs, so the reason a booking is refused is on screen before the click; tabs switch between *On the shelves / Ended / Cancelled* — states the API derives from the clock, never a stored label — and a second row narrows to *Products / Storefront*. **Feature a product** opens an inline picker that lists only this shop's own buyable listings, because a draft would spend a slot on something nobody can find, and the button says how many days it is buying. Live rows count down and offer **End early**; a storefront placement granted by the store team arrives as a row the seller can read but not write. Refusals keep the API's own words, so *already featured for N more day(s)* is not rephrased here |
 | **Store Profile** | The storefront as the marketplace holds it. The editable half is the store row buyers will read — name, description, logo, cover, contact, address, socials — while the verification details from the approved application stay read-only, because changing them would need a fresh review. `Visible to buyers` is a switch the seller owns; being featured and being suspended are not |
 | **Plan & Billing** | The live plan, its limits and usage, every payment made, the current period and the one before it, an upgrade/downgrade path through the demo checkout, and auto-renew that stops the next charge while keeping the paid days. Nothing on the page is recomputed in the browser — it renders what the subscription endpoint reports, which is the same reading the limit checks use |
 | **Notifications** | The same `NotificationCenter` every role uses, on the same single feed, reading the lines addressed to this account — the application decision and the billing events the workspace writes. A seller who marks a group *ready for shipment* does not notify themselves: that line goes onto the store team's shared board, where the rider is assigned. Order-stage lines for the seller's bell are still to be wired |
 
 - **The plan is the contract** — product limits, featured slots, coupon limits, commission, how far back analytics reaches and whether exports may include the per-product and per-order tables are all read from the live plan on the server. The screens show the same numbers because they render the API's answer; the enforcement never lives in the browser.
 - **Nothing here reaches another shop** — every vendor read and write resolves the account from the token, and a foreign id answers `404` rather than confirming that the row exists.
-- **Not shipped yet** — the public storefront pages for a shop (`/shop/<slug>`), featured placement bought from the plan, and the buyer-side discovery screens.
+- **Not shipped yet** — the public storefront pages for a shop (`/shop/<slug>`), the buyer-side discovery screens, and the store team's own promotions and coupons desks (the APIs are there; the screens are not).
 
 ---
 
@@ -314,6 +315,21 @@ A code has one meaning whichever desk wrote it: the store team's global codes an
 | The seller's desk | Writes and edits only this shop's codes, can only name its own products, and shows the plan allowance the API counts. A refusal from the plan or a suspended shop arrives as a message on the form, not a redirect away from the dashboard |
 | On paper | The code and the money it took off are stored on the order, so the success page, the order history and the PDF invoice all name it — the printed lines add up to the amount actually charged |
 | Not shipped | The store team's own coupons screen, and the code's line on the staff order board. Store-wide codes already exist in the API and validate at checkout; the desk for writing them is still to come |
+
+### Featured promotions
+
+A placement is a row, not a checkbox. The `isFeatured` flag on a product or a storefront is written only by the promotions service, so an expired row cannot leave a shelf lit, and the [backend README](https://github.com/demoprojectbdsoft/Sparq-Server#featured-promotions) documents the collection, the two sources and the daily sweep.
+
+| Rule | What the screens do |
+|---|---|
+| Who buys | The seller buys product slots from the plan on `/dashboard/vendor/promotions`. The store team grants both kinds through the promotions API — a seller's route takes a `productId` and nothing else, so being a featured *shop* is not for sale to the shop |
+| How long | Never from the browser: the plan's `featuredDurationDays` on a purchase, an explicit 1–365 day figure on a grant |
+| What counts | Only a running placement holds a slot, and the count covers what the shop bought — a grant from the store team is not billed against the seller's allowance |
+| Only buyable listings | The picker offers this shop's `published` and `out_of_stock` products, and the API closes a placement the moment its listing is unpublished, hidden or archived |
+| A lapse dims the shelves | When a subscription expires — caught by the daily sweep or by the lazy close when the plan is next read — the shop's placements are ended and the flags come off |
+| Endings are read | *Live / Ended / Cancelled* is derived against the clock, so the desk tells the truth before the sweep has run |
+| Nothing is deleted | Rows are closed with an `endedReason`, so a dark shelf answers why by itself and a past placement still shows its window |
+| Not shipped | The store team's promotions board (the grant, revoke and run-the-sweep endpoints exist) and the buyer-side rails that read the flags |
 
 ### Reviews & ratings
 
@@ -487,8 +503,8 @@ src/
 │   │   ├── customer/           overview, orders, transactions, wishlist,
 │   │   │                       reviews, analytics, profile, settings
 │   │   ├── vendor/             overview, orders (+ detail), products (+ new,
-│   │   │                       + edit), analytics, coupons, store profile,
-│   │   │                       plan & billing, notifications
+│   │   │                       + edit), analytics, coupons, promotions, store
+│   │   │                       profile, plan & billing, notifications
 │   │   └── rider/              overview, requests, deliveries, active,
 │   │                           history, earnings, profile, settings
 │   ├── (main)/                 home, shop, cart, checkout, compare,
@@ -645,7 +661,9 @@ A fourth role, `rider`, works the deliveries the admin ships. The fifth surface 
 | Seller order board — own fulfilment groups, accept/prepare/ready, pickup request, rider mirror | ✅ Complete |
 | Vendor sales report with CSV and charted PDF exports | ✅ Complete |
 | Discount codes — seller's own desk, real validation in the cart, re-priced at checkout, named on the invoice | ✅ Complete |
+| Featured promotions — seller buys product slots from the plan, counts them down and can end one early | ✅ Complete |
 | Store-wide coupons admin desk (API exists, screen to come) | ⏳ Planned |
+| Admin promotions board for granting and expiring a placement (API exists, screen to come) | ⏳ Planned |
 | Public vendor storefronts and shop discovery | ⏳ Planned |
 | Notifications — one feed, bell and page for every role, plus transactional email | ✅ Complete |
 | Admin dashboard with CSV and charted PDF reports | ✅ Complete |
@@ -666,7 +684,8 @@ A fourth role, `rider`, works the deliveries the admin ships. The fifth surface 
 - [ ] **In-app chat support** — live chat with store support.
 - [x] **Self-serve store onboarding** — apply, get reviewed, and run a shop from its own dashboard.
 - [x] **Subscription plans** — tiered pricing per store, enforced limits, demo billing and plan-capped analytics.
-- [ ] **Featured placement bought from the plan** — seller-bought slots on the home rails, with the admin granting and expiring them.
+- [x] **Featured placement bought from the plan** — seller-bought product slots whose window and allowance both come from the live plan, closed by a daily sweep.
+- [ ] **Promotions board for the store team** — grant a placement, revoke one and run the sweep from the admin dashboard; the endpoints are already there.
 - [ ] **Public vendor storefronts** — a page per shop under `/shop/<slug>`, plus discovery, featured shops and seller search on the buyer side.
 - [ ] **Multi-tenant stores** — every store gets its own data, branding and subdomain.
 - [ ] **Real-time settings sync** — live, instantly applied store configuration.

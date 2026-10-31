@@ -12,6 +12,7 @@ import {
   LogOut,
   Package,
   ShoppingBag,
+  Sparkles,
   Store,
   Ticket,
   X,
@@ -24,8 +25,9 @@ import SparqLogo from "@/components/shared/SparqLogo";
  * The vendor's workspace navigation.
  *
  * It starts small on purpose: the store overview, the orders, the store
- * profile, the catalogue and the seller feed. Promotions join this list as
- * their screens arrive, so no link here ever opens a page that does not exist.
+ * profile, the catalogue and the seller feed. Promotions and coupons join this
+ * list as their screens arrive, so no link here ever opens a page that does not
+ * exist.
  */
 const VENDOR_NAV_GROUPS = [
   {
@@ -36,6 +38,7 @@ const VENDOR_NAV_GROUPS = [
       { name: "Products", href: "/dashboard/vendor/products", icon: Package },
       { name: "Analytics", href: "/dashboard/vendor/analytics", icon: BarChart3 },
       { name: "Coupons", href: "/dashboard/vendor/coupons", icon: Ticket },
+      { name: "Promotions", href: "/dashboard/vendor/promotions", icon: Sparkles },
       { name: "Store Profile", href: "/dashboard/vendor/profile", icon: Store },
       { name: "Plan & Billing", href: "/dashboard/vendor/subscription", icon: CreditCard },
       { name: "Notifications", href: "/dashboard/vendor/notifications", icon: Bell },
