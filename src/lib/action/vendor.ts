@@ -207,6 +207,24 @@ export const checkoutVendorSubscription = async (data: {
   return serverMutation("/vendor-subscription/checkout", data, "POST");
 };
 
+/**
+ * Moves one of the vendor's own order groups forward.
+ *
+ * The API checks ownership and which step is legal, so a stale tab cannot skip
+ * a stage or touch another seller's lines. Rejecting needs a reason.
+ */
+export const updateVendorOrderStatus = async (
+  orderId: string,
+  status: "accepted" | "processing" | "ready_for_shipment" | "rejected",
+  reason?: string
+) => {
+  const user = await getUserSession();
+  if (!isVendorRole(user)) {
+    return { success: false as const, message: "Vendor access required." };
+  }
+  return serverMutation(`/vendor-orders/${orderId}/status`, { status, reason }, "PATCH");
+};
+
 /** Stops the renewal; the period the vendor already paid for still runs out. */
 export const cancelVendorRenewal = async () => {
   const user = await getUserSession();

@@ -353,3 +353,85 @@ export interface VendorSubscriptionOverview {
   payments: VendorSubscriptionPayment[];
   history: VendorSubscriptionRecord[];
 }
+
+/** The seller's own fulfilment stages for one group of an order. */
+export type VendorOrderStatus =
+  | "pending"
+  | "accepted"
+  | "processing"
+  | "ready_for_shipment"
+  | "shipped"
+  | "delivered"
+  | "rejected"
+  | "cancelled";
+
+export interface VendorOrderItem {
+  productId: string;
+  title: string;
+  price: number;
+  quantity: number;
+  image: string;
+}
+
+export interface VendorOrderRider {
+  _id: string;
+  name: string;
+  phone: string;
+  vehicleType?: string;
+  vehicleNumber?: string;
+}
+
+/** One seller's slice of a customer order. */
+export interface VendorOrder {
+  _id: string;
+  orderId: string;
+  orderNumber: string;
+  status: VendorOrderStatus;
+  rejectionReason?: string;
+  items: VendorOrderItem[];
+  subtotal: number;
+  customerName: string;
+  customerPhone: string;
+  city: string;
+  paymentMethod: string;
+  /** The parent order's own stage, which the seller does not control. */
+  parentStatus: string | null;
+  totalAmount: number | null;
+  shippingAddress?: {
+    fullName?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    postalCode?: string;
+  } | null;
+  estimatedDelivery?: string;
+  placedAt: string | null;
+  /** Set when the seller asked the store team for a rider. */
+  pickupRequestedAt?: string | null;
+  deliveryId: string | null;
+  rider: VendorOrderRider | null;
+  history: { status: VendorOrderStatus; at: string | null; note?: string }[];
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  /** Only on the detail read: the live job carrying this group. */
+  delivery?: {
+    status: string;
+    rider: VendorOrderRider | null;
+    expiresAt: string | null;
+  } | null;
+}
+
+export interface VendorOrderListResult {
+  orders: VendorOrder[];
+  total: number;
+  typeCounts: Record<string, number>;
+  pagination: VendorPagination;
+}
+
+/** The counters on the overview card, counted from the seller's own rows. */
+export interface VendorOrderSummary {
+  pending: number;
+  active: number;
+  completed: number;
+  total: number;
+}

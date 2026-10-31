@@ -7,6 +7,7 @@ import {
   CircleDashed,
   CreditCard,
   Layers,
+  ShoppingBag,
   Store,
   Tag,
   Ticket,
@@ -14,6 +15,7 @@ import {
 import { getRequiredRole } from "@/lib/core/session";
 import { asApplication, getMyVendorApplication } from "@/lib/api/vendor";
 import { asSubscription, getMySubscription } from "@/lib/api/vendorSubscription";
+import { asOrderSummary, getMyOrderSummary } from "@/lib/api/vendorOrders";
 import { getSiteSettings } from "@/lib/api/siteSettings";
 import { formatOrderDate } from "@/lib/dateTime";
 import { formatPrice } from "@/lib/currency";
@@ -25,17 +27,17 @@ export const dynamic = "force-dynamic";
  * The vendor's home.
  *
  * Everything here is read from what the API already knows: the approved
- * application, the plan table and the account session. No counter is invented —
- * product and order totals arrive with the catalogue and order screens, and
- * until then this page shows the store, its plan and what the profile still
- * needs.
+ * application, the plan table, the seller's own order rows and the account
+ * session. No counter is invented — the order board counts the same rows the
+ * order screens list.
  */
 export default async function VendorOverviewPage() {
   const user = await getRequiredRole("vendor");
 
-  const [application, subscriptionOverview, settingsRes] = await Promise.all([
+  const [application, subscriptionOverview, orderSummary, settingsRes] = await Promise.all([
     getMyVendorApplication().then(asApplication),
     getMySubscription().then(asSubscription),
+    getMyOrderSummary().then(asOrderSummary),
     getSiteSettings(),
   ]);
 
@@ -149,6 +151,53 @@ export default async function VendorOverviewPage() {
             <ArrowRight className="h-2.5 w-2.5" />
           </Link>
         </article>
+      </section>
+
+      {/* Live work */}
+      <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-4 shadow-2xs">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-1.5 text-xs font-bold text-[var(--foreground)]">
+            <ShoppingBag className="h-3.5 w-3.5 text-[var(--brand-flat)]" />
+            Orders
+          </h2>
+          <Link
+            href="/dashboard/vendor/orders"
+            className="inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--brand-flat)] hover:underline"
+          >
+            Open the order board
+            <ArrowRight className="h-2.5 w-2.5" />
+          </Link>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {[
+            { label: "New", value: orderSummary?.pending ?? 0, urgent: true },
+            { label: "In progress", value: orderSummary?.active ?? 0, urgent: false },
+            { label: "Completed", value: orderSummary?.completed ?? 0, urgent: false },
+            { label: "All orders", value: orderSummary?.total ?? 0, urgent: false },
+          ].map((counter) => (
+            <div
+              key={counter.label}
+              className={`rounded-xl border px-3 py-2 ${
+                counter.urgent && counter.value > 0
+                  ? "border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10"
+                  : "border-[var(--border-color)] bg-[var(--surface)]"
+              }`}
+            >
+              <p className="text-base font-bold text-[var(--foreground)]">{counter.value}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--foreground-muted)]">
+                {counter.label}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {(orderSummary?.pending ?? 0) > 0 && (
+          <p className="mt-2 text-[10px] leading-relaxed text-[var(--foreground-muted)]">
+            A new order waits for an answer. Accepting keeps the customer&apos;s delivery on
+            schedule.
+          </p>
+        )}
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
