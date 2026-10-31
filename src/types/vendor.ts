@@ -138,6 +138,8 @@ export interface VendorStore {
   productCount?: number;
   reviewCount?: number;
   rating?: number;
+  /** Set by the store team when a shop is suspended, and shown to its owner. */
+  suspendedReason?: string;
 }
 
 /** The plan state the vendor dashboard and its limit checks read. */

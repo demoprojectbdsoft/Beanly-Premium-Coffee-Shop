@@ -104,6 +104,50 @@ export const reviewVendorApplication = async (
   return serverMutation(`/vendor-applications/${applicationId}/review`, data, "PATCH");
 };
 
+/** The fields a vendor may change about their own storefront. */
+export interface VendorStoreUpdate {
+  name?: string;
+  description?: string;
+  logo?: string;
+  coverImage?: string;
+  email?: string;
+  phone?: string;
+  category?: string;
+  website?: string;
+  isVisible?: boolean;
+  address?: {
+    country?: string;
+    division?: string;
+    city?: string;
+    area?: string;
+    address?: string;
+    postalCode?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+  };
+  socialLinks?: {
+    facebook?: string;
+    instagram?: string;
+    x?: string;
+    linkedin?: string;
+  };
+}
+
+/**
+ * Saves the signed-in vendor's storefront.
+ *
+ * The store is resolved from the token by the API, so this action cannot be
+ * pointed at another seller's shop. The slug and the store status are not part
+ * of the payload for the same reason.
+ */
+export const updateMyStore = async (data: VendorStoreUpdate) => {
+  const user = await getUserSession();
+  if (!user?.id) {
+    return { success: false as const, message: "Sign in to edit your store." };
+  }
+  return serverMutation("/vendor-store/mine", data, "PATCH");
+};
+
 /** The store team edits a plan's numbers; every limit check reads the result. */
 export const updateVendorPlan = async (
   planId: VendorPlanId,
