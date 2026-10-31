@@ -23,6 +23,8 @@ export interface VendorOrderStatusStyle {
   label: string;
   badge: string;
   accent: string;
+  /** Solid colour for a status dot or a chart bar. */
+  dot: string;
   icon: LucideIcon;
 }
 
@@ -53,6 +55,7 @@ export function getVendorOrderStatusStyle(status?: string | null): VendorOrderSt
     label: entry?.label || palette.label,
     badge: palette.badge,
     accent: palette.accent,
+    dot: palette.dot,
     icon: entry?.icon || palette.icon,
   };
 }

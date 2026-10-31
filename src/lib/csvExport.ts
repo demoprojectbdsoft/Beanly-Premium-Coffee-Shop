@@ -846,3 +846,155 @@ export function exportTopSellingCsv(
 
   triggerCsvDownload(csv, downloadName(siteName, "top_selling_products"));
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VENDOR SALES REPORT
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface VendorAnalyticsExportData {
+  vendorName?: string;
+  planName?: string;
+  /** The window the API actually used, which is the request capped by the plan. */
+  rangeDays: number;
+  monthly: boolean;
+  totals: {
+    revenue: number;
+    orders: number;
+    units: number;
+    avgOrderValue: number;
+    inFlight: number;
+    commission: number;
+    commissionTaken: number;
+    netPayout: number;
+    fulfilmentRate: number;
+    stopped: number;
+    placed: number;
+  };
+  previous: { revenue: number; orders: number; revenueChange: number | null };
+  series: Array<{ label: string; revenue: number; orders: number }>;
+  statusCounts: Record<string, number>;
+  topProducts: Array<{ title: string; units: number; revenue: number }>;
+  recent: Array<{
+    orderNumber: string;
+    status: string;
+    subtotal: number;
+    units: number;
+    city: string;
+    placedAt: string;
+  }>;
+  /**
+   * A plan with `limited` exports gets the numbers behind the charts only. The
+   * per-product and per-order tables are the part the higher plans pay for.
+   */
+  full: boolean;
+}
+
+/** Builds and downloads one seller's own sales report. */
+export function exportVendorAnalyticsCsv(
+  data: VendorAnalyticsExportData,
+  options: ExportOptions = {}
+): void {
+  const siteName = options.siteName || "Sparq";
+  const currency = (options.currency || "USD").toUpperCase();
+  const periodLabel = data.monthly ? "Months" : "Days";
+
+  const totalRows: CsvValue[][] = [
+    ["Revenue earned (delivered)", round2(data.totals.revenue), `in ${currency}`],
+    ["Delivered orders", data.totals.orders, ""],
+    ["Units sold", data.totals.units, ""],
+    ["Average order value", round2(data.totals.avgOrderValue), `in ${currency}`],
+    ["Value still on the way", round2(data.totals.inFlight), `in ${currency}`],
+    ["Platform commission", round2(data.totals.commission), "% of earned revenue"],
+    ["Commission taken", round2(data.totals.commissionTaken), `in ${currency}`],
+    ["Net payout", round2(data.totals.netPayout), `in ${currency}`],
+    ["Fulfilment rate", round2(data.totals.fulfilmentRate), "% of closed orders"],
+    ["Rejected or cancelled", data.totals.stopped, ""],
+    ["Orders placed in window", data.totals.placed, ""],
+    ["Previous window revenue", round2(data.previous.revenue), `in ${currency}`],
+    ["Revenue change", data.previous.revenueChange === null ? "" : round2(data.previous.revenueChange), "%"],
+  ];
+
+  const seriesRows: CsvValue[][] = data.series.map((point) => [
+    point.label,
+    round2(point.revenue),
+    point.orders,
+  ]);
+
+  const statusRows: CsvValue[][] = Object.entries(data.statusCounts).map(([status, count]) => [
+    status.replace(/_/g, " "),
+    count,
+  ]);
+
+  const sections: CsvSection[] = [
+    {
+      title: "Sales summary",
+      columns: ["Metric", "Value", "Note"],
+      rows: totalRows,
+    },
+    {
+      title: `Revenue by ${periodLabel.toLowerCase()}`,
+      note: CHART_NOTE,
+      columns: [periodLabel.slice(0, -1), `Revenue (${currency})`, "Delivered orders"],
+      rows: seriesRows,
+    },
+    {
+      title: "Order pipeline",
+      note: CHART_NOTE,
+      columns: ["Stage", "Orders"],
+      rows: statusRows,
+    },
+  ];
+
+  if (data.full) {
+    sections.push({
+      title: "Top products",
+      columns: ["Rank", "Product", "Units sold", `Revenue (${currency})`],
+      rows: data.topProducts.map((product, index) => [
+        index + 1,
+        product.title,
+        product.units,
+        round2(product.revenue),
+      ]),
+    });
+
+    sections.push({
+      title: "Recent orders",
+      columns: [
+        "Order",
+        "Stage",
+        `Subtotal (${currency})`,
+        "Units",
+        "City",
+        "Placed",
+      ],
+      rows: data.recent.map((order) => [
+        order.orderNumber,
+        order.status.replace(/_/g, " "),
+        round2(order.subtotal),
+        order.units,
+        order.city,
+        order.placedAt,
+      ]),
+    });
+  }
+
+  const headerRows: CsvValue[][] = [
+    ["Store", data.vendorName || "Store"],
+    ["Plan", data.planName || ""],
+    ["Window (days)", data.rangeDays],
+    ["Currency", currency],
+  ];
+  if (!data.full) {
+    headerRows.push([
+      "Export level",
+      "Summary only - the product and order tables need a plan with full exports",
+    ]);
+  }
+
+  const csv = buildReportCsv(
+    reportHeader(`${siteName} - Vendor Sales Report`, headerRows),
+    sections
+  );
+
+  triggerCsvDownload(csv, downloadName(siteName, "vendor_sales_report"));
+}

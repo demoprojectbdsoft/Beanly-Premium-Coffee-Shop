@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   ArrowLeft,
+  BarChart3,
   Bell,
   ChevronRight,
   CreditCard,
@@ -32,6 +33,7 @@ const VENDOR_NAV_GROUPS = [
       { name: "Overview", href: "/dashboard/vendor", icon: LayoutDashboard },
       { name: "Orders", href: "/dashboard/vendor/orders", icon: ShoppingBag },
       { name: "Products", href: "/dashboard/vendor/products", icon: Package },
+      { name: "Analytics", href: "/dashboard/vendor/analytics", icon: BarChart3 },
       { name: "Store Profile", href: "/dashboard/vendor/profile", icon: Store },
       { name: "Plan & Billing", href: "/dashboard/vendor/subscription", icon: CreditCard },
       { name: "Notifications", href: "/dashboard/vendor/notifications", icon: Bell },

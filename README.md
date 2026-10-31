@@ -21,24 +21,25 @@
 4. [Shopping Experience](#-shopping-experience)
 5. [Customer Dashboard](#-customer-dashboard)
 6. [Admin Dashboard](#️-admin-dashboard)
-7. [Reports & Exports](#-reports--exports)
-8. [Business Rules](#-business-rules)
-9. [Site Settings & Branding](#-site-settings--branding)
-10. [Maintenance Mode](#-maintenance-mode)
-11. [Demo Admin Mode](#-demo-admin-mode)
-12. [Security](#-security)
-13. [Tech Stack](#-tech-stack)
-14. [Project Structure](#-project-structure)
-15. [Setup](#-setup)
-16. [Project Status](#-project-status)
-17. [Roadmap](#️-roadmap)
-18. [About This Project](#ℹ️-about-this-project)
+7. [Vendor Dashboard](#-vendor-dashboard)
+8. [Reports & Exports](#-reports--exports)
+9. [Business Rules](#-business-rules)
+10. [Site Settings & Branding](#-site-settings--branding)
+11. [Maintenance Mode](#-maintenance-mode)
+12. [Demo Admin Mode](#-demo-admin-mode)
+13. [Security](#-security)
+14. [Tech Stack](#-tech-stack)
+15. [Project Structure](#-project-structure)
+16. [Setup](#-setup)
+17. [Project Status](#-project-status)
+18. [Roadmap](#️-roadmap)
+19. [About This Project](#ℹ️-about-this-project)
 
 ---
 
 ## 📖 Overview
 
-Sparq is a full-stack electronics e-commerce platform: a dynamic, database-driven storefront with cart, wishlist, side-by-side comparison, multi-method checkout, loyalty points, warranties, order tracking and reviews — plus separate customer and admin dashboards.
+Sparq is a full-stack electronics e-commerce platform: a dynamic, database-driven storefront with cart, wishlist, side-by-side comparison, multi-method checkout, loyalty points, warranties, order tracking and reviews — plus separate customer, admin, seller and rider dashboards.
 
 Nothing is hardcoded. Categories, products, the homepage slider and the store's own branding (name, fonts, colours, logos, contact details, shipping rules, currency) are managed from the admin dashboard and served from MongoDB.
 
@@ -46,6 +47,7 @@ Nothing is hardcoded. Categories, products, the homepage slider and the store's 
 |---|---|
 | **Shoppers** | Browse, compare and buy electronics, then track and review what they bought. |
 | **Store admins** | Manage the catalog, orders, inventories, users, reviews, warranties and the look of the whole store, with CSV/PDF reporting. |
+| **Sellers (vendors)** | Apply for a shop, get reviewed, then run their own storefront, catalogue, order board and sales report inside the store — on a plan that decides how far they can go. |
 | **Developers** | A reference implementation of a role-based, full-stack e-commerce build. |
 
 **This repository is the frontend.** The API lives in [Sparq-Server](https://github.com/demoprojectbdsoft/Sparq-Server) and must be running for anything to load.
@@ -60,6 +62,7 @@ Nothing is hardcoded. Categories, products, the homepage slider and the store's 
 | **Customer** | `/dashboard/customer` | Shop, order, review, claim warranties, manage their own account. |
 | **Admin** | `/dashboard/admin` | Everything in the [Admin Dashboard](#️-admin-dashboard). |
 | **Demo admin** | `/dashboard/admin` | Explore the admin dashboard and edit catalog data freely — changes are reverted daily. See [Demo Admin Mode](#-demo-admin-mode). |
+| **Vendor** | `/dashboard/vendor` | Run their own shop inside the store — storefront, catalogue, orders and sales report. See [Vendor Dashboard](#-vendor-dashboard). |
 
 ```
 Sign in (email/password or Google) ─► better-auth creates a session and issues a JWT
@@ -171,7 +174,7 @@ Switching mode keeps the current filters, search and sort.
 
 ## 🛠️ Admin Dashboard
 
-The sidebar is grouped so a long menu stays readable: **Store** (products, categories, home slider, promo banners), **Sales** (orders, transactions), **People** (users) and **Support** (reviews, warranties, messages), with the overview on its own at the top and the profile/settings links at the bottom. A link stays highlighted on its own sub-pages, and the overview only lights up on the dashboard itself.
+The sidebar is grouped so a long menu stays readable: **Store** (products, categories, home slider, promo banners), **Sales** (orders, deliveries, transactions), **People** (users, vendor applications) and **Support** (reviews, warranties, messages), with the overview and the notification board on their own at the top and the profile/settings links at the bottom. A link stays highlighted on its own sub-pages, and the overview only lights up on the dashboard itself.
 
 | Area | What the admin can do |
 |---|---|
@@ -183,6 +186,7 @@ The sidebar is grouped so a long menu stays readable: **Store** (products, categ
 | **Orders** | Platform-wide orders with search and status filters. Open an order to see items, pricing breakdown, redemption and earned points, warranty state and the customer's response, then move it along the status flow. |
 | **Transactions** | Platform-wide payment records. |
 | **Users** | Change a user's role and account status, and see their points and membership tier. |
+| **Vendor applications** | The seller review queue at `/dashboard/admin/vendors`: one read feeds the table and the per-status chips, so a decision made a second ago is gone from *Pending* on the next render. Opening an application shows the whole submission — store, category, contact, business address, identity documents, chosen plan and the history of every status change — and the desk offers the legal next step only: mark **under review**, **approve** (the account becomes a vendor, the store row is created and the plan period starts) or **reject with a reason** the applicant reads on `/become-a-vendor/status`. Plan prices and limits are edited through the API (`PATCH /vendor-plans/:planId`), so the dashboard always shows the live numbers. |
 | **Reviews** | View and moderate every product review. |
 | **Warranties** | Review coverage records and process claims. The list opens on **Claims** — only the records a customer has actually claimed, because an untouched warranty needs no admin work — and three selects narrow it further: **status** (every status, or All), **warranty type** (manufacturer, seller, extended, other or no warranty) and the sort order. Status badges (icon + colour) appear in the table and in the modal, and the **Warranty Type** column shows each record's type and duration. The type shown is the one saved on the record when the warranty was issued — the same field the server filters and extends by — so editing a product later never rewrites the cover a past order was sold with. Opening one shows the full coverage (type, duration, terms, dates), the claim with its reason, description and evidence photos, plus one coloured icon button per action — under review, resolve or reject. Every action button locks while a save is in flight, so two decisions can never race. **Email Customer** opens a composer already filled in from the claim (name, product, order, reason, description and coverage) and sends it from the dashboard instead of handing the address to a mail app. **Extend** adds months to the coverage with a required reason, at most three times per record, and the dialog lists every extension already granted beside an `n of 3 used` counter. The extend form only appears while another extension is possible: once the three slots are used the section keeps just the history. Extension is reserved for **Extended warranty** records — a manufacturer or seller warranty covers exactly the period it was sold with, so those records never show the section at all. |
 | **Messages** | Every message written on the contact page, filterable by delivery state, searchable by name, email or subject, and sortable by newest, oldest, sender or subject. Opening one shows every stored detail — sender, address, department, subject, the full date and time, the message ID, whether the email copy reached the store inbox (and why not, in the provider's own words) — plus the whole message. **Reply by email** opens a composer above it, with the subject and the visitor's own words already written, and sends from the store address. Deleting stays a row action, so the reading view cannot remove a message by accident. |
@@ -204,6 +208,40 @@ confirmed ──▶ processing ──▶ shipped ──▶ delivered
 
 ---
 
+## 🏪 Vendor Dashboard
+
+A customer the store team approves as a seller gets a workspace of their own at `/dashboard/vendor` — a fourth dashboard with its own layout guard and sidebar (**Overview, Orders, Products, Analytics, Store Profile, Plan & Billing, Notifications**). A vendor cannot open the admin or the customer dashboard, and a customer who is only an applicant cannot open any of them.
+
+### Becoming a vendor
+
+| Page | What happens |
+|---|---|
+| `/become-a-vendor` | The public pitch. The three plans are read from the API with their real prices, limits and benefits, so an admin edit shows up here without a code change. Monthly/yearly is one toggle: the yearly card's saving badge and the "≈ per month" line are worked out by `lib/vendorPlan.ts`, never stored |
+| `/become-a-vendor/apply` | The six-step application — store, category & contact, business address, identity documents, plan choice, review. Signed-in customers go straight in; a guest is sent to sign in first and comes back to the same step |
+| `/become-a-vendor/status` | Where the application stands — *pending*, *under review*, *approved* or *rejected* with the store team's reason — plus cancel-while-pending and resubmit-after-rejection |
+
+- **One account, two roles** — approval does not create a seller account. The same user row turns `vendor`, so the orders, reviews, wishlist, wallet and addresses the customer already had are still there, and a vendor can still shop (only staff and riders are refused the cart).
+- **No access while waiting** — a `pending` or `under_review` applicant cannot sign in at all: the auth layer refuses every provider, so neither a password nor a Google login issues a token. The applicant is not lost, though: the status page looks the application up by email after the password has been checked.
+- **Rejection is not a dead end** — the reason is shown on the status page and the same application row can be resubmitted, so the reference the emails quote stays stable.
+
+### The seller's own screens
+
+| Page | What it offers |
+|---|---|
+| **Overview** | The shop as it stands today: the live plan and what it costs, catalogue usage against the plan limit, the store's approval state, and a **Live work** row that counts new / in progress / completed / total orders — *New* turns amber the moment something waits for a decision |
+| **Orders** | Only this seller's lines from each checkout. Tabs (All, New, In progress, Completed, Rejected) carry counts from the same read as the rows, search runs over the order number, the customer and the city, and **Accept** sits inline on a new group because it is the one decision that cannot wait. Opening one shows the seller's own items and subtotal, the customer's contact and address, the payment method, the delivery state with the rider's name and phone once one is assigned, the stage history, and the next legal actions. Rejecting asks for a reason and says what happens to the stock |
+| **Products** | The shop's own catalogue with per-status tabs, search and the plan usage line above the table — the number that explains why a publish may be refused. One shared editor (`VendorProductForm`) serves *Add product* and every later edit: images, price, stock, category and subcategories, specifications, variants, shipping. **Save draft** never touches the plan limit; **Publish** does, so the form says so before the request instead of after a failed one. Deleting archives a listing, so past orders and warranties keep pointing at a real product |
+| **Analytics** | The seller's own sales report for 7 / 30 / 90 / 365 days: revenue earned on delivery with the previous window beside it, delivered orders, units, average order value, value still on the way, the plan's commission and the net payout, a revenue-and-orders chart per day (per month on a yearly window), the order pipeline, top products and the last groups moved. Exportable to **CSV** and **PDF** |
+| **Store Profile** | The storefront as the marketplace holds it. The editable half is the store row buyers will read — name, description, logo, cover, contact, address, socials — while the verification details from the approved application stay read-only, because changing them would need a fresh review. `Visible to buyers` is a switch the seller owns; being featured and being suspended are not |
+| **Plan & Billing** | The live plan, its limits and usage, every payment made, the current period and the one before it, an upgrade/downgrade path through the demo checkout, and auto-renew that stops the next charge while keeping the paid days. Nothing on the page is recomputed in the browser — it renders what the subscription endpoint reports, which is the same reading the limit checks use |
+| **Notifications** | The same `NotificationCenter` every role uses, on the same single feed, reading the lines addressed to this account — the application decision and the billing events the workspace writes. A seller who marks a group *ready for shipment* does not notify themselves: that line goes onto the store team's shared board, where the rider is assigned. Order-stage lines for the seller's bell are still to be wired |
+
+- **The plan is the contract** — product limits, featured slots, coupon limits, commission, how far back analytics reaches and whether exports may include the per-product and per-order tables are all read from the live plan on the server. The screens show the same numbers because they render the API's answer; the enforcement never lives in the browser.
+- **Nothing here reaches another shop** — every vendor read and write resolves the account from the token, and a foreign id answers `404` rather than confirming that the row exists.
+- **Not shipped yet** — the public storefront pages for a shop (`/shop/<slug>`), vendor-issued coupons, featured placement bought from the plan, and the buyer-side discovery screens.
+
+---
+
 ## 📊 Reports & Exports
 
 Reports come from the same view models the dashboards use, so a CSV and a PDF of the same screen can never disagree.
@@ -213,6 +251,7 @@ Reports come from the same view models the dashboards use, so a CSV and a PDF of
 | **Admin overview** | `/dashboard/admin` | CSV, PDF (KPIs, revenue and order charts, recent orders with points used/earned) |
 | **Top selling products** | `/dashboard/admin` | CSV |
 | **Customer overview** | `/dashboard/customer` | CSV, PDF (spend and savings charts, order history with points used/saved/earned) |
+| **Vendor sales report** | `/dashboard/vendor/analytics` | CSV, PDF (KPI tiles, revenue bars with a delivered-orders line, pipeline donut). Depth follows the plan: a `limited` export keeps the summary and the chart data, `full` adds the top-product and per-order tables |
 | **Order invoice** | Customer orders page | PDF |
 
 - The PDFs are generated in the browser with `jsPDF`, including a hand-drawn chart and a wrapped table layout that stays inside the printable width.
@@ -237,6 +276,15 @@ Place order ─► validate stock ─► redeem points ─► compute totals ─
 - **After delivery** — the payment settles, each product's sold count grows, the points worked out at checkout are credited, the membership tier is re-checked, and one warranty per item is issued from the delivery date. Stock was already reduced at checkout.
 - **After cancellation** — the payment is marked failed, the quantity goes back to stock, open warranties expire, and the points are undone: points spent at checkout come back, while points earned only exist on a delivered order and are removed if it is returned.
 - **Suspended accounts** cannot add to the cart or check out.
+
+### Vendor & multi-vendor orders
+
+- **One checkout, one payment, several fulfilments** — the last step of placing an order groups the lines by seller and writes one `VendorOrder` group per shop, inside the same transaction. Items with no `vendorId` are the platform's own stock and never reach a seller's board.
+- **The seller's stages are their own list** — `pending → accepted → processing → ready_for_shipment`, and only those. A seller cannot mark a group shipped, delivered or cancelled: those are pushed down from the parent order and the group follows automatically. `lib/vendorOrderStatus.ts` maps each stage onto the shared order palette and `vendorOrderActions()` decides which buttons a screen may offer, so no two seller screens can disagree about what is legal.
+- **Riders belong to the store** — marking a group ready stamps a pickup request and raises a line on the admin's board. When the team assigns a rider, the group copies the parent's delivery and the seller's order detail shows the same rider the customer sees.
+- **A rejection restocks** — the rejected lines go back on the shelf, the reason is kept in the group's history, and a later parent status never reopens them.
+- **Revenue is earned on delivery** — the sales report counts a group only once it is delivered. Groups ready or shipped are shown beside the total as *on the way*, never inside it, because a seller budgeting on an undelivered parcel would be wrong twice over.
+- **The plan caps the report** — how far back analytics reaches, how many products are ranked, and whether an export may carry the per-product and per-order tables all come from the live plan, and the screen shows the window the API actually used rather than the one the URL asked for.
 
 ### Loyalty & membership
 
@@ -415,12 +463,19 @@ src/
 │   ├── (auth)/auth/            login, register, forgot-password, reset-password
 │   ├── (dashboard)/dashboard/
 │   │   ├── admin/              overview, products, categories, slider, orders,
-│   │   │                       transactions, users, reviews, warranties,
-│   │   │                       messages, settings
-│   │   └── customer/           overview, orders, transactions, wishlist,
-│   │                           reviews, analytics, profile, settings
+│   │   │                       deliveries, transactions, users, vendor
+│   │   │                       applications, reviews, warranties, messages,
+│   │   │                       settings
+│   │   ├── customer/           overview, orders, transactions, wishlist,
+│   │   │                       reviews, analytics, profile, settings
+│   │   ├── vendor/             overview, orders (+ detail), products (+ new,
+│   │   │                       + edit), analytics, store profile, plan &
+│   │   │                       billing, notifications
+│   │   └── rider/              overview, requests, deliveries, active,
+│   │                           history, earnings, profile, settings
 │   ├── (main)/                 home, shop, cart, checkout, compare,
 │   │                           track-order, store-locator, order-success,
+│   │                           become-a-vendor (pitch, apply, status),
 │   │                           about, services, contact, privacy, terms
 │   ├── api/                    auth (better-auth) and maintenance status
 │   ├── maintenance/            branded maintenance page
@@ -443,6 +498,10 @@ src/
 │   ├── orderInvoicePdf.ts      per-order invoice PDF
 │   ├── transactionReceiptPdf.ts per-transaction receipt PDF
 │   ├── orderStatusStyles.ts    one colour/icon palette per order status
+│   ├── vendorOrderStatus.ts    the seller's stages on that palette + the legal next actions
+│   ├── vendorProductStatus.ts  the seller's listing statuses and their badges
+│   ├── vendorPlan.ts           plan pricing: cycle price, monthly equivalent, yearly saving
+│   ├── vendorStatus.ts         application status badges
 │   ├── warranty.ts             warranty catalog, duration, extension and problem wording
 │   ├── warrantyStatusStyles.ts status badge colours and icons
 │   └── currency.ts             formatting helpers
@@ -528,12 +587,12 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## 🛵 Rider & Delivery System
 
-A fourth role, `rider`, works the deliveries the admin ships. `vendor` is reserved for the seller add-on.
+A fourth role, `rider`, works the deliveries the admin ships. The fifth surface is the seller workspace — see [Vendor Dashboard](#-vendor-dashboard).
 
 - **Roles** — `admin`, `customer`, `rider`, `vendor`. An admin changes a role from **Users**; the API re-reads the role from the database on every request, so a change applies immediately instead of waiting for the token to expire.
 - **Access** — riders land on `/dashboard/rider` after login and cannot open admin or customer workspaces; layout guards and backend role checks both enforce it.
 - **Shopping is for customers** — admin, demo admin, riders and vendors cannot add to cart, add to wishlist or post reviews. The action refuses first, and the API refuses again if the request is replayed.
-- **Notifications** — one bell, one page and one set of rules for every role; only the data differs. The store team reads the shared activity board, a customer or rider reads only their own lines (order placed, shipped, delivered, cancelled, delivery requests) and each one is also emailed. A vendor slot is already wired for when the seller workspace ships. `/dashboard/<role>/notifications` is the same `NotificationCenter` everywhere: search, type chips with counts, sort, an unread-only switch, dots and a pager. One endpoint serves all of it — the API reads the role from the token and answers `shared`, which is what tells the app where a read mark lives: on the server for a personal line (so it clears on every device), on the device for the shared board (because one admin's read must not clear everybody's dot).
+- **Notifications** — one bell, one page and one set of rules for every role; only the data differs. The store team reads the shared activity board, a customer, rider or vendor reads only their own lines, and each one is also emailed. `/dashboard/<role>/notifications` is the same `NotificationCenter` everywhere: search, type chips with counts, sort, an unread-only switch, dots and a pager. One endpoint serves all of it — the API reads the role from the token and answers `shared`, which is what tells the app where a read mark lives: on the server for a personal line (so it clears on every device), on the device for the shared board (because one admin's read must not clear everybody's dot).
 - **Live tracking** — Leaflet + OpenStreetMap (free) on a transport that works on Vercel: the tracking page refreshes every 8 seconds, and optional Ably keys push the same update instantly.
 - **Rider workspace** — `/dashboard/rider` opens on eight live stat cards (total, completed, active, pending requests, cancelled, total earnings, this month, average delivery time), an earnings-versus-delivered chart, a pipeline breakdown and the latest jobs. The sidebar adds **Requests**, **Deliveries**, **Active**, **History**, **Earnings**, **Profile** and **Settings**, each on real data.
 - **Lists you can actually narrow** — every list supports search, sort (newest, oldest, highest fee), page size and, where it makes sense, a status filter. Assigned jobs past their expiry window are labelled *Expired* on the server so no client clock can disagree.
@@ -562,6 +621,12 @@ A fourth role, `rider`, works the deliveries the admin ships. `vendor` is reserv
 | Customer dashboard with analytics and data export | ✅ Complete |
 | Rider role, rider login redirect and ride/deliver RBAC | ✅ Complete |
 | Rider workspace: overview, lists, earnings, profile, settings, CSV/PDF | ✅ Phase 2 of 7 |
+| Vendor onboarding — public pitch, six-step application, status page, login gate while under review | ✅ Complete |
+| Admin review desk for vendor applications | ✅ Complete |
+| Seller workspace — store profile, catalogue with plan limits, plan & billing | ✅ Complete |
+| Seller order board — own fulfilment groups, accept/prepare/ready, pickup request, rider mirror | ✅ Complete |
+| Vendor sales report with CSV and charted PDF exports | ✅ Complete |
+| Public vendor storefronts and shop discovery | ⏳ Planned |
 | Notifications — one feed, bell and page for every role, plus transactional email | ✅ Complete |
 | Admin dashboard with CSV and charted PDF reports | ✅ Complete |
 | Site settings: branding, About page copy, opening hours, maintenance mode | ✅ Complete |
@@ -579,9 +644,11 @@ A fourth role, `rider`, works the deliveries the admin ships. `vendor` is reserv
 - [ ] **"Lucky Box" gamification** — a points-based mystery-box reward.
 - [ ] **Push and email notifications** — order and promotional alerts.
 - [ ] **In-app chat support** — live chat with store support.
+- [x] **Self-serve store onboarding** — apply, get reviewed, and run a shop from its own dashboard.
+- [x] **Subscription plans** — tiered pricing per store, enforced limits, demo billing and plan-capped analytics.
+- [ ] **Vendor coupons & featured placement** — seller-issued discount codes and bought featured slots.
+- [ ] **Public vendor storefronts** — a page per shop under `/shop/<slug>`, plus discovery, featured shops and seller search on the buyer side.
 - [ ] **Multi-tenant stores** — every store gets its own data, branding and subdomain.
-- [ ] **Self-serve store onboarding** — sign up and launch a store in minutes.
-- [ ] **Subscription plans** — tiered pricing per store.
 - [ ] **Real-time settings sync** — live, instantly applied store configuration.
 
 ---

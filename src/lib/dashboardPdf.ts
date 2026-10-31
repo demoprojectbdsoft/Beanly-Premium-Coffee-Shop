@@ -4,10 +4,11 @@ import type {
   AdminOverviewExportData,
   CustomerOverviewExportData,
   RiderOverviewExportData,
+  VendorAnalyticsExportData,
 } from "./csvExport";
 
 /**
- * Analytics PDF reports for the two dashboards.
+ * Analytics PDF reports for the dashboards.
  *
  * A CSV file can only hold text, so charts need a different container: this
  * module draws them directly on an A4 page (bars, lines, donuts) from the same
@@ -1076,5 +1077,152 @@ export async function downloadRiderOverviewPdf(
 
   report.save(
     `${safeFilePart(siteName)}-rider-overview-${new Date().toISOString().split("T")[0]}.pdf`
+  );
+}
+
+// ── Vendor sales report ─────────────────────────────────────────────────────
+
+/**
+ * One seller's own sales report.
+ *
+ * The numbers arrive already folded from the vendor's fulfilment groups, so the
+ * report can only ever describe the shop that asked for it. The product and
+ * order tables are written only when the plan carries full exports, exactly like
+ * the screen.
+ */
+export async function downloadVendorAnalyticsPdf(
+  data: VendorAnalyticsExportData,
+  options: PdfOptions = {}
+): Promise<void> {
+  const { jsPDF: JsPdf } = await import("jspdf");
+
+  const siteName = options.siteName || "Sparq";
+  const currency = (options.currency || "USD").toUpperCase();
+  const symbol = getCurrencySymbol(currency);
+  const money = (value: number) => `${symbol}${compact(value)}`;
+
+  const doc = new JsPdf({ unit: "pt", format: "a4" });
+  const report = new PdfReport(doc, {
+    reportTitle: `${siteName} - Vendor Sales Report`,
+    footerText: `${siteName} · Vendor sales`,
+  });
+
+  report.title(
+    `${siteName} - Vendor Sales`,
+    `${data.vendorName || "Store"} · ${data.planName || "plan"} · last ${data.rangeDays} ${
+      data.monthly ? "months" : "days"
+    } · currency ${currency}`
+  );
+
+  report.heading("Sales");
+  report.tiles([
+    { label: "Revenue earned", value: money(data.totals.revenue), note: `in ${currency}` },
+    { label: "Delivered orders", value: String(data.totals.orders) },
+    { label: "Units sold", value: String(data.totals.units) },
+    {
+      label: "Average order",
+      value: money(data.totals.avgOrderValue),
+      note: `on ${data.totals.orders} order${data.totals.orders === 1 ? "" : "s"}`,
+    },
+    { label: "On the way", value: money(data.totals.inFlight) },
+    {
+      label: "Commission",
+      value: money(data.totals.commissionTaken),
+      note: `${round(data.totals.commission, 1)}% taken`,
+    },
+    { label: "Net payout", value: money(data.totals.netPayout) },
+    {
+      label: "Fulfilment rate",
+      value: `${round(data.totals.fulfilmentRate, 0)}%`,
+      note: `${data.totals.stopped} rejected or cancelled`,
+    },
+  ]);
+
+  if (data.previous.revenue > 0 || data.previous.orders > 0) {
+    report.caption(
+      `Previous window: ${money(data.previous.revenue)} across ${data.previous.orders} order${
+        data.previous.orders === 1 ? "" : "s"
+      }${
+        data.previous.revenueChange === null
+          ? ""
+          : ` · change ${data.previous.revenueChange > 0 ? "+" : ""}${round(data.previous.revenueChange, 1)}%`
+      }`
+    );
+  }
+
+  if (data.series.length > 0) {
+    report.heading(data.monthly ? "Revenue by month" : "Revenue by day");
+    report.legend([
+      { label: "Revenue", color: PALETTE[1] },
+      { label: "Delivered orders", color: PALETTE[0] },
+    ]);
+    report.barsWithLine({
+      labels: data.series.map((point) => (data.monthly ? point.label : point.label.slice(5))),
+      bar: {
+        label: "Revenue",
+        color: PALETTE[1],
+        values: data.series.map((point) => point.revenue),
+      },
+      line: {
+        label: "Delivered orders",
+        color: PALETTE[0],
+        values: data.series.map((point) => point.orders),
+      },
+      formatBar: money,
+    });
+  }
+
+  const stageSlices: Slice[] = Object.entries(data.statusCounts)
+    .filter(([, count]) => count > 0)
+    .map(([status, count]) => ({ label: status.replace(/_/g, " "), value: count }));
+
+  if (stageSlices.length > 0) {
+    report.heading("Order pipeline");
+    report.donut({
+      slices: limitedSlices(stageSlices),
+      format: (value) => String(round(value, 0)),
+    });
+  }
+
+  if (data.full && data.topProducts.length > 0) {
+    report.heading("Top products");
+    report.table(
+      [
+        { label: "Product", width: 230 },
+        { label: "Units sold", width: 80, align: "right" },
+        { label: `Revenue (${currency})`, width: 90, align: "right" },
+      ],
+      data.topProducts.map((product) => [
+        product.title,
+        String(product.units),
+        String(round(product.revenue, 2)),
+      ])
+    );
+  }
+
+  if (data.full && data.recent.length > 0) {
+    report.heading("Recent orders");
+    report.table(
+      [
+        { label: "Order", width: 90 },
+        { label: "Stage", width: 110 },
+        { label: `Subtotal (${currency})`, width: 90, align: "right" },
+        { label: "Units", width: 50, align: "right" },
+        { label: "City", width: 60 },
+      ],
+      data.recent.map((order) => [
+        order.orderNumber || "-",
+        order.status.replace(/_/g, " "),
+        String(round(order.subtotal, 2)),
+        String(order.units),
+        order.city || "-",
+      ])
+    );
+  }
+
+  report.save(
+    `${safeFilePart(data.vendorName || siteName)}-vendor-sales-${
+      new Date().toISOString().split("T")[0]
+    }.pdf`
   );
 }

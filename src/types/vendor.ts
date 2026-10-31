@@ -435,3 +435,50 @@ export interface VendorOrderSummary {
   completed: number;
   total: number;
 }
+
+/** One seller's report, folded from their own fulfilment groups. */
+export interface VendorAnalyticsReport {
+  /** The window actually used, which is the request capped by the plan. */
+  range: number;
+  maxRange: number;
+  monthly: boolean;
+  level: "basic" | "detailed" | "advanced";
+  plan: {
+    id: string;
+    name: string;
+    analytics: "basic" | "detailed" | "advanced";
+    exports: "limited" | "full";
+  };
+  isLive: boolean;
+  totals: {
+    revenue: number;
+    orders: number;
+    units: number;
+    avgOrderValue: number;
+    /** Delivered is earned; this is the value still on the way. */
+    inFlight: number;
+    commission: number;
+    commissionTaken: number;
+    netPayout: number;
+    fulfilmentRate: number;
+    stopped: number;
+    placed: number;
+  };
+  previous: {
+    revenue: number;
+    orders: number;
+    revenueChange: number | null;
+  };
+  series: { label: string; revenue: number; orders: number }[];
+  statusCounts: Record<string, number>;
+  topProducts: { title: string; image: string; units: number; revenue: number }[];
+  recent: {
+    id: string;
+    orderNumber: string;
+    status: VendorOrderStatus;
+    subtotal: number;
+    units: number;
+    city: string;
+    placedAt: string;
+  }[];
+}
