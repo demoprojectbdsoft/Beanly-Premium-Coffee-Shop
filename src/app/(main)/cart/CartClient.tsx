@@ -28,9 +28,10 @@ import { AlertDialog, Button } from "@heroui/react";
 import { authClient } from "@/lib/auth-client";
 import SuspendedAccountModal from "@/components/shared/SuspendedAccountModal";
 import { updateCartItem, removeFromCart, clearCart } from "@/lib/action/cart";
+import { checkCouponCode } from "@/lib/action/coupons";
 import { isProductOutOfStock, unitsLeft } from "@/lib/stock";
 import { getCartByUserId } from "@/lib/api/cart";
-import { CartClientProps, CartData, CartItem } from "@/types";
+import { CartClientProps, CartData, CartItem, CouponQuote } from "@/types";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 
 // ── Fallback Shipping Constants (overridden by site settings) ────────────────
@@ -40,18 +41,15 @@ export const FREE_SHIPPING_THRESHOLD = 50.0;
 export default function CartClient({ initialCart, user: initialUser }: CartClientProps) {
   const { data: clientSession } = authClient.useSession();
   const user = initialUser || clientSession?.user;
-  const { settings, currencySymbol, formatPrice } = useSiteSettings();
+  const { settings, formatPrice } = useSiteSettings();
 
   // Dynamic shipping values from site settings (admin-configurable)
   const dynamicFreeThreshold = settings.shipping?.freeShippingThreshold ?? FREE_SHIPPING_THRESHOLD;
   const dynamicStandardCost = settings.shipping?.standardDeliveryFee ?? STANDARD_SHIPPING_COST;
   const isFreeShippingGloballyEnabled = settings.shipping?.freeShippingEnabled !== false;
 
-  // Show-only promo codes are derived from the configured brand, so renaming the
-  // store in settings can never leave a stale code in the UI.
-  const siteCode = (settings.siteName || "Sparq").toUpperCase().replace(/[^A-Z0-9]/g, "");
-  const promoCode10 = `${siteCode}10`;
-  const promoCode20 = `${siteCode}20`;
+  // Show-only promo codes no longer exist: a code is a row the store team or a
+  // seller wrote, and the API alone says what it is worth.
 
   const [cart, setCart] = useState<CartData | null>(initialCart || null);
   const [isLoading, setIsLoading] = useState<boolean>(!initialCart && Boolean(user?.id));
@@ -59,13 +57,10 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
   const [isClearing, setIsClearing] = useState<boolean>(false);
 
-  // Coupon state
+  // Coupon state. The quote is the API's answer for this exact basket, so the
+  // whole document comes back rather than a percentage to multiply locally.
   const [couponCode, setCouponCode] = useState<string>("");
-  const [appliedCoupon, setAppliedCoupon] = useState<{
-    code: string;
-    discountPercent?: number;
-    discountAmount?: number;
-  } | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponQuote | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState<boolean>(false);
   const [showSuspendedCheckoutAlert, setShowSuspendedCheckoutAlert] = useState<boolean>(false);
@@ -112,21 +107,14 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
     return isOOS || exceeds;
   });
 
-  // Coupon calculation
-  let discountValue = 0;
-  let isCouponFreeShipping = false;
-  if (appliedCoupon) {
-    if (appliedCoupon.discountPercent) {
-      discountValue = (subtotal * appliedCoupon.discountPercent) / 100;
-    } else if (appliedCoupon.discountAmount) {
-      discountValue = Math.min(appliedCoupon.discountAmount, subtotal);
-    } else if (appliedCoupon.code === "FREESHIP") {
-      isCouponFreeShipping = true;
-    }
-  }
+  // The discount is the API's number, never a local calculation: only the lines
+  // the code is allowed to touch count, at the prices stored on the server.
+  const discountValue = appliedCoupon?.discount ?? 0;
+  /** Smaller than the subtotal whenever a shop's code covers part of the basket. */
+  const coveredByCoupon = appliedCoupon?.eligibleSubtotal ?? 0;
 
   const isFreeShippingEligible =
-    isFreeShippingGloballyEnabled && (subtotal >= dynamicFreeThreshold || isCouponFreeShipping);
+    isFreeShippingGloballyEnabled && subtotal >= dynamicFreeThreshold;
   const freeShippingProgress = isFreeShippingGloballyEnabled
     ? Math.min(Math.round((subtotal / dynamicFreeThreshold) * 100), 100)
     : 100;
@@ -264,39 +252,63 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
   };
 
   // ── Coupon Handler ───────────────────────────────────────────────────────────
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  /** The basket as the API wants it: product ids and counts, nothing about money. */
+  const basketLines = () =>
+    items
+      .map((item) => ({
+        productId: String(
+          (item.product as unknown as { _id?: string })?._id ||
+            item.product?.id ||
+            item.id ||
+            ""
+        ),
+        quantity: item.quantity || 1,
+      }))
+      .filter((line) => line.productId);
+
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     setCouponError(null);
     const code = couponCode.trim().toUpperCase();
 
     if (!code) {
-      setCouponError("Please enter a valid promo code.");
+      setCouponError("Please enter a promo code.");
+      return;
+    }
+
+    if (items.length === 0) {
+      setCouponError("There is nothing in the cart to discount yet.");
       return;
     }
 
     setIsApplyingCoupon(true);
-    setTimeout(() => {
-      if (code === promoCode10) {
-        setAppliedCoupon({ code, discountPercent: 10 });
-        toast.success("Promo code applied! 10% discount added.");
-        setCouponCode("");
-      } else if (code === promoCode20) {
-        setAppliedCoupon({ code, discountPercent: 20 });
-        toast.success("Promo code applied! 20% discount added.");
-        setCouponCode("");
-      } else if (code === "SAVE15") {
-        setAppliedCoupon({ code, discountAmount: 15 });
-        toast.success("Promo code applied! $15 discount added.");
-        setCouponCode("");
-      } else if (code === "FREESHIP") {
-        setAppliedCoupon({ code, discountPercent: 0, discountAmount: 0 });
-        toast.success("Promo code applied! Free shipping unlocked.");
-        setCouponCode("");
-      } else {
-        setCouponError(`Invalid or expired coupon code. Try '${promoCode10}' or 'SAVE15'`);
+    try {
+      const res = await checkCouponCode(code, basketLines());
+
+      // Every refusal carries its own reason, because "invalid code" for a code
+      // that is real but starts tomorrow only makes the shopper type it again.
+      if (res?.success === false) {
+        setAppliedCoupon(null);
+        setCouponError(res.message || "Invalid or expired coupon code");
+        return;
       }
+
+      const quote = (res as { data?: CouponQuote } | null)?.data;
+      if (!quote) {
+        setAppliedCoupon(null);
+        setCouponError("That code could not be checked just now. Please try again.");
+        return;
+      }
+
+      setAppliedCoupon(quote);
+      setCouponCode("");
+      toast.success(`${quote.code} applied — ${formatPrice(quote.discount)} off`);
+    } catch (err) {
+      setAppliedCoupon(null);
+      setCouponError((err as Error).message || "That code could not be checked");
+    } finally {
       setIsApplyingCoupon(false);
-    }, 400);
+    }
   };
 
   const handleRemoveCoupon = () => {
@@ -304,6 +316,53 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
     setCouponError(null);
     toast.success("Coupon code removed.");
   };
+
+  /**
+   * Keeps the shown discount in step with the basket.
+   *
+   * This is not a gate — the checkout prices the code again for real. It is the
+   * difference between a number that matches what is in the cart and one that
+   * remembers an older cart. When the code stops fitting, the API's own reason
+   * appears in the same place the first refusal did.
+   */
+  useEffect(() => {
+    if (!appliedCoupon) return;
+
+    const code = appliedCoupon.code;
+    let cancelled = false;
+
+    const timer = setTimeout(async () => {
+      // An emptied basket has nothing left for the code to sit on.
+      if (items.length === 0) {
+        setAppliedCoupon(null);
+        return;
+      }
+
+      try {
+        const res = await checkCouponCode(code, basketLines());
+        if (cancelled) return;
+
+        if (res?.success === false) {
+          setAppliedCoupon(null);
+          setCouponError(res.message || `${code} no longer fits this basket`);
+          return;
+        }
+
+        const quote = (res as { data?: CouponQuote } | null)?.data;
+        if (quote) setAppliedCoupon(quote);
+      } catch {
+        // A quiet failure is allowed here: the code is checked properly when the
+        // order is placed.
+      }
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // Only the basket's shape matters: a line added, removed or resized.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtotal, itemCount]);
 
   return (
     <>
@@ -860,12 +919,16 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
                           Coupon <span className="font-mono">{appliedCoupon.code}</span> Applied!
                         </p>
                         <p className="text-[11px] text-emerald-600 dark:text-emerald-400">
-                          {appliedCoupon.discountPercent
-                            ? `${appliedCoupon.discountPercent}% off subtotal discount`
-                            : appliedCoupon.discountAmount
-                            ? `${formatPrice(appliedCoupon.discountAmount)} flat discount`
-                            : "Free shipping activated"}
+                          {appliedCoupon.discountType === "percentage"
+                            ? `${appliedCoupon.discountValue}% off · you save ${formatPrice(appliedCoupon.discount)}`
+                            : `${formatPrice(appliedCoupon.discountValue)} off · you save ${formatPrice(appliedCoupon.discount)}`}
                         </p>
+                        {coveredByCoupon < subtotal && (
+                          <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80">
+                            The code covers {formatPrice(coveredByCoupon)} of this basket —
+                            the rest is from another shop.
+                          </p>
+                        )}
                       </div>
                     </div>
                     <button
@@ -886,7 +949,7 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
                           setCouponCode(e.target.value);
                           setCouponError(null);
                         }}
-                        placeholder={`Enter promo code (e.g. ${promoCode10}, SAVE15)`}
+                        placeholder="Enter your promo code"
                         className="w-full h-11 px-4 text-xs font-medium rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)] text-[var(--foreground)] placeholder-[var(--foreground-muted)] focus:outline-hidden focus:border-primary focus:ring-2 focus:ring-primary/20 uppercase"
                       />
                     </div>
@@ -907,23 +970,11 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
                   </p>
                 )}
 
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-[var(--foreground-muted)]">
-                  <span>Available sample codes:</span>
-                  <button
-                    type="button"
-                    onClick={() => setCouponCode(promoCode10)}
-                    className="font-mono px-2 py-0.5 rounded bg-[var(--surface-alt)] hover:bg-primary/10 text-primary border border-[var(--border-color)] cursor-pointer font-bold transition-colors"
-                  >
-                    {promoCode10} (-10%)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCouponCode("SAVE15")}
-                    className="font-mono px-2 py-0.5 rounded bg-[var(--surface-alt)] hover:bg-primary/10 text-primary border border-[var(--border-color)] cursor-pointer font-bold transition-colors"
-                  >
-                    SAVE15 (-{currencySymbol}15)
-                  </button>
-                </div>
+                <p className="mt-3 text-[11px] leading-relaxed text-[var(--foreground-muted)]">
+                  A code comes from the store or from the shop whose products you
+                  bought. A shop&apos;s own code only discounts that shop&apos;s items, and
+                  what it takes off is settled at checkout.
+                </p>
               </div>
             </div>
 
@@ -1023,7 +1074,13 @@ export default function CartClient({ initialCart, user: initialUser }: CartClien
                     </button>
                   ) : (
                     <Link
-                      href={user ? "/checkout" : "/auth/login?callbackUrl=/checkout"}
+                      href={
+                        user
+                          ? appliedCoupon
+                            ? `/checkout?coupon=${encodeURIComponent(appliedCoupon.code)}`
+                            : "/checkout"
+                          : "/auth/login?callbackUrl=/checkout"
+                      }
                       className="w-full h-12 rounded-xl bg-primary hover:bg-primary-hover text-white font-extrabold text-sm shadow-md shadow-primary/25 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Lock className="w-4 h-4" />

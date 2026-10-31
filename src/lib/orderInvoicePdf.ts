@@ -193,12 +193,27 @@ export async function downloadOrderInvoicePdf(
   });
 
   // ── Total ─────────────────────────────────────────────────────────────────
-  ensureSpace(order.pointsDiscount ? 100 : 80);
+  const discountLines = (order.couponDiscount ? 1 : 0) + (order.pointsDiscount ? 1 : 0);
+  ensureSpace(80 + discountLines * 18);
   y += 10;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(...MUTED);
   doc.text(`${order.itemCount} item(s) in this order`, left, y + 12);
+
+  // The code this order was bought with, named before the points because that is
+  // the order the money came off in. Without this line the invoice total would
+  // not add up to the items printed above it.
+  if (order.couponDiscount) {
+    doc.text(
+      `Discount code${order.couponCode ? ` ${order.couponCode}` : ""}`,
+      colUnit - 20,
+      y + 30,
+      { align: "right" }
+    );
+    doc.text(`-${money(order.couponDiscount)}`, right, y + 30, { align: "right" });
+    y += 18;
+  }
 
   // Loyalty points spent at checkout get their own line above the total.
   if (order.pointsDiscount) {

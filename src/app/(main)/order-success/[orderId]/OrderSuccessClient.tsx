@@ -601,6 +601,19 @@ export default function OrderSuccessClient({
                   </span>
                 </div>
 
+                {/* The code comes off the subtotal, so it is read before the fee */}
+                {(order?.couponDiscount ?? 0) > 0 && (
+                  <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
+                    <span>
+                      Discount Code
+                      {order?.couponCode ? ` · ${order.couponCode}` : ""}
+                    </span>
+                    <span className="font-bold">
+                      -{formatPrice(order?.couponDiscount || 0)}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <span>Delivery &amp; Shipping Fee</span>
                   <span className="font-bold text-[var(--foreground)]">

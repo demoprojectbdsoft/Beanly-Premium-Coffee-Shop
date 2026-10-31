@@ -65,11 +65,16 @@ export const serverFetch = async (path: string, requireAuth: boolean = false) =>
 /**
  * Write request, used by `lib/action`. Mutations always require a session, so
  * a missing token redirects to the login page before the request is sent.
+ *
+ * `explainForbidden` is for the desks where a 403 is an answer rather than a
+ * break-in: a plan limit or a suspended shop has a reason the seller needs to
+ * read, so it comes back as a failed result instead of the forbidden page.
  */
 export const serverMutation = async (
   path: string,
   data: unknown = "",
-  method: HttpMethod = "POST"
+  method: HttpMethod = "POST",
+  options?: { explainForbidden?: boolean }
 ) => {
   const token = await getToken();
   if (!token) redirect("/auth/login");
@@ -83,6 +88,14 @@ export const serverMutation = async (
       },
       body: data ? JSON.stringify(data) : undefined,
     });
+
+    if (options?.explainForbidden && res.status === 403) {
+      const body = await res.json().catch(() => ({}));
+      return {
+        success: false,
+        message: body?.message || "This action is not allowed right now",
+      };
+    }
 
     return await handleResponse(res);
   } catch (err) {

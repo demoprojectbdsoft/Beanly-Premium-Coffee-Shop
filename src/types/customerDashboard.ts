@@ -84,6 +84,12 @@ export interface CustomerOrder {
   /** Loyalty points spent on this order, and the money they saved. */
   pointsRedeemed?: number;
   pointsDiscount?: number;
+  /**
+   * The discount code written on this order, and what it took off. Kept on the
+   * order itself, so an old invoice still explains its own total.
+   */
+  couponCode?: string;
+  couponDiscount?: number;
   /** Points this order will pay out once it is delivered. */
   pointsEarned?: number;
   items: CustomerOrderItem[];

@@ -39,6 +39,12 @@ export interface CreateOrderPayload {
   shippingMethod?: "free" | "standard" | "express";
   /** Loyalty points the customer chose to spend (100 points = 1 currency unit). */
   pointsToRedeem?: number;
+  /**
+   * The discount code from the cart, sent as a name only. What it is worth is
+   * worked out again by the API from the stored prices, so a stale estimate on
+   * screen can never change what the order pays.
+   */
+  couponCode?: string;
 }
 
 export interface OrderItem {
@@ -88,6 +94,10 @@ export interface Order {
   /** Points this order used up, and the money they took off the total. */
   pointsRedeemed?: number;
   pointsDiscount?: number;
+  /** The code this order was bought with, and what it took off. */
+  couponId?: string | null;
+  couponCode?: string;
+  couponDiscount?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -97,6 +107,12 @@ export interface CheckoutClientProps {
   user?: User | null;
   /** The customer's address book, newest first with the default at the top. */
   savedAddresses?: SavedAddress[];
+  /**
+   * The code the shopper applied in the cart, handed over as a name. Checkout
+   * asks the API what it is worth on this order instead of trusting the number
+   * the cart showed, because a price or a basket can change between the two.
+   */
+  initialCouponCode?: string;
 }
 
 export interface OrderSuccessClientProps {

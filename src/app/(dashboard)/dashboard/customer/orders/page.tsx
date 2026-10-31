@@ -289,6 +289,8 @@ export default async function CustomerOrdersPage() {
           total: order.totalAmount ?? 0,
           pointsRedeemed: order.pointsRedeemed ?? 0,
           pointsDiscount: order.pointsDiscount ?? 0,
+          couponCode: order.couponCode || "",
+          couponDiscount: order.couponDiscount ?? 0,
           pointsEarned: order.pointsEarned ?? 0,
           itemCount: items.length,
           items,

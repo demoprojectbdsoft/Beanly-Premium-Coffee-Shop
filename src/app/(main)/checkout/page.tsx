@@ -16,7 +16,19 @@ export async function generateMetadata() {
   };
 }
 
-export default async function CheckoutPage() {
+interface CheckoutPageProps {
+  /** `?coupon=<CODE>` is the cart's code, carried over so a refresh keeps it. */
+  searchParams: Promise<{ coupon?: string }>;
+}
+
+export default async function CheckoutPage({
+  searchParams,
+}: CheckoutPageProps) {
+  // The cart hands its code over in the url, so a refreshed page keeps the
+  // shopper's deal. Only the name is trusted - checkout re-prices it below.
+  const { coupon: couponParam } = await searchParams;
+  const initialCouponCode = couponParam?.trim().toUpperCase() || undefined;
+
   const user = await getUserSession();
   let initialCart: CartData | null = null;
   let savedAddresses: SavedAddress[] = [];
@@ -48,6 +60,7 @@ export default async function CheckoutPage() {
       initialCart={initialCart}
       user={user}
       savedAddresses={savedAddresses}
+      initialCouponCode={initialCouponCode}
     />
   );
 }

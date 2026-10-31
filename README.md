@@ -139,6 +139,7 @@ Switching mode keeps the current filters, search and sort.
 | **Checkout** | Cash on Delivery, or a mobile wallet (bKash / Rocket / Nagad) with an OTP step and a transaction id. A shipping address is required only for Cash on Delivery. |
 | **Saved addresses** | A customer can keep up to 5 shipping addresses. Checkout pre-fills from the default one and offers the rest as one-tap picks; the profile page lists them with **make default** and **remove**. Saving the same address twice is ignored, and the last remaining address cannot be lost by removing the default — a survivor is promoted instead. |
 | **Reward points** | The customer can pay part of the order with loyalty points — see [Loyalty & membership](#loyalty--membership). |
+| **Promo code** | One box in the cart. The code is sent to the API with the product ids and quantities only, and the number that comes back is the number shown — prices, sellers and categories are re-read by the server, so a browser cannot price its own deal. A shop's code quietly ignores another shop's lines and says how much of the basket it covers. Changing the basket re-quotes the code; a code that stops fitting shows the API's own reason and disappears rather than lingering as a fake discount. Checkout is handed the code as a name and prices it again before the order is placed. |
 | **Product gallery** | A full-screen image gallery on the product page. |
 | **Order tracking** | A Track Order page, plus a per-order **Track Shipment** timeline with carrier, tracking number and estimated delivery. |
 | **Delivery response** | Once an order ships, the customer confirms whether it arrived — see [Orders & delivery](#orders--delivery). |
@@ -210,7 +211,7 @@ confirmed ──▶ processing ──▶ shipped ──▶ delivered
 
 ## 🏪 Vendor Dashboard
 
-A customer the store team approves as a seller gets a workspace of their own at `/dashboard/vendor` — a fourth dashboard with its own layout guard and sidebar (**Overview, Orders, Products, Analytics, Store Profile, Plan & Billing, Notifications**). A vendor cannot open the admin or the customer dashboard, and a customer who is only an applicant cannot open any of them.
+A customer the store team approves as a seller gets a workspace of their own at `/dashboard/vendor` — a fourth dashboard with its own layout guard and sidebar (**Overview, Orders, Products, Analytics, Coupons, Store Profile, Plan & Billing, Notifications**). A vendor cannot open the admin or the customer dashboard, and a customer who is only an applicant cannot open any of them.
 
 ### Becoming a vendor
 
@@ -232,13 +233,14 @@ A customer the store team approves as a seller gets a workspace of their own at 
 | **Orders** | Only this seller's lines from each checkout. Tabs (All, New, In progress, Completed, Rejected) carry counts from the same read as the rows, search runs over the order number, the customer and the city, and **Accept** sits inline on a new group because it is the one decision that cannot wait. Opening one shows the seller's own items and subtotal, the customer's contact and address, the payment method, the delivery state with the rider's name and phone once one is assigned, the stage history, and the next legal actions. Rejecting asks for a reason and says what happens to the stock |
 | **Products** | The shop's own catalogue with per-status tabs, search and the plan usage line above the table — the number that explains why a publish may be refused. One shared editor (`VendorProductForm`) serves *Add product* and every later edit: images, price, stock, category and subcategories, specifications, variants, shipping. **Save draft** never touches the plan limit; **Publish** does, so the form says so before the request instead of after a failed one. Deleting archives a listing, so past orders and warranties keep pointing at a real product |
 | **Analytics** | The seller's own sales report for 7 / 30 / 90 / 365 days: revenue earned on delivery with the previous window beside it, delivered orders, units, average order value, value still on the way, the plan's commission and the net payout, a revenue-and-orders chart per day (per month on a yearly window), the order pipeline, top products and the last groups moved. Exportable to **CSV** and **PDF** |
+| **Coupons** | The shop's own discount codes: the plan allowance line, tabs for *live / upcoming / expired / stopped* (states the API derives from the dates and the switch, never a stored label), a search box, and one inline editor for writing and amending a code. A seller can only name products from their own shop, so the picker lists exactly those, and store-wide category codes are not offered here at all. Stopping a code keeps it; a code that has already been spent cannot be deleted, because past orders still quote it |
 | **Store Profile** | The storefront as the marketplace holds it. The editable half is the store row buyers will read — name, description, logo, cover, contact, address, socials — while the verification details from the approved application stay read-only, because changing them would need a fresh review. `Visible to buyers` is a switch the seller owns; being featured and being suspended are not |
 | **Plan & Billing** | The live plan, its limits and usage, every payment made, the current period and the one before it, an upgrade/downgrade path through the demo checkout, and auto-renew that stops the next charge while keeping the paid days. Nothing on the page is recomputed in the browser — it renders what the subscription endpoint reports, which is the same reading the limit checks use |
 | **Notifications** | The same `NotificationCenter` every role uses, on the same single feed, reading the lines addressed to this account — the application decision and the billing events the workspace writes. A seller who marks a group *ready for shipment* does not notify themselves: that line goes onto the store team's shared board, where the rider is assigned. Order-stage lines for the seller's bell are still to be wired |
 
 - **The plan is the contract** — product limits, featured slots, coupon limits, commission, how far back analytics reaches and whether exports may include the per-product and per-order tables are all read from the live plan on the server. The screens show the same numbers because they render the API's answer; the enforcement never lives in the browser.
 - **Nothing here reaches another shop** — every vendor read and write resolves the account from the token, and a foreign id answers `404` rather than confirming that the row exists.
-- **Not shipped yet** — the public storefront pages for a shop (`/shop/<slug>`), vendor-issued coupons, featured placement bought from the plan, and the buyer-side discovery screens.
+- **Not shipped yet** — the public storefront pages for a shop (`/shop/<slug>`), featured placement bought from the plan, and the buyer-side discovery screens.
 
 ---
 
@@ -290,12 +292,28 @@ Place order ─► validate stock ─► redeem points ─► compute totals ─
 
 | Rule | Value |
 |---|---|
-| Earning | 1 point per currency unit of the discounted subtotal, credited on delivery |
+| Earning | 1 point per currency unit of the discounted subtotal (after any discount code), credited on delivery |
 | Redeeming | 100 points = 1 currency unit, minimum 100 points |
-| Limit | Points may cover the product total only — the delivery fee is always paid in cash |
+| Limit | Points may cover the product total only — the delivery fee is always paid in cash, and a code comes off that total before points are counted |
 | Tiers | silver < 1,000 · gold 1,000 · platinum 4,000 · diamond 10,000 |
 
 At checkout the customer flips one switch: *Use reward points*. The page works out the largest amount they can spend, shows it as a green discount line, and updates the total immediately. Points are also shown on the success page, the invoice PDF, both dashboards and every report.
+
+### Discount coupons
+
+A code has one meaning whichever desk wrote it: the store team's global codes and a seller's own codes are the same kind of document and go through the same validator. The browser never multiplies a percentage — the [backend README](https://github.com/demoprojectbdsoft/Sparq-Server#discount-coupons) documents the engine and the full rule table.
+
+| Rule | What the screens do |
+|---|---|
+| Pricing | The cart posts the code with product ids and quantities only, and shows the number that comes back. Prices, owners and categories are re-read by the API, so a stale price on screen cannot change what anyone pays |
+| Order of money | The code comes off the product subtotal, points may then cover only what the code left, and the delivery fee is added on top — the same order checkout charges in |
+| One shop's code | Covers only that shop's lines. The cart says how much of the basket the code reaches instead of pretending it discounted the whole total |
+| Handover | The cart passes the code to checkout in the url (`/checkout?coupon=CODE`) so a refresh keeps the deal; checkout prices it again before it shows a total |
+| Basket changes | The cart re-quotes shortly after the basket changes. A code that stops fitting is replaced by the API's own reason, not left on screen as a phantom discount |
+| Refusals | Each carries its real reason — not started yet, expired, fully used, basket too small, nothing in the basket it covers — instead of one blunt *invalid code* |
+| The seller's desk | Writes and edits only this shop's codes, can only name its own products, and shows the plan allowance the API counts. A refusal from the plan or a suspended shop arrives as a message on the form, not a redirect away from the dashboard |
+| On paper | The code and the money it took off are stored on the order, so the success page, the order history and the PDF invoice all name it — the printed lines add up to the amount actually charged |
+| Not shipped | The store team's own coupons screen, and the code's line on the staff order board. Store-wide codes already exist in the API and validate at checkout; the desk for writing them is still to come |
 
 ### Reviews & ratings
 
@@ -469,8 +487,8 @@ src/
 │   │   ├── customer/           overview, orders, transactions, wishlist,
 │   │   │                       reviews, analytics, profile, settings
 │   │   ├── vendor/             overview, orders (+ detail), products (+ new,
-│   │   │                       + edit), analytics, store profile, plan &
-│   │   │                       billing, notifications
+│   │   │                       + edit), analytics, coupons, store profile,
+│   │   │                       plan & billing, notifications
 │   │   └── rider/              overview, requests, deliveries, active,
 │   │                           history, earnings, profile, settings
 │   ├── (main)/                 home, shop, cart, checkout, compare,
@@ -487,7 +505,7 @@ src/
 │   ├── shared/                 navbar, footer, status badge, uploader, modals
 │   └── shop/                   product cards, filters, gallery
 ├── lib/
-│   ├── action/                 server actions (cart, orders, reviews, addresses, ...)
+│   ├── action/                 server actions (cart, orders, coupons, reviews, addresses, ...)
 │   ├── api/                    typed API clients used by server components
 │   ├── core/                   session, roles, server fetch, query helpers
 │   ├── auth.ts                 better-auth configuration
@@ -626,6 +644,8 @@ A fourth role, `rider`, works the deliveries the admin ships. The fifth surface 
 | Seller workspace — store profile, catalogue with plan limits, plan & billing | ✅ Complete |
 | Seller order board — own fulfilment groups, accept/prepare/ready, pickup request, rider mirror | ✅ Complete |
 | Vendor sales report with CSV and charted PDF exports | ✅ Complete |
+| Discount codes — seller's own desk, real validation in the cart, re-priced at checkout, named on the invoice | ✅ Complete |
+| Store-wide coupons admin desk (API exists, screen to come) | ⏳ Planned |
 | Public vendor storefronts and shop discovery | ⏳ Planned |
 | Notifications — one feed, bell and page for every role, plus transactional email | ✅ Complete |
 | Admin dashboard with CSV and charted PDF reports | ✅ Complete |
@@ -640,13 +660,13 @@ A fourth role, `rider`, works the deliveries the admin ships. The fifth surface 
 - [x] **Rider role & workspace** — a courier role with its own dashboard, delivery lists, earnings and exports; accepting jobs and advancing order status arrive in Phase 3.
 - [ ] **Live delivery tracking** — real-time GPS on the customer's Track Order page.
 - [ ] **Real payment gateway** — Stripe / SSLCommerz / bKash, replacing the simulated wallet flow.
-- [ ] **Coupon & promo codes** — discount codes applied at checkout.
+- [x] **Coupon & promo codes** — discount codes applied at checkout, priced by the API in the cart and again on the order.
 - [ ] **"Lucky Box" gamification** — a points-based mystery-box reward.
 - [ ] **Push and email notifications** — order and promotional alerts.
 - [ ] **In-app chat support** — live chat with store support.
 - [x] **Self-serve store onboarding** — apply, get reviewed, and run a shop from its own dashboard.
 - [x] **Subscription plans** — tiered pricing per store, enforced limits, demo billing and plan-capped analytics.
-- [ ] **Vendor coupons & featured placement** — seller-issued discount codes and bought featured slots.
+- [ ] **Featured placement bought from the plan** — seller-bought slots on the home rails, with the admin granting and expiring them.
 - [ ] **Public vendor storefronts** — a page per shop under `/shop/<slug>`, plus discovery, featured shops and seller search on the buyer side.
 - [ ] **Multi-tenant stores** — every store gets its own data, branding and subdomain.
 - [ ] **Real-time settings sync** — live, instantly applied store configuration.

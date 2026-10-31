@@ -13,6 +13,7 @@ import {
   Package,
   ShoppingBag,
   Store,
+  Ticket,
   X,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
@@ -34,6 +35,7 @@ const VENDOR_NAV_GROUPS = [
       { name: "Orders", href: "/dashboard/vendor/orders", icon: ShoppingBag },
       { name: "Products", href: "/dashboard/vendor/products", icon: Package },
       { name: "Analytics", href: "/dashboard/vendor/analytics", icon: BarChart3 },
+      { name: "Coupons", href: "/dashboard/vendor/coupons", icon: Ticket },
       { name: "Store Profile", href: "/dashboard/vendor/profile", icon: Store },
       { name: "Plan & Billing", href: "/dashboard/vendor/subscription", icon: CreditCard },
       { name: "Notifications", href: "/dashboard/vendor/notifications", icon: Bell },

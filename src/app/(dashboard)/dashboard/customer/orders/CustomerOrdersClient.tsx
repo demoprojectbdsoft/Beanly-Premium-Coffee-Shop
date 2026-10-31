@@ -832,6 +832,17 @@ export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrd
                       {formatPrice(order.total)}
                     </span>
                   </div>
+                  {Boolean(order.couponDiscount) && (
+                    <div>
+                      <span className="text-[var(--foreground-muted)] text-[10px] uppercase font-bold block">
+                        Discount code
+                      </span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                        {formatPrice(order.couponDiscount || 0)}{" "}
+                        <span className="text-[10px] opacity-80">{order.couponCode}</span>
+                      </span>
+                    </div>
+                  )}
                   {Boolean(order.pointsDiscount) && (
                     <div>
                       <span className="text-[var(--foreground-muted)] text-[10px] uppercase font-bold block">

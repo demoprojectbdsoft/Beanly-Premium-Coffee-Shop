@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -34,16 +34,19 @@ import {
   Ban,
   Bookmark,
   Plus,
+  Tag,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { authClient } from "@/lib/auth-client";
 import { getCartByUserId } from "@/lib/api/cart";
 import { createOrder } from "@/lib/action/orders";
+import { checkCouponCode } from "@/lib/action/coupons";
 import { saveAddress } from "@/lib/action/address";
 import {
   CheckoutClientProps,
   CartData,
   CartItem,
+  CouponQuote,
   PaymentMethod,
   ShippingAddress,
   SavedAddress,
@@ -143,6 +146,7 @@ export default function CheckoutClient({
   initialCart,
   user: initialUser,
   savedAddresses = [],
+  initialCouponCode,
 }: CheckoutClientProps) {
   const router = useRouter();
   const { data: clientSession } = authClient.useSession();
@@ -199,6 +203,15 @@ export default function CheckoutClient({
   // The customer only chooses whether to spend points; the amount is worked
   // out from their balance and the cart subtotal.
   const [useRewardPoints, setUseRewardPoints] = useState<boolean>(false);
+
+  // ── Discount Code State ────────────────────────────────────────────────────
+  // The code is the cart's, but the number is the API's. Nothing here is a
+  // locally multiplied percentage.
+  const [coupon, setCoupon] = useState<CouponQuote | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [isCheckingCoupon, setIsCheckingCoupon] = useState<boolean>(false);
+  // One quiet re-price per incoming code, not one per keystroke of the render.
+  const pricedIncomingCode = useRef<string | null>(null);
 
   // ── Order Placement State ──────────────────────────────────────────────────
   const [isPlacingOrder, setIsPlacingOrder] = useState<boolean>(false);
@@ -258,21 +271,91 @@ export default function CheckoutClient({
   const userPoints =
     Number((user as { points?: number | null } | null)?.points) || 0;
   const availablePoints = Math.max(0, Math.floor(userPoints));
-  // Points pay for products only, so the cap is the subtotal in points - and
-  // never more than the customer actually owns.
+
+  // The coupon comes off the subtotal first; loyalty points may then only cover
+  // what the code left to pay for; the shipping fee is added on top. This is the
+  // same order the backend prices in, so the screen and the charge agree.
+  const couponDiscount = coupon?.discount ?? 0;
+  /** Below the subtotal whenever a shop's code only covers its own lines. */
+  const coveredByCoupon = coupon?.eligibleSubtotal ?? 0;
+  const payableSubtotal = Math.max(0, subtotal - couponDiscount);
+
+  // Points pay for products only, so the cap is what is left of the subtotal
+  // in points - and never more than the customer actually owns.
   const maxRedeemablePoints = Math.min(
     availablePoints,
-    Math.floor(subtotal) * POINTS_PER_UNIT
+    Math.floor(payableSubtotal) * POINTS_PER_UNIT
   );
   const canRedeemPoints = maxRedeemablePoints >= MIN_POINTS_TO_REDEEM;
   const pointsToRedeem =
     useRewardPoints && canRedeemPoints ? maxRedeemablePoints : 0;
   const pointsDiscount = pointsToRedeem / POINTS_PER_UNIT;
   // Points are earned on what is really paid for the products.
-  const pointsEarned = Math.floor(subtotal - pointsDiscount);
+  const pointsEarned = Math.floor(payableSubtotal - pointsDiscount);
 
-  const grandTotal = subtotal + shippingCost - pointsDiscount;
+  const grandTotal = Math.max(0, payableSubtotal + shippingCost - pointsDiscount);
   const isCartEmpty = items.length === 0;
+
+  // The lines the API needs in order to price a code: ids and quantities only.
+  const basketLines = () =>
+    items
+      .map((item) => ({
+        productId: String(
+          (item.product as unknown as { _id?: string })?._id ||
+            item.product?.id ||
+            item.id ||
+            ""
+        ),
+        quantity: item.quantity || 1,
+      }))
+      .filter((line) => line.productId);
+
+  // A code that arrived from the cart is checked once, as soon as the basket is
+  // on screen. If it no longer holds, the reason is shown and the order simply
+  // goes at full price - the shopper is never quietly charged the old discount.
+  useEffect(() => {
+    const code = initialCouponCode?.trim().toUpperCase();
+    if (!code || items.length === 0) return;
+    if (pricedIncomingCode.current === code) return;
+    pricedIncomingCode.current = code;
+
+    let cancelled = false;
+    const priceIncomingCode = async () => {
+      setIsCheckingCoupon(true);
+      try {
+        const res = await checkCouponCode(code, basketLines());
+        if (cancelled) return;
+
+        if (res?.success === false) {
+          setCoupon(null);
+          setCouponError(res.message || "That code no longer applies to this order");
+          return;
+        }
+
+        const quote = (res as { data?: CouponQuote } | null)?.data;
+        if (!quote) {
+          setCoupon(null);
+          setCouponError("That code could not be re-checked just now");
+          return;
+        }
+
+        setCoupon(quote);
+        setCouponError(null);
+      } catch (err) {
+        if (cancelled) return;
+        setCoupon(null);
+        setCouponError((err as Error).message || "That code could not be re-checked");
+      } finally {
+        if (!cancelled) setIsCheckingCoupon(false);
+      }
+    };
+
+    priceIncomingCode();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCouponCode, items.length]);
 
   // Validation: Shipping form must have all required fields for every payment method
   const isShippingValid = useMemo(() => {
@@ -297,8 +380,10 @@ export default function CheckoutClient({
   const isWalletDetailsValid =
     isWalletPhoneValid(walletPhone) && isTransactionIdValid(walletTransactionId);
 
+  // While the incoming code is being re-priced the totals on screen are not the
+  // final ones, so the button waits a moment rather than quoting a stale number.
   const isCheckoutReady =
-    !isCartEmpty && isShippingValid && isPaymentValid && !isPlacingOrder;
+    !isCartEmpty && isShippingValid && isPaymentValid && !isPlacingOrder && !isCheckingCoupon;
 
   const currentPaymentOption =
     PAYMENT_OPTIONS.find((opt) => opt.id === selectedPaymentMethod) ||
@@ -457,6 +542,7 @@ export default function CheckoutClient({
         ? { transactionId: normaliseTransactionId(walletTransactionId) }
         : {}),
       ...(pointsToRedeem > 0 ? { pointsToRedeem } : {}),
+      ...(coupon ? { couponCode: coupon.code } : {}),
     };
 
     try {
@@ -1276,6 +1362,42 @@ export default function CheckoutClient({
                       {formatPrice(subtotal)}
                     </span>
                   </div>
+
+                  {/* The code the cart brought, priced again by the API */}
+                  {initialCouponCode && isCheckingCoupon && (
+                    <p className="flex items-center gap-1 text-[10px] text-[var(--foreground-muted)]">
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      Checking {initialCouponCode} against these items...
+                    </p>
+                  )}
+
+                  {couponDiscount > 0 && coupon && (
+                    <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
+                      <span className="flex items-center gap-1 min-w-0">
+                        <Tag className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{coupon.code}</span>
+                        {coveredByCoupon < subtotal && (
+                          <span className="text-[10px] text-[var(--foreground-muted)]">
+                            ({formatPrice(coveredByCoupon)} of this basket)
+                          </span>
+                        )}
+                      </span>
+                      <span className="font-bold">
+                        -{formatPrice(couponDiscount)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* A code that no longer holds says so, and the order is full price */}
+                  {initialCouponCode && couponError && (
+                    <p className="flex items-start gap-1 text-[10px] text-red-600 dark:text-red-400">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                      <span>
+                        <span className="font-bold">{initialCouponCode}</span>{" "}
+                        — {couponError}
+                      </span>
+                    </p>
+                  )}
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
