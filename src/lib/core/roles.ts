@@ -31,12 +31,13 @@ export function isVendorRole(user: RoleCarrier): boolean {
 }
 
 /**
- * Only a customer shops. Staff, riders and vendors can browse the storefront,
- * but a cart or a wishlist belongs to a buyer.
+ * Only a customer — or a vendor buying from another vendor — shops. Staff and
+ * riders can browse the storefront, but a cart or a wishlist belongs to a
+ * buyer.
  */
 export function canShop(user: RoleCarrier): boolean {
   const role = roleOf(user);
-  return role !== "admin" && role !== "demoadmin" && role !== "rider" && role !== "vendor";
+  return role !== "admin" && role !== "demoadmin" && role !== "rider";
 }
 
 /**
@@ -47,7 +48,6 @@ export function shopperBlockedResult(user: RoleCarrier, action: string) {
   if (canShop(user)) return null;
 
   const role = roleOf(user);
-  const who =
-    role === "demoadmin" ? "Demo admin" : role === "admin" ? "Admin" : role === "rider" ? "Riders" : "Vendors";
+  const who = role === "demoadmin" ? "Demo admin" : role === "admin" ? "Admin" : "Riders";
   return { success: false as const, message: `${who} cannot ${action}!` };
 }

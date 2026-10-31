@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
-import { MongoClient } from "mongodb";
+import { APIError } from "better-auth/api";
+import { MongoClient, ObjectId } from "mongodb";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { jwt } from "better-auth/plugins";
 
@@ -43,6 +44,38 @@ export const auth = betterAuth({
   }),
   plugins: [jwt()],
   databaseHooks: {
+    session: {
+      create: {
+        /**
+         * The vendor application gate.
+         *
+         * A pending or in-review applicant must not receive a session at all,
+         * whether they signed in with a password or with Google — every
+         * provider creates its session through this same hook, so the check
+         * cannot be sidestepped by switching method. It runs before the token
+         * exists, which is why the account never holds a usable credential
+         * while its application is open.
+         */
+        before: async (session) => {
+          const rawId = String(session.userId);
+          const objectId = ObjectId.isValid(rawId) ? new ObjectId(rawId) : null;
+
+          const user = await db.collection("user").findOne({
+            $or: objectId ? [{ _id: rawId }, { _id: objectId }] : [{ _id: rawId }],
+          } as any);
+
+          const state = (user as any)?.vendorStatus;
+          if (state === "pending" || state === "under_review") {
+            throw new APIError("FORBIDDEN", {
+              message:
+                state === "pending"
+                  ? "VENDOR_APPLICATION_PENDING"
+                  : "VENDOR_APPLICATION_UNDER_REVIEW",
+            });
+          }
+        },
+      },
+    },
     user: {
       create: {
         // A new account, whether the customer signed up with a password or
@@ -155,6 +188,17 @@ export const auth = betterAuth({
       department: {
         type: "string",
         required: false,
+      },
+      /**
+       * The marketplace state of the account. It is readable from the session
+       * so the shell can show "Become a Vendor" or an application status, but
+       * it is never writable from the browser: only the store API changes it,
+       * and only an approval turns the account into a vendor.
+       */
+      vendorStatus: {
+        type: "string",
+        input: false,
+        defaultValue: "none",
       },
     },
   },
