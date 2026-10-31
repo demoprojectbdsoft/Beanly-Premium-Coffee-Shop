@@ -304,3 +304,52 @@ export interface VendorProductListResult {
   pagination: VendorPagination;
   plan: VendorProductPlan;
 }
+
+/** One period the vendor bought. Old rows are the subscription history. */
+export interface VendorSubscriptionRecord {
+  _id: string;
+  plan: VendorPlanId;
+  billingCycle: BillingCycle;
+  status: "active" | "grace" | "expired" | "cancelled";
+  pricePaid?: number;
+  startDate: string;
+  endDate: string;
+  graceEndsAt?: string | null;
+  autoRenew?: boolean;
+  cancelledAt?: string | null;
+  note?: string;
+  history?: { action: string; at: string; note?: string; toPlan?: string }[];
+  createdAt?: string;
+}
+
+/** One demo payment for a plan period. */
+export interface VendorSubscriptionPayment {
+  _id: string;
+  plan: VendorPlanId;
+  billingCycle: BillingCycle;
+  amount: number;
+  method: string;
+  status: "pending" | "success" | "failed";
+  reference: string;
+  purpose?: "activation" | "renewal" | "upgrade" | "downgrade" | "admin";
+  isDemo?: boolean;
+  failureReason?: string;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  paidAt?: string | null;
+  createdAt?: string;
+}
+
+/** Everything the subscription page reads in one call. */
+export interface VendorSubscriptionOverview {
+  subscription: VendorSubscriptionRecord | null;
+  plan: VendorPlan;
+  isLive: boolean;
+  inGrace: boolean;
+  isExpired: boolean;
+  usage: { products: number; featuredProducts: number; activeCoupons: number };
+  effectiveUntil: string | null;
+  plans: VendorPlan[];
+  payments: VendorSubscriptionPayment[];
+  history: VendorSubscriptionRecord[];
+}

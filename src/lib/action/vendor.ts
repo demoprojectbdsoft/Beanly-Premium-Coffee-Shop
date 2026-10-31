@@ -186,6 +186,36 @@ export const archiveVendorProduct = async (productId: string) => {
   return serverMutation(`/vendor-products/${productId}`, {}, "DELETE");
 };
 
+/**
+ * Buys one plan period with the demo wallet.
+ *
+ * The price is decided by the API from the plan table, so nothing here can
+ * change what a plan costs. `idempotencyKey` turns a double click into one
+ * payment instead of two.
+ */
+export const checkoutVendorSubscription = async (data: {
+  planId: VendorPlanId;
+  billingCycle: BillingCycle;
+  method: "bkash" | "nagad" | "rocket" | "wallet";
+  transactionId?: string;
+  idempotencyKey?: string;
+}) => {
+  const user = await getUserSession();
+  if (!isVendorRole(user)) {
+    return { success: false as const, message: "Vendor access required." };
+  }
+  return serverMutation("/vendor-subscription/checkout", data, "POST");
+};
+
+/** Stops the renewal; the period the vendor already paid for still runs out. */
+export const cancelVendorRenewal = async () => {
+  const user = await getUserSession();
+  if (!isVendorRole(user)) {
+    return { success: false as const, message: "Vendor access required." };
+  }
+  return serverMutation("/vendor-subscription/cancel-renewal", {}, "POST");
+};
+
 /** The store team edits a plan's numbers; every limit check reads the result. */
 export const updateVendorPlan = async (
   planId: VendorPlanId,

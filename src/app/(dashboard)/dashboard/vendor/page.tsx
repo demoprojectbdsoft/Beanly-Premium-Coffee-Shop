@@ -12,7 +12,8 @@ import {
   Ticket,
 } from "lucide-react";
 import { getRequiredRole } from "@/lib/core/session";
-import { asApplication, asPlans, getMyVendorApplication, getVendorPlans } from "@/lib/api/vendor";
+import { asApplication, getMyVendorApplication } from "@/lib/api/vendor";
+import { asSubscription, getMySubscription } from "@/lib/api/vendorSubscription";
 import { getSiteSettings } from "@/lib/api/siteSettings";
 import { formatOrderDate } from "@/lib/dateTime";
 import { formatPrice } from "@/lib/currency";
@@ -32,23 +33,26 @@ export const dynamic = "force-dynamic";
 export default async function VendorOverviewPage() {
   const user = await getRequiredRole("vendor");
 
-  const [application, plans, settingsRes] = await Promise.all([
+  const [application, subscriptionOverview, settingsRes] = await Promise.all([
     getMyVendorApplication().then(asApplication),
-    getVendorPlans().then(asPlans),
+    getMySubscription().then(asSubscription),
     getSiteSettings(),
   ]);
 
   const currency = settingsRes?.data?.currency;
-  const plan = plans.find((row) => row.id === application?.selectedPlan) ?? plans[0];
+  const plan = subscriptionOverview?.plan ?? null;
+  const billingCycle = subscriptionOverview?.subscription?.billingCycle || "monthly";
+  const usage = subscriptionOverview?.usage;
+  const planIsLive = subscriptionOverview?.isLive ?? false;
   const approvedAt = application?.reviewedAt || application?.submittedAt;
   const store = application?.storeInfo;
   const address = application?.businessAddress;
 
   const planPriceLabel = plan
     ? isPaidPlan(plan)
-      ? `${formatPrice(planPrice(plan, application?.billingCycle || "monthly"), currency, {
+      ? `${formatPrice(planPrice(plan, billingCycle), currency, {
           showDecimals: false,
-        })} / ${application?.billingCycle === "yearly" ? "year" : "month"}`
+        })} / ${billingCycle === "yearly" ? "year" : "month"}`
       : "Free"
     : "—";
 
@@ -108,6 +112,11 @@ export default async function VendorOverviewPage() {
           <p className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[var(--foreground)]">
             <Layers className="h-3.5 w-3.5 text-[var(--brand-flat)]" />
             {plan?.name || "—"}
+            {!planIsLive && plan && (
+              <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-700 dark:bg-amber-500/15 dark:text-amber-200">
+                Inactive
+              </span>
+            )}
           </p>
           <p className="mt-1 text-[10px] text-[var(--foreground-muted)]">{planPriceLabel}</p>
         </article>
@@ -148,19 +157,31 @@ export default async function VendorOverviewPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-bold text-[var(--foreground)]">What your plan allows</h2>
             <Link
-              href="/become-a-vendor#plans"
+              href="/dashboard/vendor/subscription"
               className="inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--brand-flat)] hover:underline"
             >
-              Compare plans
+              Manage plan
               <ArrowRight className="h-2.5 w-2.5" />
             </Link>
           </div>
 
           <ul className="mt-3 space-y-2.5">
             {[
-              { icon: Layers, label: "Active products", value: plan?.maxProducts ?? 0 },
-              { icon: Ticket, label: "Active coupons", value: plan?.activeCoupons ?? 0 },
-              { icon: Tag, label: "Featured products", value: plan?.featuredProducts ?? 0 },
+              {
+                icon: Layers,
+                label: "Active products",
+                value: `${usage?.products ?? 0} / ${plan?.maxProducts ?? 0}`,
+              },
+              {
+                icon: Ticket,
+                label: "Active coupons",
+                value: `${usage?.activeCoupons ?? 0} / ${plan?.activeCoupons ?? 0}`,
+              },
+              {
+                icon: Tag,
+                label: "Featured products",
+                value: `${usage?.featuredProducts ?? 0} / ${plan?.featuredProducts ?? 0}`,
+              },
             ].map((row) => {
               const Icon = row.icon;
               return (
@@ -181,9 +202,9 @@ export default async function VendorOverviewPage() {
           </ul>
 
           <p className="mt-3 text-[10px] leading-relaxed text-[var(--foreground-muted)]">
-            {plan && isPaidPlan(plan)
-              ? "A paid plan starts after the demo checkout confirms. Until then the Free limits apply."
-              : "The Free plan activates with your approval — no card, no checkout."}
+            {planIsLive
+              ? "Limits are counted from publishing, not from drafts. Archiving a product frees a slot immediately."
+              : "Your period is not active, so publishing is on hold. Everything you already have is kept — renew from Plan & billing to publish again."}
           </p>
         </section>
 
