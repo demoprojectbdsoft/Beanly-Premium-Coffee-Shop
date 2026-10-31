@@ -22,6 +22,7 @@ import {
   Mail,
   Megaphone,
   Sparkles,
+  Ticket,
   Truck,
   Store,
   type LucideIcon,
@@ -64,6 +65,7 @@ const NAV_GROUPS = [
       { name: "Orders", href: "/dashboard/admin/orders", icon: ShoppingBag },
       { name: "Deliveries", href: "/dashboard/admin/deliveries", icon: Truck },
       { name: "Transactions", href: "/dashboard/admin/transactions", icon: CreditCard },
+      { name: "Coupons", href: "/dashboard/admin/coupons", icon: Ticket },
     ],
   },
   {

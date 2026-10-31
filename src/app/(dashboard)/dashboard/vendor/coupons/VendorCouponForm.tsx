@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import { Loader2, Ticket, X } from "lucide-react";
 import { toast } from "react-toastify";
 import type { Coupon, CouponDraft } from "@/types";
+import {
+  blankCouponDraft,
+  couponDraftFrom,
+  couponPayload,
+  validateCouponDraft,
+} from "@/lib/couponDraft";
 import { createVendorCoupon, updateVendorCoupon } from "@/lib/action/vendorCoupons";
 import { formatPrice } from "@/lib/currency";
 
@@ -13,8 +19,8 @@ import { formatPrice } from "@/lib/currency";
  *
  * Nothing here decides what the code is worth. The numbers typed into this form
  * are the seller's intention; the API is what applies them, and it re-reads the
- * prices at checkout. The panel only refuses the shapes the API would reject
- * anyway, so a typo does not cost a round trip.
+ * prices at checkout. The draft's shape is checked in `lib/couponDraft`, which
+ * the store team's desk shares, so a typo does not cost a round trip.
  */
 
 export interface CouponProductOption {
@@ -38,59 +44,6 @@ const inputClass =
 const labelClass =
   "mb-1 block text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]";
 
-/** A `datetime-local` input wants the wall-clock form, not the ISO string. */
-function toInputValue(value?: string | null): string {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
-    date.getHours()
-  )}:${pad(date.getMinutes())}`;
-}
-
-function daysFromNow(days: number): string {
-  return toInputValue(new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString());
-}
-
-function blankDraft(): CouponDraft {
-  return {
-    code: "",
-    title: "",
-    description: "",
-    discountType: "percentage",
-    discountValue: 10,
-    minOrderAmount: 0,
-    maxDiscountAmount: 0,
-    startDate: toInputValue(new Date().toISOString()),
-    endDate: daysFromNow(7),
-    totalUsageLimit: 0,
-    perCustomerLimit: 0,
-    productIds: [],
-    categoryIds: [],
-    isActive: true,
-  };
-}
-
-function draftFromCoupon(coupon: Coupon): CouponDraft {
-  return {
-    code: coupon.code,
-    title: coupon.title,
-    description: coupon.description,
-    discountType: coupon.discountType,
-    discountValue: coupon.discountValue,
-    minOrderAmount: coupon.minOrderAmount,
-    maxDiscountAmount: coupon.maxDiscountAmount,
-    startDate: toInputValue(coupon.startDate),
-    endDate: toInputValue(coupon.endDate),
-    totalUsageLimit: coupon.totalUsageLimit,
-    perCustomerLimit: coupon.perCustomerLimit,
-    productIds: coupon.productIds,
-    categoryIds: coupon.categoryIds,
-    isActive: coupon.isActive,
-  };
-}
-
 export default function VendorCouponForm({
   coupon,
   products,
@@ -99,7 +52,7 @@ export default function VendorCouponForm({
 }: VendorCouponFormProps) {
   const router = useRouter();
   const [draft, setDraft] = useState<CouponDraft>(
-    coupon ? draftFromCoupon(coupon) : blankDraft()
+    coupon ? couponDraftFrom(coupon) : blankCouponDraft()
   );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -131,31 +84,10 @@ export default function VendorCouponForm({
     set(key, Number.isFinite(raw) ? raw : fallback);
   };
 
-  const validate = (): string | null => {
-    const code = draft.code.trim().toUpperCase();
-
-    if (code.length < 3) return "A code needs at least 3 characters";
-    if (!/^[A-Z0-9_-]+$/.test(code)) {
-      return "Use capital letters, numbers, hyphens and underscores only";
-    }
-    if (!(draft.discountValue > 0)) return "A coupon has to take something off";
-    if (draft.discountType === "percentage" && draft.discountValue > 100) {
-      return "A percentage is between 1 and 100";
-    }
-    if (!draft.startDate || !draft.endDate) return "Pick the day it starts and the day it ends";
-
-    const starts = new Date(draft.startDate).getTime();
-    const ends = new Date(draft.endDate).getTime();
-    if (Number.isNaN(starts) || Number.isNaN(ends)) return "Those dates do not read correctly";
-    if (ends <= starts) return "A coupon has to end after it starts";
-
-    return null;
-  };
-
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    const problem = validate();
+    const problem = validateCouponDraft(draft);
     if (problem) {
       setError(problem);
       return;
@@ -163,15 +95,9 @@ export default function VendorCouponForm({
     setError(null);
     setSaving(true);
 
-    const payload: CouponDraft = {
-      ...draft,
-      code: draft.code.trim().toUpperCase(),
-      startDate: new Date(draft.startDate).toISOString(),
-      endDate: new Date(draft.endDate).toISOString(),
-      // A seller narrows a code by product only; whole-category codes are the
-      // store team's tool, so this field stays empty here.
-      categoryIds: [],
-    };
+    // A seller narrows a code by product only; whole-category codes are the
+    // store team's tool, so this field stays empty here.
+    const payload: CouponDraft = { ...couponPayload(draft), categoryIds: [] };
 
     try {
       const res = coupon

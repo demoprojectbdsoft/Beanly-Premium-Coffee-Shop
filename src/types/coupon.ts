@@ -43,6 +43,17 @@ export interface Coupon {
   remaining: number;
   redemptionCount: number;
   state: CouponState;
+  /**
+   * The shop that wrote a seller's code, and the names behind its narrowing.
+   *
+   * Only the staff list reads these, because a seller already knows their own
+   * shelf. Everywhere else they are empty, and a screen says "3 named" rather
+   * than nothing.
+   */
+  sellerName: string;
+  storeSlug: string;
+  productNames: string[];
+  categoryNames: string[];
   createdAt: string | null;
   updatedAt: string | null;
 }

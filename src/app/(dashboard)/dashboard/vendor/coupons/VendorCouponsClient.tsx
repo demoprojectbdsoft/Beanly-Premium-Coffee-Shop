@@ -19,7 +19,13 @@ import { toast } from "react-toastify";
 import type { Coupon, CouponState } from "@/types";
 import type { VendorPagination } from "@/types/vendor";
 import { formatPrice } from "@/lib/currency";
-import { formatOrderDate } from "@/lib/dateTime";
+import {
+  couponDiscountWords,
+  couponScopeWords,
+  couponUsageWords,
+  couponWindowWords,
+  getCouponStateStyle,
+} from "@/lib/couponWords";
 import { deleteVendorCoupon, setVendorCouponActive } from "@/lib/action/vendorCoupons";
 import VendorCouponForm, { type CouponProductOption } from "./VendorCouponForm";
 
@@ -48,51 +54,6 @@ const TABS: { key: CouponState | "all"; label: string }[] = [
   { key: "expired", label: "Ended" },
   { key: "stopped", label: "Stopped" },
 ];
-
-const STATE_STYLES: Record<CouponState, { label: string; badge: string }> = {
-  live: {
-    label: "Running",
-    badge:
-      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300",
-  },
-  upcoming: {
-    label: "Scheduled",
-    badge:
-      "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-800/60 dark:bg-sky-950/40 dark:text-sky-300",
-  },
-  expired: {
-    label: "Ended",
-    badge:
-      "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300",
-  },
-  stopped: {
-    label: "Stopped",
-    badge:
-      "border-[var(--border-color)] bg-[var(--surface-alt)] text-[var(--foreground-muted)]",
-  },
-};
-
-/** What the code takes off, in the words a seller would use. */
-function discountWords(coupon: Coupon, currency: string): string {
-  if (coupon.discountType === "percentage") {
-    const cap =
-      coupon.maxDiscountAmount > 0
-        ? `, up to ${formatPrice(coupon.maxDiscountAmount, currency)}`
-        : "";
-    return `${coupon.discountValue}% off${cap}`;
-  }
-  return `${formatPrice(coupon.discountValue, currency)} off`;
-}
-
-/** The window, written once when only one end matters. */
-function windowWords(coupon: Coupon): string {
-  const start = formatOrderDate(coupon.startDate);
-  const end = formatOrderDate(coupon.endDate);
-  if (!start && !end) return "No dates set";
-  if (!start) return `Until ${end}`;
-  if (!end) return `From ${start}`;
-  return `${start} → ${end}`;
-}
 
 export default function VendorCouponsClient({
   coupons,
@@ -331,15 +292,7 @@ export default function VendorCouponsClient({
         ) : (
           <ul className="divide-y divide-[var(--border-color)]">
             {coupons.map((coupon) => {
-              const style = STATE_STYLES[coupon.state];
-              const scope =
-                coupon.productIds.length > 0
-                  ? `${coupon.productIds.length} named product${coupon.productIds.length === 1 ? "" : "s"}`
-                  : "Whole shop";
-              const usage =
-                coupon.totalUsageLimit > 0
-                  ? `${coupon.usedCount} of ${coupon.totalUsageLimit} used · ${coupon.remaining} left`
-                  : `${coupon.usedCount} used · no cap`;
+              const style = getCouponStateStyle(coupon.state);
 
               return (
                 <li key={coupon._id} className="flex flex-wrap items-center gap-3 px-4 py-3">
@@ -355,10 +308,11 @@ export default function VendorCouponsClient({
                       )}
                     </div>
                     <p className="mt-1 truncate text-[10px] text-[var(--foreground-muted)]">
-                      {discountWords(coupon, currency)} · {scope} · {windowWords(coupon)}
+                      {couponDiscountWords(coupon, currency)} ·{" "}
+                      {couponScopeWords(coupon, "seller")} · {couponWindowWords(coupon)}
                     </p>
                     <p className="mt-0.5 truncate text-[10px] text-[var(--foreground-muted)]">
-                      {usage}
+                      {couponUsageWords(coupon)}
                       {coupon.discountGiven > 0 && (
                         <> · {formatPrice(coupon.discountGiven, currency)} given away</>
                       )}

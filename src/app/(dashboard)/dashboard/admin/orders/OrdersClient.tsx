@@ -915,6 +915,20 @@ export default function OrdersClient({
                             {formatPrice(selectedOrder.subtotal ?? (selectedOrder.totalAmount - (selectedOrder.shippingFee || 0)))}
                           </span>
                         </div>
+                        {/* The code comes off the subtotal and the points cover what
+                            it left, so both are read before the fee — the same order
+                            the total was worked out in. */}
+                        {Boolean(selectedOrder.couponDiscount) && (
+                          <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                            <span>
+                              Discount Code
+                              {selectedOrder.couponCode ? ` · ${selectedOrder.couponCode}` : ""}
+                            </span>
+                            <span className="font-semibold">
+                              -{formatPrice(selectedOrder.couponDiscount || 0)}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex justify-between text-[var(--foreground-secondary)] dark:text-[var(--foreground-muted)]">
                           <span>Shipping Fee</span>
                           <span className="font-semibold">

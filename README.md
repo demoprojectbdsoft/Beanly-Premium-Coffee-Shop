@@ -175,7 +175,7 @@ Switching mode keeps the current filters, search and sort.
 
 ## 🛠️ Admin Dashboard
 
-The sidebar is grouped so a long menu stays readable: **Store** (products, categories, home slider, promo banners, promotions), **Sales** (orders, deliveries, transactions), **People** (users, vendor applications) and **Support** (reviews, warranties, messages), with the overview and the notification board on their own at the top and the profile/settings links at the bottom. A link stays highlighted on its own sub-pages, and the overview only lights up on the dashboard itself.
+The sidebar is grouped so a long menu stays readable: **Store** (products, categories, home slider, promo banners, promotions), **Sales** (orders, deliveries, transactions, coupons), **People** (users, vendor applications) and **Support** (reviews, warranties, messages), with the overview and the notification board on their own at the top and the profile/settings links at the bottom. A link stays highlighted on its own sub-pages, and the overview only lights up on the dashboard itself.
 
 | Area | What the admin can do |
 |---|---|
@@ -187,6 +187,7 @@ The sidebar is grouped so a long menu stays readable: **Store** (products, categ
 | **Promotions** | `/dashboard/admin/promotions` — every featured placement on the marketplace, whose shelf it lifts and until when. Two pickers grant one: a **product** is chosen from the catalogue and the seller it belongs to is read from the row, never typed; a **shop** is chosen from the active stores, and being a featured *store* is decided here alone. The window is stated in days (1–365, with 7/14/30/60/90 shortcuts) and every grant keeps an optional reason the seller reads. Running rows can be **ended now** with that reason — a blank box records the API's own words, so a row is never closed without one — and **Run the sweep** does by hand what the nightly job does, telling the team how many shelves went dark. Nothing here is a switch: a platform-owned product is listed but refused, with a pointer to the Products desk, because a grant has to carry an end date |
 | **Orders** | Platform-wide orders with search and status filters. Open an order to see items, pricing breakdown, redemption and earned points, warranty state and the customer's response, then move it along the status flow. |
 | **Transactions** | Platform-wide payment records. |
+| **Coupons** | `/dashboard/admin/coupons` — every discount code in the store on one board, ours and every seller's, because the checkout reads them all from one collection. State tabs carry counts from the same read, a second row narrows to *The store's own / Sellers'*, and a seller's row names the shop that wrote it. **New store code** opens the editor that can cover a whole **category** as well as named products — the picker searches the catalogue on the server, since the store is too large to hand over at once. Stop, resume and clear a code from its row; a spent one is only stopped, in the API's own words. A seller's row has no buttons: their code spends a slot on *their* plan, so it is theirs to write and renew |
 | **Users** | Change a user's role and account status, and see their points and membership tier. |
 | **Vendor applications** | The seller review queue at `/dashboard/admin/vendors`: one read feeds the table and the per-status chips, so a decision made a second ago is gone from *Pending* on the next render. Opening an application shows the whole submission — store, category, contact, business address, identity documents, chosen plan and the history of every status change — and the desk offers the legal next step only: mark **under review**, **approve** (the account becomes a vendor, the store row is created and the plan period starts) or **reject with a reason** the applicant reads on `/become-a-vendor/status`. Plan prices and limits are edited through the API (`PATCH /vendor-plans/:planId`), so the dashboard always shows the live numbers. |
 | **Reviews** | View and moderate every product review. |
@@ -314,8 +315,9 @@ A code has one meaning whichever desk wrote it: the store team's global codes an
 | Basket changes | The cart re-quotes shortly after the basket changes. A code that stops fitting is replaced by the API's own reason, not left on screen as a phantom discount |
 | Refusals | Each carries its real reason — not started yet, expired, fully used, basket too small, nothing in the basket it covers — instead of one blunt *invalid code* |
 | The seller's desk | Writes and edits only this shop's codes, can only name its own products, and shows the plan allowance the API counts. A refusal from the plan or a suspended shop arrives as a message on the form, not a redirect away from the dashboard |
-| On paper | The code and the money it took off are stored on the order, so the success page, the order history and the PDF invoice all name it — the printed lines add up to the amount actually charged |
-| Not shipped | The store team's own coupons screen, and the code's line on the staff order board. Store-wide codes already exist in the API and validate at checkout; the desk for writing them is still to come |
+| The staff desk | `/dashboard/admin/coupons` lists every code in the store — ours and the sellers' — and writes only ours. A seller's row names their shop and is read-only, because renewing it would spend a slot on their plan and skip the check that stops a suspended shop from trading. A code that has been spent is stopped rather than deleted, so past orders keep quoting it |
+| One reading, two desks | `lib/couponWords.ts` draws the badge, the money, the window and what a code covers, and `lib/couponDraft.ts` holds the shape checks and the defaults, so neither desk can describe the same code differently — only whose shelf a code reaches differs between them |
+| On paper | The code and the money it took off are stored on the order, so the success page, the order history, the staff order board and the PDF invoice all name it — the printed lines add up to the amount actually charged |
 
 ### Featured promotions
 
@@ -499,7 +501,7 @@ src/
 │   ├── (auth)/auth/            login, register, forgot-password, reset-password
 │   ├── (dashboard)/dashboard/
 │   │   ├── admin/              overview, products, categories, slider, orders,
-│   │   │                       deliveries, transactions, users, vendor
+│   │   │                       deliveries, transactions, coupons, users, vendor
 │   │   │                       applications, promotions, reviews, warranties,
 │   │   │                       messages, settings
 │   │   ├── customer/           overview, orders, transactions, wishlist,
@@ -537,6 +539,8 @@ src/
 │   ├── vendorOrderStatus.ts    the seller's stages on that palette + the legal next actions
 │   ├── vendorProductStatus.ts  the seller's listing statuses and their badges
 │   ├── promotionWords.ts       one badge, window and source line per placement, for both desks
+│   ├── couponWords.ts          one badge, money, window and scope line per code, for both desks
+│   ├── couponDraft.ts          the draft a code is written from: defaults, dates, the shape checks
 │   ├── vendorPlan.ts           plan pricing: cycle price, monthly equivalent, yearly saving
 │   ├── vendorStatus.ts         application status badges
 │   ├── warranty.ts             warranty catalog, duration, extension and problem wording
@@ -666,7 +670,7 @@ A fourth role, `rider`, works the deliveries the admin ships. The fifth surface 
 | Discount codes — seller's own desk, real validation in the cart, re-priced at checkout, named on the invoice | ✅ Complete |
 | Featured promotions — seller buys product slots from the plan, counts them down and can end one early | ✅ Complete |
 | Admin promotions board — grant a product or a storefront for a stated number of days, pull one back, run the sweep | ✅ Complete |
-| Store-wide coupons admin desk (API exists, screen to come) | ⏳ Planned |
+| Store-wide coupons desk for the store team — write a code that reaches the whole store, read every seller's beside them, and the code's line on the staff order board | ✅ Complete |
 | Public vendor storefronts and shop discovery | ⏳ Planned |
 | Notifications — one feed, bell and page for every role, plus transactional email | ✅ Complete |
 | Admin dashboard with CSV and charted PDF reports | ✅ Complete |
@@ -681,7 +685,7 @@ A fourth role, `rider`, works the deliveries the admin ships. The fifth surface 
 - [x] **Rider role & workspace** — a courier role with its own dashboard, delivery lists, earnings and exports; accepting jobs and advancing order status arrive in Phase 3.
 - [ ] **Live delivery tracking** — real-time GPS on the customer's Track Order page.
 - [ ] **Real payment gateway** — Stripe / SSLCommerz / bKash, replacing the simulated wallet flow.
-- [x] **Coupon & promo codes** — discount codes applied at checkout, priced by the API in the cart and again on the order.
+- [x] **Coupon & promo codes** — discount codes applied at checkout, priced by the API in the cart and again on the order, with a desk for the store team's own codes beside each seller's.
 - [ ] **"Lucky Box" gamification** — a points-based mystery-box reward.
 - [ ] **Push and email notifications** — order and promotional alerts.
 - [ ] **In-app chat support** — live chat with store support.
