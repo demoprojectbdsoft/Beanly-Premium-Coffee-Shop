@@ -25,7 +25,7 @@ export function isRiderRole(user: RoleCarrier): boolean {
   return roleOf(user) === "rider";
 }
 
-/** Reserved for the seller add-on; the account exists but cannot shop. */
+/** Approved seller. They run a shop and still buy from other shops as customers. */
 export function isVendorRole(user: RoleCarrier): boolean {
   return roleOf(user) === "vendor";
 }

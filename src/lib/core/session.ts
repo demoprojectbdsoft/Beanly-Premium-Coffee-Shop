@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "../auth";
-import { roleOf } from "./roles";
+import { canShop, roleOf } from "./roles";
 
 type Role = "admin" | "customer" | "rider" | "vendor" | "user";
 
@@ -43,6 +43,27 @@ export const getRequiredRole = async (role: Role) => {
       : user.role === role;
 
   if (!hasAccess) {
+    redirect("/forbidden");
+  }
+
+  return user;
+};
+
+/**
+ * Returns the current user when they are allowed to shop: a customer, or a
+ * vendor buying from another shop. An approved seller keeps the same account
+ * they had as a customer, so their cart, wishlist and orders stay reachable
+ * from the buyer dashboard alongside the seller workspace. Staff and riders are
+ * never buyers, so they are still sent to /forbidden.
+ */
+export const getRequiredShopper = async () => {
+  const user = await getUserSession();
+
+  if (!user) {
+    redirect("/auth/login");
+  }
+
+  if (!canShop(user)) {
     redirect("/forbidden");
   }
 

@@ -62,7 +62,7 @@ Nothing is hardcoded. Categories, products, the homepage slider and the store's 
 | **Customer** | `/dashboard/customer` | Shop, order, review, claim warranties, manage their own account. |
 | **Admin** | `/dashboard/admin` | Everything in the [Admin Dashboard](#️-admin-dashboard). |
 | **Demo admin** | `/dashboard/admin` | Explore the admin dashboard and edit catalog data freely — changes are reverted daily. See [Demo Admin Mode](#-demo-admin-mode). |
-| **Vendor** | `/dashboard/vendor` | Run their own shop inside the store — storefront, catalogue, orders and sales report. See [Vendor Dashboard](#-vendor-dashboard). |
+| **Vendor** | `/dashboard/vendor` | Run their own shop inside the store — storefront, catalogue, orders and sales report. See [Vendor Dashboard](#-vendor-dashboard). They stay a buyer too: the same account keeps shopping, and their cart, wishlist and personal orders stay open in the [Customer Dashboard](#-customer-dashboard). |
 
 ```
 Sign in (email/password or Google) ─► better-auth creates a session and issues a JWT
@@ -71,7 +71,7 @@ Sign in (email/password or Google) ─► better-auth creates a session and issu
         └─ Backend: verifies the JWT on every request and enforces ownership + role again
 ```
 
-- **Role-isolated dashboards** — `dashboard/admin/layout.tsx` and `dashboard/customer/layout.tsx` each require their own role, so one role cannot open the other's dashboard.
+- **Role-isolated dashboards** — `dashboard/admin/layout.tsx` requires the admin role and `dashboard/rider/layout.tsx` the rider role, so staff and riders cannot open each other's workspace. The buyer dashboard (`dashboard/customer/layout.tsx`) admits anyone who is allowed to shop — a customer **or a vendor**, because becoming a seller changes the role but keeps the account, so the buyer data built up before approval stays reachable alongside the seller pages.
 - **Checked on both sides** — the frontend guard is for navigation; the backend repeats the check, so a role check cannot be bypassed through the UI or a hand-made request.
 - **Shared JWT auth** — this app owns authentication and exposes `/api/auth/jwks`; the API verifies tokens against it, with no shared secret and no duplicated user table.
 - **Forgot password** — `sendResetPassword` in `lib/auth.ts` hands better-auth's one-time link to the API, which emails it from the store's own mailbox. The link works once, expires after one hour, and opens `/auth/reset-password`, where the new password is chosen. A reset also signs the account out on every device. The form checks the address first, so an unknown email says **no account uses this address** instead of claiming a link was sent — better-auth itself replies the same way for every address. That is friendlier for one store but reveals which emails are registered.
@@ -155,6 +155,8 @@ Switching mode keeps the current filters, search and sort.
 
 ## 👤 Customer Dashboard
 
+The buyer workspace. A customer reaches it directly, and an approved vendor keeps reaching it too — becoming a seller never splits the account, so the cart, wishlist and orders built up before approval stay open here (reached from the **Your Shopping** group in the vendor sidebar). Staff and riders, who are not buyers, are refused.
+
 | Page | What it offers |
 |---|---|
 | **Overview** | Spend and savings charts, summary stat cards, recent orders with their status and points saved. |
@@ -216,7 +218,7 @@ confirmed ──▶ processing ──▶ shipped ──▶ delivered
 
 ## 🏪 Vendor Dashboard
 
-A customer the store team approves as a seller gets a workspace of their own at `/dashboard/vendor` — a fourth dashboard with its own layout guard and sidebar (**Overview, Orders, Products, Analytics, Coupons, Promotions, Store Profile, Plan & Billing, Notifications**). A vendor cannot open the admin or the customer dashboard, and a customer who is only an applicant cannot open any of them.
+A customer the store team approves as a seller gets a workspace of their own at `/dashboard/vendor` — a fourth dashboard with its own layout guard and sidebar (**Overview, Orders, Products, Analytics, Coupons, Promotions, Store Profile, Plan & Billing, Notifications**). A vendor cannot open the admin or the rider dashboard. Because approval keeps the same account, a vendor is still a buyer too: a second **Your Shopping** group in the sidebar reaches the [Customer Dashboard](#-customer-dashboard) (buyer overview, personal orders, wishlist), and a customer who is only an applicant cannot open the vendor workspace at all.
 
 ### Becoming a vendor
 

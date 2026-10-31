@@ -8,6 +8,7 @@ import {
   Bell,
   ChevronRight,
   CreditCard,
+  Heart,
   LayoutDashboard,
   LogOut,
   Package,
@@ -28,6 +29,10 @@ import SparqLogo from "@/components/shared/SparqLogo";
  * profile, the catalogue and the seller feed. Promotions and coupons join this
  * list as their screens arrive, so no link here ever opens a page that does not
  * exist.
+ *
+ * The second group is the seller's own buyer side. An approved vendor keeps the
+ * account they shopped from before, so their wishlist and personal orders are
+ * one click away rather than a URL they have to remember.
  */
 const VENDOR_NAV_GROUPS = [
   {
@@ -42,6 +47,14 @@ const VENDOR_NAV_GROUPS = [
       { name: "Store Profile", href: "/dashboard/vendor/profile", icon: Store },
       { name: "Plan & Billing", href: "/dashboard/vendor/subscription", icon: CreditCard },
       { name: "Notifications", href: "/dashboard/vendor/notifications", icon: Bell },
+    ],
+  },
+  {
+    title: "Your Shopping",
+    items: [
+      { name: "Buyer Dashboard", href: "/dashboard/customer", icon: LayoutDashboard },
+      { name: "My Orders", href: "/dashboard/customer/orders", icon: ShoppingBag },
+      { name: "Wishlist", href: "/dashboard/customer/wishlist", icon: Heart },
     ],
   },
 ];
@@ -106,12 +119,13 @@ export default function VendorSidebar({ isOpen, onClose }: VendorSidebarProps) {
               </p>
               {group.items.map((item) => {
                 const Icon = item.icon;
-                // The overview owns the bare path, so it must not stay active
-                // while a deeper store page is open.
-                const isActive =
-                  item.href === "/dashboard/vendor"
-                    ? pathname === item.href
-                    : pathname.startsWith(item.href);
+                // A workspace root owns its bare path, so it must not stay
+                // active while a deeper page in the same workspace is open.
+                const isWorkspaceRoot =
+                  item.href === "/dashboard/vendor" || item.href === "/dashboard/customer";
+                const isActive = isWorkspaceRoot
+                  ? pathname === item.href
+                  : pathname.startsWith(item.href);
 
                 return (
                   <Link

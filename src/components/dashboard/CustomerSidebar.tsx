@@ -78,7 +78,17 @@ export default function CustomerSidebar({ isOpen, onClose }: CustomerSidebarProp
     email?: string;
     member?: string;
     points?: number;
+    role?: string;
   } | undefined;
+
+  // A vendor browsing their buyer pages keeps the account they shopped from,
+  // so the "Become a Vendor" entry becomes the way back to the seller workspace.
+  const isVendor = (sessionUser?.role || "").toLowerCase() === "vendor";
+  const accountItems = CUSTOMER_ACCOUNT_ITEMS.map((item) =>
+    item.href === "/become-a-vendor" && isVendor
+      ? { name: "Seller Dashboard", href: "/dashboard/vendor", icon: Store }
+      : item
+  );
 
   // Live member/points fetched from DB
   const [liveData, setLiveData] = useState<{
@@ -197,7 +207,7 @@ export default function CustomerSidebar({ isOpen, onClose }: CustomerSidebarProp
             <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)] px-3 mb-2 opacity-75">
               Account
             </p>
-            {CUSTOMER_ACCOUNT_ITEMS.map((item) => {
+            {accountItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
 
