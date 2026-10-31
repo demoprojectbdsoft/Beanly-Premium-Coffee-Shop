@@ -86,13 +86,15 @@ Public pages anyone can visit.
 |---|---|
 | **Home** (`/`) | Hero slider, Popular and Trending products, Warehouse Deals, New Arrivals, promo banners, brand marquee and newsletter signup. |
 | **Shop** (`/shop`) | Search, filters, sorting, and numbered **pagination** or **infinite scroll** — switchable, and the choice is remembered. |
+| **Shops** (`/stores`) | Every seller shop trading today — search, sort (*Featured first / Best rated / Newest / Most orders*), a *Featured only* switch and category chips read off the rows on screen. Hidden, suspended and closed shops are not listed; one link away looks exactly like one that never existed. |
+| **Shop page** (`/stores/[slug]`) | A seller's own storefront: banner, logo, rating, completed orders, products on the shelf, website and social links, and the shop's own searchable, sortable, paginated list of buyable listings. Only the shop's public face is shown — the seller's phone, email and street address stay where the API keeps them. |
 | **Product details** (`/shop/[slug]`) | Gallery modal, specifications, warranty terms, live rating and reviews, and add to cart / wishlist / **compare**. |
 | **Compare** (`/compare`) | Up to three products side by side — price, discount, stock, rating, warranty and a full specification matrix. Works for guests. |
 | **Cart** (`/cart`) | Quantity changes, removal, and a running subtotal. |
 | **Checkout** (`/checkout`) | Delivery details, payment method, reward points, and order placement. A signed-in customer starts with their **default saved address** filled in and can tick **Save this address for next time**. |
 | **Order success** (`/order-success/[orderId]`) | Confirmation with the points that were spent and the points that will be earned. |
 | **Track order** (`/track-order`) | An order-lookup form with a delivery timeline. The per-order **Track Shipment** view in the customer dashboard is the live one. |
-| **Store locator** (`/store-locator`) | Store locations and contact details. |
+| **Store locator** (`/store-locator`) | Two real sources in one list: the head office, described from Site Settings and placed by the same cached geocoder the tracking map uses, and every seller shop trading today. Type a name, city or area to narrow it; **Near me** asks the browser for a location and re-sorts by straight-line distance, with places that have no coordinates last rather than missing. Seller rows carry no phone — they link to the storefront. |
 | **About** (`/about`) | Headline, story, headquarters note, **opening hours**, contact channels and call-to-action — all editable from **Site Settings → Contact & Socials**. |
 | **Services / Contact / Privacy / Terms** | Informational pages, branded from the store settings. The **Contact** page has a working form: it validates the fields on the spot, the API **stores the message** for the admin dashboard, and then emails a copy to the **support** or **contact** address saved in Site Settings, with the visitor's address as the reply-to. |
 | **Maintenance** (`/maintenance`) | Shown while the store is paused. See [Maintenance Mode](#-maintenance-mode). |
@@ -107,6 +109,7 @@ Public pages anyone can visit.
 | **Dark / light theme** | Via `next-themes`, with separate light and dark colours and logos. |
 | **Language & currency** | A built-in translator for the storefront, and a per-customer display currency. |
 | **Installable app (PWA)** | A web manifest installs Sparq to desktop or mobile. |
+| **Sold by** | A seller's listing names its shop on the card and links to the storefront, wherever cards render — search, category pages, the rails. Platform stock carries no seller and shows nothing, so a shopper never follows a link to a half-known shop. |
 
 ### Shop browse modes
 
@@ -243,7 +246,7 @@ A customer the store team approves as a seller gets a workspace of their own at 
 
 - **The plan is the contract** — product limits, featured slots, coupon limits, commission, how far back analytics reaches and whether exports may include the per-product and per-order tables are all read from the live plan on the server. The screens show the same numbers because they render the API's answer; the enforcement never lives in the browser.
 - **Nothing here reaches another shop** — every vendor read and write resolves the account from the token, and a foreign id answers `404` rather than confirming that the row exists.
-- **Not shipped yet** — the public storefront pages for a shop (`/shop/<slug>`) and the buyer-side discovery screens.
+- **The storefront is public now** — `/stores/<slug>` shows what this page edits, and the shop's own shelf answers from the same row: the listings that are buyable, and nothing the seller kept as a draft.
 
 ---
 
@@ -333,7 +336,7 @@ A placement is a row, not a checkbox. The `isFeatured` flag on a product or a st
 | Endings are read | *Live / Ended / Cancelled* is derived against the clock, so the desk tells the truth before the sweep has run |
 | Nothing is deleted | Rows are closed with an `endedReason`, so a dark shelf answers why by itself and a past placement still shows its window |
 | Two desks, one reading | A placement is drawn by `lib/promotionWords.ts` on both the seller's desk and the staff board, so *Featured*, *Ended* and *Cancelled* mean the same colour and the same window on each — only the point of view differs, because a grant reads as a gift to the seller and as a favour owed to nobody on the board. |
-| Not shipped | The buyer-side rails that read the featured flags, which arrive with the public storefronts. |
+| The rail reads it | A shop lifted by a placement arrives on the homepage's *Featured Shops* rail, the `/stores` list under *Featured only* and its own storefront banner — all three read the same flag, which the API only answers for while the placement is still running. With no placement running the rail is simply not drawn. |
 
 ### Reviews & ratings
 
@@ -511,8 +514,8 @@ src/
 │   │   │                       profile, plan & billing, notifications
 │   │   └── rider/              overview, requests, deliveries, active,
 │   │                           history, earnings, profile, settings
-│   ├── (main)/                 home, shop, cart, checkout, compare,
-│   │                           track-order, store-locator, order-success,
+│   ├── (main)/                 home, shop, stores (+ shop page), cart, checkout,
+│   │                           compare, track-order, store-locator, order-success,
 │   │                           become-a-vendor (pitch, apply, status),
 │   │                           about, services, contact, privacy, terms
 │   ├── api/                    auth (better-auth) and maintenance status
@@ -527,6 +530,7 @@ src/
 ├── lib/
 │   ├── action/                 server actions (cart, orders, coupons, reviews, addresses, ...)
 │   ├── api/                    typed API clients used by server components
+│   │                           (products, orders, stores for the public shop pages, ...)
 │   ├── core/                   session, roles, server fetch, query helpers
 │   ├── auth.ts                 better-auth configuration
 │   ├── compare.ts              localStorage comparison store
@@ -671,7 +675,7 @@ A fourth role, `rider`, works the deliveries the admin ships. The fifth surface 
 | Featured promotions — seller buys product slots from the plan, counts them down and can end one early | ✅ Complete |
 | Admin promotions board — grant a product or a storefront for a stated number of days, pull one back, run the sweep | ✅ Complete |
 | Store-wide coupons desk for the store team — write a code that reaches the whole store, read every seller's beside them, and the code's line on the staff order board | ✅ Complete |
-| Public vendor storefronts and shop discovery | ⏳ Planned |
+| Public vendor storefronts and shop discovery — `/stores/<slug>` per trading shop, the `/stores` board with search, sort and category chips, the homepage *Featured Shops* rail, "Sold by" links and a store locator that lists the real branch and the real shops | ✅ Complete |
 | Notifications — one feed, bell and page for every role, plus transactional email | ✅ Complete |
 | Admin dashboard with CSV and charted PDF reports | ✅ Complete |
 | Site settings: branding, About page copy, opening hours, maintenance mode | ✅ Complete |
@@ -693,7 +697,7 @@ A fourth role, `rider`, works the deliveries the admin ships. The fifth surface 
 - [x] **Subscription plans** — tiered pricing per store, enforced limits, demo billing and plan-capped analytics.
 - [x] **Featured placement bought from the plan** — seller-bought product slots whose window and allowance both come from the live plan, closed by a daily sweep.
 - [x] **Promotions board for the store team** — grant a placement, revoke one and run the sweep from the admin dashboard.
-- [ ] **Public vendor storefronts** — a page per shop under `/shop/<slug>`, plus discovery, featured shops and seller search on the buyer side.
+- [x] **Public vendor storefronts** — a page per shop under `/stores/<slug>`, plus discovery, featured shops, seller search, "Sold by" links and a store locator wired to real shops.
 - [ ] **Multi-tenant stores** — every store gets its own data, branding and subdomain.
 - [ ] **Real-time settings sync** — live, instantly applied store configuration.
 

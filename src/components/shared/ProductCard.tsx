@@ -372,6 +372,12 @@ export default function ProductCard({
   // ────────────────────────────────────────────────────────────────────────────
 
   const categoryText = product.categories?.join(", ") || "Product";
+
+  // The seller's name only appears when the row came with one: platform stock
+  // has no shop to visit, and a card invented from the id alone would link to
+  // a page the API would answer 404 for.
+  const sellerName = product.seller?.name || "";
+  const sellerHref = product.seller?.slug ? `/stores/${product.seller.slug}` : "";
   
   const formattedPrice = formatPrice(product.price);
 
@@ -520,6 +526,21 @@ export default function ProductCard({
             {product.title}
           </h3>
         </Link>
+
+        {sellerName && (
+          <p className="text-[10px] sm:text-[11px] text-[var(--foreground-muted)] leading-none">
+            {sellerHref ? (
+              <Link
+                href={sellerHref}
+                className="hover:text-primary transition-colors cursor-pointer"
+              >
+                Sold by <span className="font-semibold">{sellerName}</span>
+              </Link>
+            ) : (
+              <span>Sold by {sellerName}</span>
+            )}
+          </p>
+        )}
 
         {product.description && (
           <p className="hidden sm:block text-[11px] text-[var(--foreground-muted)] truncate leading-relaxed">

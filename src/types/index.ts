@@ -130,6 +130,12 @@ export interface Product {
   id: string;
   _id?: string;
   ownerId?: string;
+  /**
+   * The shop that sells this, when it is a seller's stock. Only the public
+   * catalogue reads fill it — a row without the join simply shows no seller —
+   * and an empty slug means the shop has no storefront link yet.
+   */
+  seller?: { id: string; name: string; slug: string };
   title: string;
   slug: string;
   categories: string[]; // e.g. ["Accessories", "Gift Sets"]

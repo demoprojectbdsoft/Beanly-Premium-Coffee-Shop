@@ -2,6 +2,8 @@ import { Product, Category, SubCategory } from "./index";
 
 export interface ShopQueryParams {
   search?: string;
+  /** One seller's shelf, by the shop's storefront slug. */
+  storeSlug?: string;
   category?: string;
   categoryId?: string;
   subCategory?: string;

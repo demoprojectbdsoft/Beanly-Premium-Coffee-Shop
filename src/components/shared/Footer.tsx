@@ -154,6 +154,10 @@ export default function Footer() {
               {[
                 { name: "My Account", href: "/account" },
                 { name: "Track your Order", href: "/track-order" },
+                // Multi-vendor entry points: the discovery page and the locator,
+                // which both answer from real shops rather than sample rows.
+                { name: "Shop the Shops", href: "/stores" },
+                { name: "Store Locator", href: "/store-locator" },
                 { name: "Customer Service", href: "/customer-service" },
                 { name: "Returns/Exchange", href: "/returns" },
                 { name: "FAQs", href: "/faq" },
@@ -210,4 +214,4 @@ export default function Footer() {
 
     </footer>
   );
-}
+}

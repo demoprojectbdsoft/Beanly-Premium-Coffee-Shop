@@ -6,10 +6,13 @@ import WarehouseDeals from "@/components/homepage/WarehouseDeals";
 import TrendingProducts from "@/components/homepage/TrendingProducts";
 import PopularProducts from "@/components/homepage/PopularProducts";
 import NewArrivals from "@/components/homepage/NewArrivals";
+import FeaturedStores from "@/components/homepage/FeaturedStores";
 import { Product, Promo } from "@/types";
+import type { PublicStore } from "@/types/stores";
 import PromoStrip from "@/components/homepage/PromoStrip";
 import Brand from "@/components/homepage/Brand";
 import { getProducts } from "@/lib/api/products";
+import { asStoreList, getPublicStores } from "@/lib/api/stores";
 import { getSlides } from "@/lib/api/slides";
 import { getPromos } from "@/lib/api/promos";
 
@@ -47,6 +50,14 @@ async function PopularSection() {
   const res = await getProducts({ badge: "popular", limit: 14 });
   const products: Product[] = res?.data?.products ?? [];
   return <PopularProducts products={products} />;
+}
+
+// The shops a paid placement is lighting up. No placement running, no section:
+// the rail would otherwise claim a "featured" list that is simply empty.
+async function FeaturedStoresSection() {
+  const result = asStoreList(await getPublicStores({ featured: true, limit: 8 }));
+  const stores: PublicStore[] = result?.stores ?? [];
+  return <FeaturedStores stores={stores} />;
 }
 
 // Reads the active "tile" banners. They are drawn two per row by PromoBanners.
@@ -113,6 +124,11 @@ export default function Home() {
       {/* Popular Products — shows skeleton while fetching */}
       <Suspense fallback={<PopularProducts loading />}>
         <PopularSection />
+      </Suspense>
+
+      {/* Featured shops — disappears when no storefront placement is running */}
+      <Suspense fallback={null}>
+        <FeaturedStoresSection />
       </Suspense>
 
       {/* Wide promo strip — also disappears when no strip banner is active */}
