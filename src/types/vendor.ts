@@ -222,3 +222,85 @@ export interface VendorApplicationDetail {
   applicant: VendorApplicantSummary | null;
   store: VendorStoreSummary | null;
 }
+
+/** One labelled set of choices, e.g. Colour: red, blue. */
+export interface VendorProductVariant {
+  name: string;
+  values: string[];
+}
+
+export interface VendorProductShipping {
+  weightKg?: number | null;
+  deliveryDays?: number | null;
+  freeShipping?: boolean;
+  note?: string;
+}
+
+/** What the product form holds while it is being filled in. */
+export interface VendorProductDraft {
+  title: string;
+  slug?: string;
+  categoryId: string;
+  subCategoryIds: string[];
+  price: number;
+  originalPrice?: number | null;
+  image: string;
+  additionalImages: string[];
+  stockQuantity: number | null;
+  sku: string;
+  brand: string;
+  description: string;
+  specifications: Record<string, string>;
+  variantOptions: VendorProductVariant[];
+  shippingInfo: VendorProductShipping;
+  isVisible: boolean;
+}
+
+/** A product as the vendor's own screens read it. */
+export interface VendorProduct {
+  _id: string;
+  id?: string;
+  title: string;
+  slug: string;
+  price: number;
+  originalPrice?: number | null;
+  image: string;
+  additionalImages?: string[];
+  stockQuantity?: number | null;
+  inStock?: boolean;
+  sku?: string;
+  brand?: string;
+  description?: string;
+  specifications?: Record<string, string>;
+  variantOptions?: VendorProductVariant[];
+  shippingInfo?: VendorProductShipping;
+  isVisible?: boolean;
+  isFeatured?: boolean;
+  vendorProductStatus?: string;
+  categoryId?: { name: string; slug: string; _id?: string; id?: string } | string;
+  subCategoryIds?: { name: string; slug: string; _id?: string; id?: string }[];
+  rating?: number;
+  reviewCount?: number;
+  sellCount?: number;
+  publishedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** The vendor's plan, as the catalogue screen shows its usage. */
+export interface VendorProductPlan {
+  id: VendorPlanId;
+  name: string;
+  maxProducts: number;
+  used: number;
+  isLive: boolean;
+  effectiveUntil: string | null;
+}
+
+export interface VendorProductListResult {
+  products: VendorProduct[];
+  total: number;
+  typeCounts: Record<string, number>;
+  pagination: VendorPagination;
+  plan: VendorProductPlan;
+}

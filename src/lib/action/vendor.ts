@@ -2,8 +2,8 @@
 
 import { serverMutation } from "../core/server";
 import { getUserSession } from "../core/session";
-import { isAdminRole } from "../core/roles";
-import type { BillingCycle, VendorPlanId } from "@/types/vendor";
+import { isAdminRole, isVendorRole } from "../core/roles";
+import type { BillingCycle, VendorPlanId, VendorProductDraft } from "@/types/vendor";
 
 /**
  * The marketplace writes.
@@ -146,6 +146,44 @@ export const updateMyStore = async (data: VendorStoreUpdate) => {
     return { success: false as const, message: "Sign in to edit your store." };
   }
   return serverMutation("/vendor-store/mine", data, "PATCH");
+};
+
+/** Saves a new product as a draft, or publishes it in the same call. */
+export const createVendorProduct = async (
+  data: Partial<VendorProductDraft> & {
+    title: string;
+    categoryId: string;
+    price: number;
+    image: string;
+  },
+  publish: boolean
+) => {
+  const user = await getUserSession();
+  if (!isVendorRole(user)) {
+    return { success: false as const, message: "Vendor access required." };
+  }
+  return serverMutation("/vendor-products", { ...data, publish }, "POST");
+};
+
+/** Edits one of the vendor's own products; the id is checked against the token. */
+export const updateVendorProduct = async (
+  productId: string,
+  data: Partial<VendorProductDraft> & { status?: string }
+) => {
+  const user = await getUserSession();
+  if (!isVendorRole(user)) {
+    return { success: false as const, message: "Vendor access required." };
+  }
+  return serverMutation(`/vendor-products/${productId}`, data, "PATCH");
+};
+
+/** Archives a product; orders that already reference it are untouched. */
+export const archiveVendorProduct = async (productId: string) => {
+  const user = await getUserSession();
+  if (!isVendorRole(user)) {
+    return { success: false as const, message: "Vendor access required." };
+  }
+  return serverMutation(`/vendor-products/${productId}`, {}, "DELETE");
 };
 
 /** The store team edits a plan's numbers; every limit check reads the result. */

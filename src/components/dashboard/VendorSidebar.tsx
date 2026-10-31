@@ -8,6 +8,7 @@ import {
   ChevronRight,
   LayoutDashboard,
   LogOut,
+  Package,
   Store,
   X,
 } from "lucide-react";
@@ -18,15 +19,16 @@ import SparqLogo from "@/components/shared/SparqLogo";
 /**
  * The vendor's workspace navigation.
  *
- * It starts small on purpose: the store overview, the store profile and the
- * seller feed. Catalogue, orders and promotions join this list as their screens
- * arrive, so no link here ever opens a page that does not exist.
+ * It starts small on purpose: the store overview, the store profile, the
+ * catalogue and the seller feed. Orders and promotions join this list as their
+ * screens arrive, so no link here ever opens a page that does not exist.
  */
 const VENDOR_NAV_GROUPS = [
   {
     title: "Store",
     items: [
       { name: "Overview", href: "/dashboard/vendor", icon: LayoutDashboard },
+      { name: "Products", href: "/dashboard/vendor/products", icon: Package },
       { name: "Store Profile", href: "/dashboard/vendor/profile", icon: Store },
       { name: "Notifications", href: "/dashboard/vendor/notifications", icon: Bell },
     ],
