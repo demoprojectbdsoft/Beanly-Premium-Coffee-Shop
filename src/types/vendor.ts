@@ -223,6 +223,23 @@ export interface VendorApplicationDetail {
   store: VendorStoreSummary | null;
 }
 
+/**
+ * A shop as the store team's desks read it: the public row plus whose account
+ * it belongs to, because a storefront placement is granted to the seller.
+ */
+export interface VendorStoreRow extends VendorStore {
+  userId: string;
+  ownerName: string;
+  ownerEmail: string;
+}
+
+/** One page of shops, for the desks that have to choose one among everyone's. */
+export interface VendorStoreListResult {
+  stores: VendorStoreRow[];
+  total: number;
+  pagination: VendorPagination;
+}
+
 /** One labelled set of choices, e.g. Colour: red, blue. */
 export interface VendorProductVariant {
   name: string;

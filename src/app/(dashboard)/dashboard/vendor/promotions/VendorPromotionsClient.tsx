@@ -18,7 +18,7 @@ import { toast } from "react-toastify";
 import type { FeaturedPlacement, PromotionState } from "@/types";
 import type { VendorPagination } from "@/types/vendor";
 import { formatPrice } from "@/lib/currency";
-import { formatOrderDate } from "@/lib/dateTime";
+import { getPromotionStateStyle, promotionEndWords, promotionSourceWords, promotionWindowWords } from "@/lib/promotionWords";
 import { cancelMyPromotion, featureMyProduct } from "@/lib/action/vendorPromotions";
 
 /**
@@ -77,41 +77,6 @@ const KIND_TABS: { key: "all" | "product" | "store"; label: string }[] = [
   { key: "product", label: "Products" },
   { key: "store", label: "Storefront" },
 ];
-
-const STATE_STYLES: Record<PromotionState, { label: string; badge: string }> = {
-  live: {
-    label: "Featured",
-    badge:
-      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300",
-  },
-  ended: {
-    label: "Ended",
-    badge:
-      "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300",
-  },
-  cancelled: {
-    label: "Cancelled",
-    badge:
-      "border-[var(--border-color)] bg-[var(--surface-alt)] text-[var(--foreground-muted)]",
-  },
-};
-
-/** The window, written once when only one end matters. */
-function windowWords(placement: FeaturedPlacement): string {
-  const start = formatOrderDate(placement.startsAt);
-  const end = formatOrderDate(placement.endsAt);
-  if (!start && !end) return "No dates set";
-  if (!start) return `Until ${end}`;
-  if (!end) return `From ${start}`;
-  return `${start} → ${end}`;
-}
-
-/** Who paid for the shelf, in the words the seller cares about. */
-function sourceWords(placement: FeaturedPlacement): string {
-  return placement.source === "admin"
-    ? "Granted by the store team"
-    : `From your ${placement.plan} plan`;
-}
 
 export default function VendorPromotionsClient({
   placements,
@@ -458,7 +423,7 @@ export default function VendorPromotionsClient({
         ) : (
           <ul className="divide-y divide-[var(--border-color)]">
             {placements.map((placement) => {
-              const style = STATE_STYLES[placement.state];
+              const style = getPromotionStateStyle(placement.state);
               const isStore = placement.kind === "store";
 
               return (
@@ -511,7 +476,7 @@ export default function VendorPromotionsClient({
                     </div>
 
                     <p className="mt-1 truncate text-[10px] text-[var(--foreground-muted)]">
-                      {windowWords(placement)}
+                      {promotionWindowWords(placement)}
                       {placement.state === "live" && (
                         <>
                           {" · "}
@@ -521,16 +486,11 @@ export default function VendorPromotionsClient({
                           </span>
                         </>
                       )}
-                      {placement.state === "ended" &&
-                        placement.endedAt &&
-                        ` · came off ${formatOrderDate(placement.endedAt)}`}
-                      {placement.state === "cancelled" &&
-                        placement.endedAt &&
-                        ` · ended ${formatOrderDate(placement.endedAt)}`}
+                      {promotionEndWords(placement) && ` · ${promotionEndWords(placement)}`}
                     </p>
 
                     <p className="mt-0.5 truncate text-[10px] text-[var(--foreground-muted)]">
-                      {sourceWords(placement)}
+                      {promotionSourceWords(placement)}
                       {placement.endedReason && ` · ${placement.endedReason}`}
                     </p>
                   </div>

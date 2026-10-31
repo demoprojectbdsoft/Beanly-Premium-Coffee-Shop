@@ -175,7 +175,7 @@ Switching mode keeps the current filters, search and sort.
 
 ## 🛠️ Admin Dashboard
 
-The sidebar is grouped so a long menu stays readable: **Store** (products, categories, home slider, promo banners), **Sales** (orders, deliveries, transactions), **People** (users, vendor applications) and **Support** (reviews, warranties, messages), with the overview and the notification board on their own at the top and the profile/settings links at the bottom. A link stays highlighted on its own sub-pages, and the overview only lights up on the dashboard itself.
+The sidebar is grouped so a long menu stays readable: **Store** (products, categories, home slider, promo banners, promotions), **Sales** (orders, deliveries, transactions), **People** (users, vendor applications) and **Support** (reviews, warranties, messages), with the overview and the notification board on their own at the top and the profile/settings links at the bottom. A link stays highlighted on its own sub-pages, and the overview only lights up on the dashboard itself.
 
 | Area | What the admin can do |
 |---|---|
@@ -184,6 +184,7 @@ The sidebar is grouped so a long menu stays readable: **Store** (products, categ
 | **Categories & subcategories** | Manage the hierarchy. Deleting a category also deletes its subcategories, but the whole delete is cancelled if the category or any subcategory still has products. |
 | **Home slider** | Add, reorder and manage slides by selecting an existing product. |
 | **Promo banners** | Fill in the two promo blocks of the homepage **separately**. Both live on one page: *Promo tiles* (the side-by-side banners between the product rows) and *Promo strip* (the wide band lower down, which shows the first live banner). Each banner has a name for the dashboard, its own image, a free-text small line / bold word / main line, an optional badge and button, a link and a position. Every block shows a live preview built from the real homepage component, and the editor previews the banner as it is typed. **A banner with no image is never drawn**, and a block hides itself when nothing in it is live. |
+| **Promotions** | `/dashboard/admin/promotions` — every featured placement on the marketplace, whose shelf it lifts and until when. Two pickers grant one: a **product** is chosen from the catalogue and the seller it belongs to is read from the row, never typed; a **shop** is chosen from the active stores, and being a featured *store* is decided here alone. The window is stated in days (1–365, with 7/14/30/60/90 shortcuts) and every grant keeps an optional reason the seller reads. Running rows can be **ended now** with that reason — a blank box records the API's own words, so a row is never closed without one — and **Run the sweep** does by hand what the nightly job does, telling the team how many shelves went dark. Nothing here is a switch: a platform-owned product is listed but refused, with a pointer to the Products desk, because a grant has to carry an end date |
 | **Orders** | Platform-wide orders with search and status filters. Open an order to see items, pricing breakdown, redemption and earned points, warranty state and the customer's response, then move it along the status flow. |
 | **Transactions** | Platform-wide payment records. |
 | **Users** | Change a user's role and account status, and see their points and membership tier. |
@@ -241,7 +242,7 @@ A customer the store team approves as a seller gets a workspace of their own at 
 
 - **The plan is the contract** — product limits, featured slots, coupon limits, commission, how far back analytics reaches and whether exports may include the per-product and per-order tables are all read from the live plan on the server. The screens show the same numbers because they render the API's answer; the enforcement never lives in the browser.
 - **Nothing here reaches another shop** — every vendor read and write resolves the account from the token, and a foreign id answers `404` rather than confirming that the row exists.
-- **Not shipped yet** — the public storefront pages for a shop (`/shop/<slug>`), the buyer-side discovery screens, and the store team's own promotions and coupons desks (the APIs are there; the screens are not).
+- **Not shipped yet** — the public storefront pages for a shop (`/shop/<slug>`) and the buyer-side discovery screens.
 
 ---
 
@@ -329,7 +330,8 @@ A placement is a row, not a checkbox. The `isFeatured` flag on a product or a st
 | A lapse dims the shelves | When a subscription expires — caught by the daily sweep or by the lazy close when the plan is next read — the shop's placements are ended and the flags come off |
 | Endings are read | *Live / Ended / Cancelled* is derived against the clock, so the desk tells the truth before the sweep has run |
 | Nothing is deleted | Rows are closed with an `endedReason`, so a dark shelf answers why by itself and a past placement still shows its window |
-| Not shipped | The store team's promotions board (the grant, revoke and run-the-sweep endpoints exist) and the buyer-side rails that read the flags |
+| Two desks, one reading | A placement is drawn by `lib/promotionWords.ts` on both the seller's desk and the staff board, so *Featured*, *Ended* and *Cancelled* mean the same colour and the same window on each — only the point of view differs, because a grant reads as a gift to the seller and as a favour owed to nobody on the board. |
+| Not shipped | The buyer-side rails that read the featured flags, which arrive with the public storefronts. |
 
 ### Reviews & ratings
 
@@ -498,8 +500,8 @@ src/
 │   ├── (dashboard)/dashboard/
 │   │   ├── admin/              overview, products, categories, slider, orders,
 │   │   │                       deliveries, transactions, users, vendor
-│   │   │                       applications, reviews, warranties, messages,
-│   │   │                       settings
+│   │   │                       applications, promotions, reviews, warranties,
+│   │   │                       messages, settings
 │   │   ├── customer/           overview, orders, transactions, wishlist,
 │   │   │                       reviews, analytics, profile, settings
 │   │   ├── vendor/             overview, orders (+ detail), products (+ new,
@@ -534,6 +536,7 @@ src/
 │   ├── orderStatusStyles.ts    one colour/icon palette per order status
 │   ├── vendorOrderStatus.ts    the seller's stages on that palette + the legal next actions
 │   ├── vendorProductStatus.ts  the seller's listing statuses and their badges
+│   ├── promotionWords.ts       one badge, window and source line per placement, for both desks
 │   ├── vendorPlan.ts           plan pricing: cycle price, monthly equivalent, yearly saving
 │   ├── vendorStatus.ts         application status badges
 │   ├── warranty.ts             warranty catalog, duration, extension and problem wording
@@ -662,8 +665,8 @@ A fourth role, `rider`, works the deliveries the admin ships. The fifth surface 
 | Vendor sales report with CSV and charted PDF exports | ✅ Complete |
 | Discount codes — seller's own desk, real validation in the cart, re-priced at checkout, named on the invoice | ✅ Complete |
 | Featured promotions — seller buys product slots from the plan, counts them down and can end one early | ✅ Complete |
+| Admin promotions board — grant a product or a storefront for a stated number of days, pull one back, run the sweep | ✅ Complete |
 | Store-wide coupons admin desk (API exists, screen to come) | ⏳ Planned |
-| Admin promotions board for granting and expiring a placement (API exists, screen to come) | ⏳ Planned |
 | Public vendor storefronts and shop discovery | ⏳ Planned |
 | Notifications — one feed, bell and page for every role, plus transactional email | ✅ Complete |
 | Admin dashboard with CSV and charted PDF reports | ✅ Complete |
@@ -685,7 +688,7 @@ A fourth role, `rider`, works the deliveries the admin ships. The fifth surface 
 - [x] **Self-serve store onboarding** — apply, get reviewed, and run a shop from its own dashboard.
 - [x] **Subscription plans** — tiered pricing per store, enforced limits, demo billing and plan-capped analytics.
 - [x] **Featured placement bought from the plan** — seller-bought product slots whose window and allowance both come from the live plan, closed by a daily sweep.
-- [ ] **Promotions board for the store team** — grant a placement, revoke one and run the sweep from the admin dashboard; the endpoints are already there.
+- [x] **Promotions board for the store team** — grant a placement, revoke one and run the sweep from the admin dashboard.
 - [ ] **Public vendor storefronts** — a page per shop under `/shop/<slug>`, plus discovery, featured shops and seller search on the buyer side.
 - [ ] **Multi-tenant stores** — every store gets its own data, branding and subdomain.
 - [ ] **Real-time settings sync** — live, instantly applied store configuration.

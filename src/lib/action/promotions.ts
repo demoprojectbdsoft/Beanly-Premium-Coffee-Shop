@@ -25,13 +25,19 @@ export const grantPromotion = async (data: PromotionGrantDraft) => {
   return serverMutation("/promotions", data, "POST");
 };
 
-/** Ends a placement early, with the reason the seller will read. */
+/**
+ * Ends a placement early, with the reason the seller will read.
+ *
+ * An empty box sends no reason at all rather than an empty string, so the API's
+ * own "Ended by the store team" is what lands on the row.
+ */
 export const revokePromotion = async (id: string, reason: string) => {
   const user = await getUserSession();
   if (!isAdminRole(user)) {
     return { success: false as const, message: "Admin access required." };
   }
-  return serverMutation(`/promotions/${id}`, { reason }, "DELETE");
+  const trimmed = reason.trim();
+  return serverMutation(`/promotions/${id}`, trimmed ? { reason: trimmed } : {}, "DELETE");
 };
 
 /**

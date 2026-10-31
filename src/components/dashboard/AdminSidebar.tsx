@@ -21,6 +21,7 @@ import {
   Bell,
   Mail,
   Megaphone,
+  Sparkles,
   Truck,
   Store,
   type LucideIcon,
@@ -54,6 +55,7 @@ const NAV_GROUPS = [
       { name: "Categories", href: "/dashboard/admin/categories", icon: FolderTree },
       { name: "Home Slider", href: "/dashboard/admin/home-slider", icon: SlidersHorizontal },
       { name: "Promo Banners", href: "/dashboard/admin/promo-banners", icon: Megaphone },
+      { name: "Promotions", href: "/dashboard/admin/promotions", icon: Sparkles },
     ],
   },
   {
