@@ -34,8 +34,9 @@ import {
   Store,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { updateUser } from "@/lib/action/user";
+import { updateUser, setUserRoles, setUserRoleSuspension } from "@/lib/action/user";
 import { getUserOrdersAction } from "@/lib/action/orders";
+import { rolesOf, roleOf, suspendedRolesOf } from "@/lib/core/roles";
 import { useDemoAdmin } from "@/hooks/useDemoAdmin";
 import UserAvatar from "@/components/shared/UserAvatar";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
@@ -69,6 +70,12 @@ interface PaginationMeta {
   totalPages: number;
 }
 
+interface RoleSuspensionRow {
+  role?: string;
+  reason?: string;
+  suspendedAt?: string;
+}
+
 interface UserItem {
   id?: string;
   _id?: string;
@@ -77,12 +84,17 @@ interface UserItem {
   image?: string;
   avatar?: string;
   role?: string;
+  activeRole?: string;
+  roles?: string[] | string;
+  roleSuspensions?: RoleSuspensionRow[];
   status?: string;
   member?: string;
   points?: number;
   createdAt?: string;
   updatedAt?: string;
   emailVerified?: boolean;
+  vendorStatus?: string;
+  riderStatus?: string;
 }
 
 interface UsersClientProps {
@@ -138,6 +150,100 @@ function SafeProductImage({
         className="w-full h-full object-contain p-1"
         onError={() => setHasError(true)}
       />
+    </div>
+  );
+}
+
+// ── Role chip visuals ───────────────────────────────────────────────
+// One account can hold several approved roles. The table shows a chip for
+// each: the dashboard the account is currently on gets a filled ring, and a
+// role the store team parked is drawn muted with a Ban mark so an admin can
+// tell "approved but closed" apart from a genuinely active workspace.
+type RoleVisual = {
+  icon: React.ComponentType<{ className?: string }>;
+  chip: string;
+};
+
+function roleVisual(role: string): RoleVisual {
+  switch (role) {
+    case "admin":
+    case "demoadmin":
+      return {
+        icon: ShieldCheck,
+        chip: "bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-300 border-violet-200/80 dark:border-violet-800/60",
+      };
+    case "rider":
+      return {
+        icon: Bike,
+        chip: "bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/60",
+      };
+    case "vendor":
+      return {
+        icon: Store,
+        chip: "bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-300 border-teal-200/80 dark:border-teal-800/60",
+      };
+    default:
+      return {
+        icon: UserIcon,
+        chip: "bg-[var(--accent)]/10 text-primary border-sky-200/80 dark:border-sky-800/60",
+      };
+  }
+}
+
+// Preferred display order so a multi-role row always reads the same way.
+const ROLE_ORDER = ["admin", "demoadmin", "vendor", "rider", "customer"];
+
+function orderRoles(list: string[]): string[] {
+  return [...list].sort((a, b) => {
+    const ia = ROLE_ORDER.indexOf(a);
+    const ib = ROLE_ORDER.indexOf(b);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+}
+
+function RoleChips({ user }: { user: UserItem }) {
+  const held = orderRoles(rolesOf(user));
+  const active = roleOf(user);
+  const suspended = suspendedRolesOf(user);
+
+  if (held.length === 0) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border bg-[var(--surface-alt)] text-[var(--foreground-muted)] border-[var(--border-color)]">
+        <UserIcon className="w-3.5 h-3.5 shrink-0" />
+        <span>none</span>
+      </span>
+    );
+  }
+
+  return (
+    <div className="inline-flex flex-wrap items-center justify-center gap-1">
+      {held.map((role) => {
+        const { icon: Icon, chip } = roleVisual(role);
+        const isSuspended = role !== "customer" && suspended.includes(role);
+        const isActive = role === active;
+        return (
+          <span
+            key={role}
+            title={
+              isSuspended
+                ? `${role} — suspended`
+                : isActive
+                  ? `${role} — active dashboard`
+                  : role
+            }
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition ${chip} ${
+              isActive ? "ring-2 ring-[var(--accent)]/40" : ""
+            } ${isSuspended ? "opacity-60" : ""}`}
+          >
+            {isSuspended ? (
+              <Ban className="w-3 h-3 shrink-0" />
+            ) : (
+              <Icon className="w-3 h-3 shrink-0" />
+            )}
+            <span className={`capitalize ${isSuspended ? "line-through" : ""}`}>{role}</span>
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -539,7 +645,6 @@ export default function UsersClient({
                     user.avatar ||
                     (user as any).picture ||
                     (user as any).photoUrl;
-                  const role = (user.role || "customer").toLowerCase();
                   const status = (user.status || "active").toLowerCase();
                   const dateStr = user.createdAt
                     ? new Date(user.createdAt).toLocaleDateString(undefined, {
@@ -578,30 +683,9 @@ export default function UsersClient({
                         </div>
                       </td>
 
-                      {/* Role Badge */}
+                      {/* Role Badges — one chip per approved role */}
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
-                            role === "admin"
-                              ? "bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-300 border-violet-200/80 dark:border-violet-800/60"
-                              : role === "rider"
-                                ? "bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/60"
-                                : role === "vendor"
-                                  ? "bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-300 border-teal-200/80 dark:border-teal-800/60"
-                                  : "bg-[var(--accent)]/10 dark:bg-[var(--accent)]/10/70 text-primary border-sky-200/80 dark:border-sky-800/60"
-                          }`}
-                        >
-                          {role === "admin" ? (
-                            <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                          ) : role === "rider" ? (
-                            <Bike className="w-3.5 h-3.5 shrink-0" />
-                          ) : role === "vendor" ? (
-                            <Store className="w-3.5 h-3.5 shrink-0" />
-                          ) : (
-                            <UserIcon className="w-3.5 h-3.5 shrink-0" />
-                          )}
-                          <span className="capitalize">{role}</span>
-                        </span>
+                        <RoleChips user={user} />
                       </td>
 
                       {/* Status Badge */}
