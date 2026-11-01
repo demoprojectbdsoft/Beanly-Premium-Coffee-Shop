@@ -9,7 +9,6 @@ import {
   Button,
   Select,
   ListBox,
-  Modal,
 } from "@heroui/react";
 import {
   Users,
@@ -23,35 +22,14 @@ import {
   Calendar,
   Sparkles,
   Award,
-  Trash2,
-  Eye,
-  Copy,
-  Check,
-  ShoppingBag,
-  ExternalLink,
-  Package,
+  ChevronDown,
   Bike,
   Store,
 } from "lucide-react";
-import { toast } from "react-toastify";
-import { updateUser, setUserRoles, setUserRoleSuspension } from "@/lib/action/user";
-import { getUserOrdersAction } from "@/lib/action/orders";
+import { getUserAdminDetail } from "@/lib/action/user";
 import { rolesOf, roleOf, suspendedRolesOf } from "@/lib/core/roles";
-import { useDemoAdmin } from "@/hooks/useDemoAdmin";
 import UserAvatar from "@/components/shared/UserAvatar";
-import { useSiteSettings } from "@/context/SiteSettingsContext";
-
-const ROLE_OPTIONS = [
-  { id: "admin", label: "Admin", icon: ShieldCheck, desc: "Full administrative access to the platform" },
-  { id: "customer", label: "Customer", icon: UserIcon, desc: "Standard shopper and customer access" },
-  { id: "rider", label: "Rider", icon: Bike, desc: "Delivers assigned orders from the rider dashboard" },
-  { id: "vendor", label: "Vendor", icon: Store, desc: "Seller account, reserved for the marketplace add-on" },
-];
-
-const STATUS_OPTIONS = [
-  { id: "active", label: "Active", icon: CheckCircle2, desc: "Account is active and in good standing" },
-  { id: "suspended", label: "Suspended", icon: Ban, desc: "Account is restricted and cannot place orders" },
-];
+import UserDetailClient from "./[id]/UserDetailClient";
 
 const FILTER_TABS = ["All", "Admin", "Customer", "Rider", "Vendor"];
 const STATUS_FILTER_TABS = ["All", "Active", "Suspended"];
@@ -100,58 +78,6 @@ interface UserItem {
 interface UsersClientProps {
   initialUsers: UserItem[];
   pagination: PaginationMeta;
-}
-
-// Safe product image component that falls back to placeholder
-function SafeProductImage({
-  src,
-  alt,
-  size = 44,
-  className = "",
-}: {
-  src?: string | null;
-  alt?: string;
-  size?: number;
-  className?: string;
-}) {
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    setHasError(false);
-  }, [src]);
-
-  const cleanSrc = typeof src === "string" ? src.trim() : "";
-  const isValidSrc =
-    cleanSrc.length > 0 &&
-    cleanSrc !== "undefined" &&
-    cleanSrc !== "null" &&
-    !cleanSrc.includes("[object Object]") &&
-    !hasError;
-
-  if (!isValidSrc) {
-    return (
-      <div
-        className={`flex items-center justify-center bg-[var(--surface-alt)] border border-[var(--border-color)] text-[var(--foreground-muted)] shrink-0 rounded-lg ${className}`}
-        style={{ width: size, height: size }}
-      >
-        <ShoppingBag className="w-5 h-5 text-[var(--foreground-muted)]" />
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={`relative shrink-0 overflow-hidden rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-color)] ${className}`}
-      style={{ width: size, height: size }}
-    >
-      <img
-        src={cleanSrc}
-        alt={alt || "Product"}
-        className="w-full h-full object-contain p-1"
-        onError={() => setHasError(true)}
-      />
-    </div>
-  );
 }
 
 // ── Role chip visuals ───────────────────────────────────────────────
@@ -252,21 +178,24 @@ export default function UsersClient({
   initialUsers = [],
   pagination,
 }: UsersClientProps) {
-  const { formatPrice } = useSiteSettings();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { guardDemo } = useDemoAdmin();
   const [isPending, startTransition] = useTransition();
 
   const [users, setUsers] = useState<UserItem[]>(initialUsers);
-  const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [copiedId, setCopiedId] = useState(false);
 
-  // User orders state for modal
-  const [userOrders, setUserOrders] = useState<any[]>([]);
-  const [loadingOrders, setLoadingOrders] = useState(false);
+  // Inline detail: the one expanded row and the freshly-fetched bundle that
+  // fills it. The bundle is pulled from the server on expand, so the panel
+  // shows the same thing the standalone profile page does rather than the
+  // trimmed summary this list already holds.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<{
+    user: Record<string, unknown>;
+    orders: unknown[];
+    vendorDetail: Record<string, unknown> | null;
+    riderDetail: Record<string, unknown> | null;
+  } | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   useEffect(() => {
     setUsers(Array.isArray(initialUsers) ? initialUsers : []);
@@ -327,168 +256,31 @@ export default function UsersClient({
     });
   };
 
-  // Open modal with user details & fetch their purchased products
-  const handleOpenModal = async (user: UserItem) => {
-    setSelectedUser(user);
-    setIsModalOpen(true);
-    setCopiedId(false);
-
-    const userId = user._id || user.id;
-    if (userId) {
-      setLoadingOrders(true);
-      try {
-        const orders = await getUserOrdersAction(userId);
-        setUserOrders(Array.isArray(orders) ? orders : []);
-      } catch (err) {
-        setUserOrders([]);
-      } finally {
-        setLoadingOrders(false);
-      }
-    } else {
-      setUserOrders([]);
-    }
-  };
-
-  const copyUserId = (id: string) => {
-    navigator.clipboard.writeText(id);
-    setCopiedId(true);
-    toast.success("User ID copied to clipboard!");
-    setTimeout(() => setCopiedId(false), 2000);
-  };
-
-  // Reflect a fresh server answer onto the row and the open modal together, so
-  // the chips re-render without waiting for the router to re-fetch.
-  const applyUserPatch = (userId: string, patch: Partial<UserItem>) => {
-    setUsers((prev) =>
-      prev.map((u) => ((u._id || u.id) === userId ? { ...u, ...patch } : u))
-    );
-    setSelectedUser((prev) =>
-      prev && (prev._id || prev.id) === userId ? { ...prev, ...patch } : prev
-    );
-  };
-
-  // Grant or revoke one role. The whole approved list is sent so the store API
-  // can re-apply its invariants: an admin collapses to a single authority,
-  // every other pool keeps its customer entry, and the active dashboard falls
-  // back if the role being removed was the one the account was standing on.
-  const handleToggleRole = async (
-    user: UserItem,
-    role: string,
-    checked: boolean
-  ) => {
-    const userId = user._id || user.id;
+  // Expand or collapse one row. Opening fetches the full account bundle from
+  // the store API — the fresh user row, the purchase list, and any marketplace
+  // applications — so the inline panel is authoritative, never a stale claim.
+  const handleToggleRow = async (user: UserItem) => {
+    const userId = user._id || user.id || "";
     if (!userId) return;
-    if (guardDemo()) return;
 
-    const current = rolesOf(user);
-    const next = checked
-      ? Array.from(new Set([...current, role]))
-      : current.filter((r) => r !== role);
-    if (next.length === 0) {
-      toast.error("An account must keep at least one role");
+    if (expandedId === userId) {
+      setExpandedId(null);
+      setDetail(null);
       return;
     }
 
-    setIsUpdating(true);
+    setExpandedId(userId);
+    setDetail(null);
+    setLoadingDetail(true);
     try {
-      const res = await setUserRoles(userId, next);
-      if (res?.success !== false) {
-        const data = (res?.data || {}) as {
-          roles?: string[];
-          activeRole?: string;
-          roleSuspensions?: RoleSuspensionRow[];
-        };
-        applyUserPatch(userId, {
-          roles: data.roles ?? next,
-          activeRole: data.activeRole ?? user.activeRole,
-          role: data.activeRole ?? user.role,
-          roleSuspensions: data.roleSuspensions ?? user.roleSuspensions,
-        });
-        toast.success(checked ? `${role} granted` : `${role} revoked`);
-        router.refresh();
-      } else {
-        toast.error(res?.message || "Failed to update roles");
-      }
+      const bundle = await getUserAdminDetail(userId);
+      if (bundle) setDetail(bundle);
     } catch {
-      toast.error("Error updating user roles");
+      setDetail(null);
     } finally {
-      setIsUpdating(false);
+      setLoadingDetail(false);
     }
   };
-
-  // Park or release one approved role. The role stays granted — the account
-  // just cannot enter that dashboard until it is released, so it never needs a
-  // fresh application. Customer and admin authority are refused by the API here;
-  // those use the account status and the role toggles instead.
-  const handleToggleSuspension = async (
-    user: UserItem,
-    role: string,
-    suspended: boolean
-  ) => {
-    const userId = user._id || user.id;
-    if (!userId) return;
-    if (guardDemo()) return;
-
-    setIsUpdating(true);
-    try {
-      const res = await setUserRoleSuspension(userId, { role, suspended });
-      if (res?.success !== false) {
-        const data = (res?.data || {}) as {
-          roleSuspensions?: RoleSuspensionRow[];
-          activeRole?: string;
-        };
-        applyUserPatch(userId, {
-          roleSuspensions: data.roleSuspensions ?? user.roleSuspensions,
-          activeRole: data.activeRole ?? user.activeRole,
-          role: data.activeRole ?? user.role,
-        });
-        toast.success(suspended ? `${role} suspended` : `${role} released`);
-        router.refresh();
-      } else {
-        toast.error(res?.message || "Failed to update suspension");
-      }
-    } catch {
-      toast.error("Error updating role suspension");
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  // Status change
-  const handleStatusChange = async (userId: string, newStatus: string) => {
-    if (!userId || !newStatus) return;
-    if (guardDemo()) return;
-    setIsUpdating(true);
-    try {
-      const res = await updateUser(userId, { status: newStatus });
-      if (res?.success !== false) {
-        toast.success(`Status updated to ${newStatus.toUpperCase()}`);
-        setUsers((prev) =>
-          prev.map((u) => ((u._id || u.id) === userId ? { ...u, status: newStatus } : u))
-        );
-        if (selectedUser && (selectedUser._id || selectedUser.id) === userId) {
-          setSelectedUser((prev) => (prev ? { ...prev, status: newStatus } : null));
-        }
-        router.refresh();
-      } else {
-        toast.error(res?.message || "Failed to update status");
-      }
-    } catch {
-      toast.error("Error updating user status");
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  // Extract all purchased items across user's orders
-  const purchasedProducts = userOrders.flatMap((order: any) =>
-    (order.items || []).map((item: any) => ({
-      ...item,
-      orderId: order._id || order.id,
-      orderStatus: order.orderStatus || order.status || "processing",
-      orderDate: order.createdAt,
-    }))
-  );
 
   const { page, limit, total, totalPages } = pagination || {
     page: 1,
@@ -530,7 +322,7 @@ export default function UsersClient({
             </span>
           </h1>
           <p className="text-xs md:text-sm text-[var(--foreground-muted)] mt-1">
-            Click on any user row to view complete profile details, purchase history, and control status & role.
+            Click any user row to expand their full profile — role controls, purchase history and rider/vendor details — right here on the page.
           </p>
         </div>
 
@@ -726,101 +518,142 @@ export default function UsersClient({
                       })
                     : "—";
 
+                  const isExpanded = expandedId === id;
                   return (
-                    <tr
-                      key={id}
-                      onClick={() => handleOpenModal(user)}
-                      className="hover:bg-[var(--surface-alt)]/80 dark:hover:bg-[var(--surface)]/40 transition-colors cursor-pointer group"
-                    >
-                      {/* User Avatar & Name */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2.5">
-                          <UserAvatar
-                            src={avatarUrl}
-                            name={name}
-                            size={32}
-                            className="rounded-full bg-gradient-to-tr from-sky-500 to-blue-600 text-white shadow-xs"
-                          />
-                          <p className="font-bold text-[var(--foreground)] truncate max-w-[150px] group-hover:text-primary transition-colors">
-                            {name}
-                          </p>
-                        </div>
-                      </td>
-
-                      {/* Email */}
-                      <td className="py-3.5 px-4 text-[var(--foreground-muted)] truncate max-w-[180px]">
-                        <div className="flex items-center gap-1.5">
-                          <Mail className="w-3.5 h-3.5 text-[var(--foreground-muted)] shrink-0" />
-                          <span className="truncate">{email}</span>
-                        </div>
-                      </td>
-
-                      {/* Role Badges — one chip per approved role */}
-                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        <RoleChips user={user} />
-                      </td>
-
-                      {/* Status Badge */}
-                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
-                            status === "active"
-                              ? "bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60"
-                              : "bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/60"
-                          }`}
-                        >
-                          {status === "active" ? (
-                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                          ) : (
-                            <Ban className="w-3.5 h-3.5 shrink-0" />
-                          )}
-                          <span className="capitalize">{status}</span>
-                        </span>
-                      </td>
-
-                      {/* Member Tier */}
-                      <td className="py-3.5 px-4 whitespace-nowrap capitalize text-[var(--foreground)] font-semibold">
-                        <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-[var(--surface-alt)] font-medium">
-                          <Sparkles className="w-3 h-3 text-amber-500" />
-                          {user.member || "Standard"}
-                        </span>
-                      </td>
-
-                      {/* Points */}
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap font-extrabold text-[var(--foreground)]">
-                        <div className="inline-flex items-center gap-1">
-                          <Award className="w-3.5 h-3.5 text-amber-500" />
-                          {user.points ?? 0}
-                        </div>
-                      </td>
-
-                      {/* Date */}
-                      <td className="py-3.5 px-4 text-[var(--foreground-muted)] whitespace-nowrap text-[11px]">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                          {dateStr}
-                        </div>
-                      </td>
-
-                      {/* Actions */}
-                      <td
-                        className="py-3.5 px-4 text-right whitespace-nowrap"
-                        onClick={(e) => e.stopPropagation()}
+                    <React.Fragment key={id}>
+                      <tr
+                        onClick={() => handleToggleRow(user)}
+                        className={`transition-colors cursor-pointer group ${
+                          isExpanded
+                            ? "bg-[var(--surface-alt)]"
+                            : "hover:bg-[var(--surface-alt)]/80 dark:hover:bg-[var(--surface)]/40"
+                        }`}
                       >
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button
-                            isIconOnly
-                            size="sm"
-                            variant="ghost"
-                            onPress={() => handleOpenModal(user)}
-                            aria-label={`View ${name}`}
-                            className="w-8 h-8 rounded-lg text-[var(--foreground-muted)] hover:text-primary hover:bg-primary/10 cursor-pointer transition-colors"
+                        {/* User Avatar & Name */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-2.5">
+                            <UserAvatar
+                              src={avatarUrl}
+                              name={name}
+                              size={32}
+                              className="rounded-full bg-gradient-to-tr from-sky-500 to-blue-600 text-white shadow-xs"
+                            />
+                            <p className="font-bold text-[var(--foreground)] truncate max-w-[150px] group-hover:text-primary transition-colors">
+                              {name}
+                            </p>
+                          </div>
+                        </td>
+
+                        {/* Email */}
+                        <td className="py-3.5 px-4 text-[var(--foreground-muted)] truncate max-w-[180px]">
+                          <div className="flex items-center gap-1.5">
+                            <Mail className="w-3.5 h-3.5 text-[var(--foreground-muted)] shrink-0" />
+                            <span className="truncate">{email}</span>
+                          </div>
+                        </td>
+
+                        {/* Role Badges — one chip per approved role */}
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          <RoleChips user={user} />
+                        </td>
+
+                        {/* Status Badge */}
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                              status === "active"
+                                ? "bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60"
+                                : "bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/60"
+                            }`}
                           >
-                            <Eye className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
+                            {status === "active" ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                            ) : (
+                              <Ban className="w-3.5 h-3.5 shrink-0" />
+                            )}
+                            <span className="capitalize">{status}</span>
+                          </span>
+                        </td>
+
+                        {/* Member Tier */}
+                        <td className="py-3.5 px-4 whitespace-nowrap capitalize text-[var(--foreground)] font-semibold">
+                          <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-[var(--surface-alt)] font-medium">
+                            <Sparkles className="w-3 h-3 text-amber-500" />
+                            {user.member || "Standard"}
+                          </span>
+                        </td>
+
+                        {/* Points */}
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap font-extrabold text-[var(--foreground)]">
+                          <div className="inline-flex items-center gap-1">
+                            <Award className="w-3.5 h-3.5 text-amber-500" />
+                            {user.points ?? 0}
+                          </div>
+                        </td>
+
+                        {/* Date */}
+                        <td className="py-3.5 px-4 text-[var(--foreground-muted)] whitespace-nowrap text-[11px]">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
+                            {dateStr}
+                          </div>
+                        </td>
+
+                        {/* Actions */}
+                        <td
+                          className="py-3.5 px-4 text-right whitespace-nowrap"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="ghost"
+                              onPress={() => handleToggleRow(user)}
+                              aria-label={isExpanded ? `Hide ${name}` : `View ${name}`}
+                              className="w-8 h-8 rounded-lg text-[var(--foreground-muted)] hover:text-primary hover:bg-primary/10 cursor-pointer transition-colors"
+                            >
+                              <ChevronDown
+                                className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180 text-primary" : ""}`}
+                              />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {isExpanded && (
+                        <tr>
+                          <td
+                            colSpan={8}
+                            className="p-0 bg-[var(--surface-alt)]/40 dark:bg-[var(--surface)]/20 border-t border-[var(--border-color)]"
+                          >
+                            <div className="p-4 sm:p-5">
+                              {loadingDetail ? (
+                                <div className="py-10 text-center">
+                                  <div className="w-7 h-7 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                                  <p className="text-xs font-semibold text-[var(--foreground-muted)]">
+                                    Loading profile…
+                                  </p>
+                                </div>
+                              ) : detail ? (
+                                <UserDetailClient
+                                  key={id}
+                                  variant="inline"
+                                  user={detail.user as any}
+                                  orders={detail.orders as any}
+                                  vendorDetail={detail.vendorDetail as any}
+                                  riderDetail={detail.riderDetail as any}
+                                />
+                              ) : (
+                                <p className="py-8 text-center text-xs text-[var(--foreground-muted)]">
+                                  Could not load this account’s details.
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -891,395 +724,6 @@ export default function UsersClient({
           </div>
         </Card>
       )}
-
-      {/* ── User Details, Purchased Products & Control Modal ── */}
-      <Modal
-        isOpen={isModalOpen}
-        onOpenChange={setIsModalOpen}
-      >
-        <Modal.Backdrop>
-          <Modal.Container size="lg">
-            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 sm:p-7 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto text-[var(--foreground)]">
-              {selectedUser && (
-                <>
-                  {/* Modal Header */}
-                  <Modal.Header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border-color)] pb-5">
-                    <div className="flex items-center gap-3.5">
-                      <UserAvatar
-                        src={
-                          selectedUser.image ||
-                          selectedUser.avatar ||
-                          (selectedUser as any).picture ||
-                          (selectedUser as any).photoUrl
-                        }
-                        name={selectedUser.name}
-                        size={56}
-                        className="rounded-2xl bg-gradient-to-tr from-sky-500 to-blue-600 text-white shadow-xs"
-                      />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Modal.Heading className="text-lg font-extrabold text-[var(--foreground)]">
-                            {selectedUser.name || "User Profile"}
-                          </Modal.Heading>
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
-                              (selectedUser.status || "active").toLowerCase() === "active"
-                                ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400"
-                                : "bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-400"
-                            }`}
-                          >
-                            {selectedUser.status || "Active"}
-                          </span>
-                        </div>
-
-                        {/* Full User ID with Copy Button */}
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className="text-[11px] font-mono text-[var(--foreground-muted)] bg-[var(--surface-alt)] px-2 py-0.5 rounded-md select-all border border-[var(--border-color)]">
-                            ID: {selectedUser._id || selectedUser.id}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => copyUserId(selectedUser._id || selectedUser.id || "")}
-                            className="p-1 rounded-md text-[var(--foreground-muted)] hover:text-primary hover:bg-[var(--surface-alt)] transition-colors cursor-pointer"
-                            title="Copy User ID"
-                          >
-                            {copiedId ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-500" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Modal.CloseTrigger className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] cursor-pointer p-1.5 rounded-xl hover:bg-[var(--surface-alt)] self-end sm:self-auto transition-colors">
-                      ✕
-                    </Modal.CloseTrigger>
-                  </Modal.Header>
-
-                  {/* Modal Body */}
-                  <Modal.Body className="space-y-6">
-                    {/* User Metadata Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="p-3 rounded-2xl bg-[var(--surface-alt)] border border-[var(--border-color)] space-y-1">
-                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--foreground-muted)]">
-                          <Mail className="w-3.5 h-3.5" />
-                          <span>Email</span>
-                        </div>
-                        <p className="text-xs font-bold text-[var(--foreground)] truncate" title={selectedUser.email}>
-                          {selectedUser.email || "—"}
-                        </p>
-                      </div>
-
-                      <div className="p-3 rounded-2xl bg-[var(--surface-alt)] border border-[var(--border-color)] space-y-1">
-                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--foreground-muted)]">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Tier</span>
-                        </div>
-                        <p className="text-xs font-bold text-[var(--foreground)] capitalize truncate">
-                          {selectedUser.member || "Standard"}
-                        </p>
-                      </div>
-
-                      <div className="p-3 rounded-2xl bg-[var(--surface-alt)] border border-[var(--border-color)] space-y-1">
-                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--foreground-muted)]">
-                          <Award className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Points</span>
-                        </div>
-                        <p className="text-xs font-bold text-[var(--foreground)] truncate">
-                          {selectedUser.points ?? 0} pts
-                        </p>
-                      </div>
-
-                      <div className="p-3 rounded-2xl bg-[var(--surface-alt)] border border-[var(--border-color)] space-y-1">
-                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--foreground-muted)]">
-                          <Calendar className="w-3.5 h-3.5" />
-                          <span>Joined</span>
-                        </div>
-                        <p className="text-xs font-bold text-[var(--foreground)] truncate">
-                          {selectedUser.createdAt
-                            ? new Date(selectedUser.createdAt).toLocaleDateString(undefined, {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              })
-                            : "—"}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Status & Role Controls */}
-                    <div className="p-4 rounded-2xl bg-[var(--surface-alt)] border border-[var(--border-color)] space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-extrabold uppercase tracking-wider text-[var(--foreground)]">
-                          Account Role & Status Controls
-                        </h4>
-                        {isUpdating && (
-                          <span className="text-[11px] font-semibold text-primary animate-pulse">
-                            Updating...
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                        {/* Approved Roles — multi-select */}
-                        <div className="space-y-2">
-                          <label className="text-[11px] font-bold text-[var(--foreground-muted)]">
-                            Approved Roles
-                          </label>
-                          <div className="flex flex-wrap gap-2">
-                            {ROLE_OPTIONS.map((opt) => {
-                              const held = rolesOf(selectedUser).includes(opt.id);
-                              const Icon = opt.icon;
-                              return (
-                                <button
-                                  key={opt.id}
-                                  type="button"
-                                  disabled={isUpdating}
-                                  onClick={() => handleToggleRole(selectedUser, opt.id, !held)}
-                                  title={opt.desc}
-                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
-                                    held
-                                      ? "bg-primary text-white border-primary shadow-xs"
-                                      : "bg-[var(--surface-elevated)] text-[var(--foreground-muted)] border-[var(--border-color)] hover:border-primary hover:text-primary"
-                                  }`}
-                                >
-                                  <Icon className="w-3.5 h-3.5" />
-                                  <span>{opt.label}</span>
-                                  {held && <Check className="w-3 h-3" />}
-                                </button>
-                              );
-                            })}
-                          </div>
-                          <p className="text-[10px] leading-relaxed text-[var(--foreground-muted)]">
-                            Tapping a role grants or revokes it. Admin is a single
-                            authority on its own, and every other account always
-                            keeps the customer role so it can still shop.
-                          </p>
-
-                          {/* Park or release one marketplace dashboard */}
-                          {(() => {
-                            const suspensable = rolesOf(selectedUser).filter(
-                              (r) => r === "rider" || r === "vendor"
-                            );
-                            if (suspensable.length === 0) return null;
-                            const suspended = suspendedRolesOf(selectedUser);
-                            return (
-                              <div className="space-y-1.5 pt-1">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
-                                  Suspend per role
-                                </span>
-                                {suspensable.map((role) => {
-                                  const isSuspended = suspended.includes(role);
-                                  return (
-                                    <div
-                                      key={role}
-                                      className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-color)]"
-                                    >
-                                      <span className="text-xs font-semibold capitalize text-[var(--foreground)]">
-                                        {role} dashboard
-                                      </span>
-                                      <button
-                                        type="button"
-                                        disabled={isUpdating}
-                                        onClick={() => handleToggleSuspension(selectedUser, role, !isSuspended)}
-                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition cursor-pointer disabled:opacity-60 ${
-                                          isSuspended
-                                            ? "bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/60"
-                                            : "bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60"
-                                        }`}
-                                      >
-                                        {isSuspended ? (
-                                          <Ban className="w-3 h-3" />
-                                        ) : (
-                                          <CheckCircle2 className="w-3 h-3" />
-                                        )}
-                                        <span>{isSuspended ? "Suspended · release" : "Active · suspend"}</span>
-                                      </button>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            );
-                          })()}
-
-                          {(selectedUser._id || selectedUser.id) && (
-                            <Link
-                              href={`/dashboard/admin/users/${selectedUser._id || selectedUser.id}`}
-                              className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline pt-1"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              Open full role profile
-                            </Link>
-                          )}
-                        </div>
-
-                        {/* Status Select Control */}
-                        <div className="space-y-1.5">
-                          <label className="text-[11px] font-bold text-[var(--foreground-muted)]">
-                            Account Status
-                          </label>
-                          <Select
-                            aria-label="Change Status"
-                            placeholder="Select Status"
-                            selectedKey={(selectedUser.status || "active").toLowerCase() === "suspended" ? "suspended" : "active"}
-                            onSelectionChange={(key) => {
-                              if (key) {
-                                handleStatusChange(selectedUser._id || selectedUser.id!, String(key));
-                              }
-                            }}
-                            isDisabled={isUpdating}
-                          >
-                            <Select.Trigger className="h-10 w-full px-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-elevated)] text-xs font-bold text-[var(--foreground)] flex items-center justify-between gap-2 cursor-pointer hover:border-primary transition-colors shadow-xs [&>span]:text-xs [&>span]:font-bold [&>span]:truncate [&>span]:text-left">
-                              <Select.Value className="text-xs font-bold capitalize truncate flex-1 text-left" />
-                              <Select.Indicator className="[&>svg]:w-3.5 [&>svg]:h-3.5 text-[var(--foreground-muted)] shrink-0" />
-                            </Select.Trigger>
-                            <Select.Popover className="w-(--trigger-width) min-w-[200px] p-1.5 bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-xl shadow-xl z-50">
-                              <ListBox>
-                                {STATUS_OPTIONS.map((opt) => (
-                                  <ListBox.Item
-                                    key={opt.id}
-                                    id={opt.id}
-                                    textValue={opt.label}
-                                    className="text-xs font-semibold px-3 py-2 rounded-lg hover:bg-[var(--surface-alt)] text-[var(--foreground)] cursor-pointer flex items-center justify-between"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <opt.icon className="w-3.5 h-3.5 text-emerald-500" />
-                                      <span>{opt.label}</span>
-                                    </div>
-                                    <ListBox.ItemIndicator />
-                                  </ListBox.Item>
-                                ))}
-                              </ListBox>
-                            </Select.Popover>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Customer's Ordered Products Section */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--foreground)] uppercase tracking-wider">
-                          <Package className="w-4 h-4 text-primary" />
-                          <span>Purchased Products ({purchasedProducts.length})</span>
-                        </div>
-                        <span className="text-[11px] font-semibold text-[var(--foreground-muted)]">
-                          {userOrders.length} {userOrders.length === 1 ? "Order" : "Orders"}
-                        </span>
-                      </div>
-
-                      {loadingOrders ? (
-                        <div className="p-8 text-center bg-[var(--surface-alt)] rounded-2xl border border-[var(--border-color)]">
-                          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                          <p className="text-xs text-[var(--foreground-muted)]">Loading purchase history...</p>
-                        </div>
-                      ) : purchasedProducts.length === 0 ? (
-                        <div className="p-6 text-center bg-[var(--surface-alt)] rounded-2xl border border-[var(--border-color)] space-y-1">
-                          <ShoppingBag className="w-8 h-8 text-[var(--foreground-muted)]/60 mx-auto" />
-                          <p className="text-xs font-bold text-[var(--foreground)]">
-                            No orders placed yet
-                          </p>
-                          <p className="text-[11px] text-[var(--foreground-muted)]">
-                            This customer has not made any purchases on the store.
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                          {purchasedProducts.map((prod, idx) => {
-                            const pId =
-                              typeof prod.productId === "object"
-                                ? prod.productId?._id || prod.productId?.id
-                                : prod.productId || prod.id;
-                            const pTitle = prod.title || prod.productId?.title || prod.name || "Product";
-                            const pSlug = prod.slug || prod.productId?.slug || pId;
-                            const pImage =
-                              prod.image ||
-                              prod.productId?.image ||
-                              (Array.isArray(prod.productId?.additionalImages) && prod.productId.additionalImages[0]) ||
-                              (Array.isArray(prod.additionalImages) && prod.additionalImages[0]) ||
-                              (Array.isArray(prod.productId?.images) && prod.productId.images[0]) ||
-                              (Array.isArray(prod.images) && prod.images[0]) ||
-                              "";
-                            const pPrice = prod.price ?? prod.productId?.price ?? 0;
-                            const pQty = prod.quantity ?? 1;
-                            const pDate = prod.orderDate
-                              ? new Date(prod.orderDate).toLocaleDateString(undefined, {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                })
-                              : "—";
-
-                            return (
-                              <div
-                                key={`${prod.orderId}-${idx}`}
-                                className="p-2.5 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)] flex items-center justify-between gap-3 hover:bg-[var(--surface-alt)]/80 transition-colors"
-                              >
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <SafeProductImage
-                                    src={pImage}
-                                    alt={pTitle}
-                                    size={44}
-                                  />
-                                  <div className="min-w-0">
-                                    <p className="text-xs font-bold text-[var(--foreground)] truncate">
-                                      {pTitle}
-                                    </p>
-                                    <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[var(--foreground-muted)]">
-                                      <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
-                                        {formatPrice(pPrice)}
-                                      </span>
-                                      <span>•</span>
-                                      <span>Qty: {pQty}</span>
-                                      <span>•</span>
-                                      <span className="capitalize text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.2 rounded">
-                                        {prod.orderStatus}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <span className="text-[10px] text-[var(--foreground-muted)] hidden sm:inline">
-                                    {pDate}
-                                  </span>
-                                  {pSlug && (
-                                    <Link
-                                      href={`/shop/${pSlug}`}
-                                      target="_blank"
-                                      className="p-1.5 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-color)] text-[var(--foreground-muted)] hover:text-primary transition-colors shadow-2xs"
-                                      title="View Product in Store"
-                                    >
-                                      <ExternalLink className="w-3.5 h-3.5" />
-                                    </Link>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </Modal.Body>
-
-                  {/* Modal Footer */}
-                  <Modal.Footer className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-color)]">
-                    <Button
-                      size="sm"
-                      onPress={() => setIsModalOpen(false)}
-                      className="px-5 h-9 rounded-xl bg-gradient-to-r from-primary to-primary-hover hover:from-primary-hover hover:to-primary text-white font-bold text-xs shadow-md shadow-primary/20 cursor-pointer"
-                    >
-                      Close
-                    </Button>
-                  </Modal.Footer>
-                </>
-              )}
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
     </div>
   );
 }

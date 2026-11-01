@@ -1,6 +1,11 @@
 "use server";
 
 import { serverMutation } from "../core/server";
+import { getRequiredRole } from "../core/session";
+import { getUserById } from "../api/user";
+import { getVendorApplication } from "../api/vendor";
+import { getRiderApplication } from "../api/rider";
+import { getUserOrdersAction } from "./orders";
 
 export const updateUser = async (id: string, data: Record<string, unknown>) => {
   return serverMutation(`/users/${id}`, data, "PATCH");
@@ -47,4 +52,46 @@ export const setUserRoleSuspension = async (
   payload: { role: string; suspended: boolean; reason?: string }
 ) => {
   return serverMutation(`/users/${id}/roles/suspension`, payload, "PATCH");
+};
+
+/**
+ * Admin-only: the whole account as the store team reads it, for the inline
+ * profile row on the users desk.
+ *
+ * The same bundle the dedicated `/users/[id]` page assembles server-side, but
+ * callable from the client when a row expands: the fresh user row (authorities
+ * and suspensions), the purchase list for the customer panel, and only the
+ * marketplace applications the account actually reached for. Everything is read
+ * here rather than trusted from the list row, so the panel never renders from a
+ * stale claim about who someone is.
+ */
+export const getUserAdminDetail = async (id: string) => {
+  await getRequiredRole("admin");
+  if (!id) return null;
+
+  const userResponse = await getUserById(id);
+  const user = (userResponse?.data ?? null) as Record<string, unknown> | null;
+  if (!user || !(user._id || user.id)) return null;
+
+  const vendorApplicationId = user.vendorApplicationId
+    ? String(user.vendorApplicationId)
+    : "";
+  const riderApplicationId = user.riderApplicationId
+    ? String(user.riderApplicationId)
+    : "";
+
+  const [orders, vendorResponse, riderResponse] = await Promise.all([
+    getUserOrdersAction(id),
+    vendorApplicationId
+      ? getVendorApplication(vendorApplicationId)
+      : Promise.resolve(null),
+    riderApplicationId ? getRiderApplication(riderApplicationId) : Promise.resolve(null),
+  ]);
+
+  return {
+    user,
+    orders: Array.isArray(orders) ? orders : [],
+    vendorDetail: (vendorResponse?.data ?? null) as Record<string, unknown> | null,
+    riderDetail: (riderResponse?.data ?? null) as Record<string, unknown> | null,
+  };
 };

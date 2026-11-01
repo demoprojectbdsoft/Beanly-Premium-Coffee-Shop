@@ -24,6 +24,7 @@ import {
   MapPin,
   FileText,
   Star,
+  ShoppingBag,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import {
@@ -86,6 +87,9 @@ interface UserDetailClientProps {
   orders: OrderRow[];
   vendorDetail: VendorApplicationDetail | null;
   riderDetail: RiderApplicationDetail | null;
+  /** "page" is the standalone profile route; "inline" nests the same view in an
+   *  expanded row on the users desk, so the back link is dropped. */
+  variant?: "page" | "inline";
 }
 
 const ROLE_META: Record<
@@ -164,11 +168,43 @@ function Field({ label, value }: { label: string; value?: React.ReactNode }) {
   );
 }
 
+/** Product thumbnail that falls back to a bag icon when the image is missing. */
+function ProductImage({ src, alt, size = 44 }: { src?: string | null; alt?: string; size?: number }) {
+  const [errored, setErrored] = useState(false);
+  const clean = typeof src === "string" ? src.trim() : "";
+  const valid =
+    clean.length > 0 &&
+    clean !== "undefined" &&
+    clean !== "null" &&
+    !clean.includes("[object Object]") &&
+    !errored;
+
+  if (!valid) {
+    return (
+      <div
+        className="flex items-center justify-center rounded-lg bg-[var(--surface-alt)] border border-[var(--border-color)] text-[var(--foreground-muted)] shrink-0"
+        style={{ width: size, height: size }}
+      >
+        <ShoppingBag className="w-5 h-5" />
+      </div>
+    );
+  }
+  return (
+    <div
+      className="relative shrink-0 overflow-hidden rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-color)]"
+      style={{ width: size, height: size }}
+    >
+      <img src={clean} alt={alt || "Product"} className="w-full h-full object-contain p-1" onError={() => setErrored(true)} />
+    </div>
+  );
+}
+
 export default function UserDetailClient({
   user: initialUser,
   orders,
   vendorDetail,
   riderDetail,
+  variant = "page",
 }: UserDetailClientProps) {
   const router = useRouter();
   const { guardDemo } = useDemoAdmin();
@@ -182,6 +218,26 @@ export default function UserDetailClient({
   const held = rolesOf(user);
   const suspended = suspendedRolesOf(user);
   const active = roleOf(user);
+
+  // The customer panel reads more than an order count: the purchase history the
+  // old modal showed lived here too. Orders arrive whole, so the line items are
+  // flattened for a product-level view and totalled for a spend summary.
+  const purchasedProducts = (orders as unknown as any[]).flatMap((order) =>
+    (order.items || []).map((item: any) => ({
+      ...item,
+      orderId: order._id || order.id,
+      orderStatus: order.orderStatus || order.status || "processing",
+      orderDate: order.createdAt,
+    }))
+  );
+  const lifetimeSpend = (orders as unknown as any[]).reduce(
+    (sum, o) => sum + Number(o.totalAmount ?? o.totalPrice ?? o.amount ?? 0),
+    0
+  );
+  const lifetimeUnits = purchasedProducts.reduce(
+    (sum: number, p: any) => sum + Number(p.quantity ?? 1),
+    0
+  );
 
   const setBusy = (fn: () => Promise<void>) => {
     if (guardDemo()) return;
@@ -286,13 +342,15 @@ export default function UserDetailClient({
   return (
     <div className="space-y-6">
       {/* ── Back link ── */}
-      <Link
-        href="/dashboard/admin/users"
-        className="inline-flex items-center gap-2 text-xs font-bold text-[var(--foreground-muted)] hover:text-primary transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to users
-      </Link>
+      {variant === "page" && (
+        <Link
+          href="/dashboard/admin/users"
+          className="inline-flex items-center gap-2 text-xs font-bold text-[var(--foreground-muted)] hover:text-primary transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to users
+        </Link>
+      )}
 
       {/* ── Account header ── */}
       <Card className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-2xl shadow-xs p-5 sm:p-6">
@@ -522,7 +580,9 @@ export default function UserDetailClient({
         )}
       </Card>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      {/* Role panels stack in one column (customer, rider, vendor) so a wide
+          table row never squeezes them side by side and breaks the layout. */}
+      <div className="grid grid-cols-1 gap-6">
         {/* ── Customer panel ── */}
         {held.includes("customer") && (
           <Card className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-2xl shadow-xs p-5 sm:p-6 space-y-4">
@@ -533,7 +593,7 @@ export default function UserDetailClient({
               </h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)] space-y-1">
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
                   <Sparkles className="w-3 h-3 text-amber-500" /> Tier
@@ -546,11 +606,24 @@ export default function UserDetailClient({
                 </p>
                 <p className="text-sm font-bold text-[var(--foreground)]">{user.points ?? 0}</p>
               </div>
+              <div className="p-3 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)] space-y-1">
+                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+                  <Package className="w-3 h-3 text-primary" /> Orders
+                </p>
+                <p className="text-sm font-bold text-[var(--foreground)]">{orders.length}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)] space-y-1">
+                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+                  <ShoppingBag className="w-3 h-3 text-emerald-500" /> Lifetime
+                </p>
+                <p className="text-sm font-bold text-[var(--foreground)]">{formatPrice(lifetimeSpend)}</p>
+                <p className="text-[10px] text-[var(--foreground-muted)]">{lifetimeUnits} item{lifetimeUnits === 1 ? "" : "s"} bought</p>
+              </div>
             </div>
 
             <div className="space-y-2">
               <p className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--foreground-muted)]">
-                <Package className="w-3.5 h-3.5" /> Orders ({orders.length})
+                <Package className="w-3.5 h-3.5" /> Recent orders ({orders.length})
               </p>
               {orders.length === 0 ? (
                 <p className="text-xs text-[var(--foreground-muted)] p-3 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)]">
@@ -585,6 +658,72 @@ export default function UserDetailClient({
                 </div>
               )}
             </div>
+
+            {/* Purchased products — the line-item view the old users modal showed */}
+            {purchasedProducts.length > 0 && (
+              <div className="space-y-2 pt-1 border-t border-[var(--border-color)]">
+                <p className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--foreground-muted)]">
+                  <ShoppingBag className="w-3.5 h-3.5" /> Purchased products ({purchasedProducts.length})
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+                  {purchasedProducts.map((prod: any, idx: number) => {
+                    const pId =
+                      typeof prod.productId === "object"
+                        ? prod.productId?._id || prod.productId?.id
+                        : prod.productId || prod.id;
+                    const pTitle = prod.title || prod.productId?.title || prod.name || "Product";
+                    const pSlug = prod.slug || prod.productId?.slug || pId;
+                    const pImage =
+                      prod.image ||
+                      prod.productId?.image ||
+                      (Array.isArray(prod.productId?.additionalImages) && prod.productId.additionalImages[0]) ||
+                      (Array.isArray(prod.additionalImages) && prod.additionalImages[0]) ||
+                      (Array.isArray(prod.productId?.images) && prod.productId.images[0]) ||
+                      (Array.isArray(prod.images) && prod.images[0]) ||
+                      "";
+                    const pPrice = prod.price ?? prod.productId?.price ?? 0;
+                    const pQty = prod.quantity ?? 1;
+                    const pStatus = String(prod.orderStatus || "processing").toLowerCase();
+                    return (
+                      <div
+                        key={`${prod.orderId}-${idx}`}
+                        className="p-2.5 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)] flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <ProductImage src={pImage} alt={pTitle} size={44} />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-[var(--foreground)] truncate">{pTitle}</p>
+                            <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[var(--foreground-muted)]">
+                              <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{formatPrice(pPrice)}</span>
+                              <span>•</span>
+                              <span>Qty: {pQty}</span>
+                              <span>•</span>
+                              <span className="text-[10px] text-[var(--foreground-muted)]">{fmtDate(prod.orderDate)}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize ${statusTone(pStatus)}`}>
+                            {pStatus}
+                          </span>
+                          {pSlug && (
+                            <Link
+                              href={`/shop/${pSlug}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-1.5 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-color)] text-[var(--foreground-muted)] hover:text-primary transition-colors"
+                              title="View product in store"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </Card>
         )}
 
