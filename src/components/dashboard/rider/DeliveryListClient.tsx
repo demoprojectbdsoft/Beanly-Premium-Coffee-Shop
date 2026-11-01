@@ -28,6 +28,7 @@ import {
   type DeliveryRecord,
 } from "@/types/delivery";
 import DeliveryActions from "./DeliveryActions";
+import AppSelect from "@/components/shared/AppSelect";
 import DeliveryDetailModal from "./DeliveryDetailModal";
 
 interface DeliveryListClientProps {
@@ -164,54 +165,57 @@ export default function DeliveryListClient({
           </form>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-[var(--surface-alt)] border border-[var(--border-color)] rounded-xl px-3 py-2">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-              <select
-                value={sort}
-                onChange={(event) => {
-                  setSort(event.target.value);
-                  go({ sort: event.target.value, page: 1 });
-                }}
-                className="bg-transparent outline-none text-xs font-semibold text-[var(--foreground)] cursor-pointer"
-              >
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
-                <option value="fee_desc">Highest fee</option>
-              </select>
-            </div>
+            <AppSelect
+              size="sm"
+              ariaLabel="Sort deliveries"
+              icon={<SlidersHorizontal />}
+              value={sort}
+              onChange={(next) => {
+                setSort(next);
+                go({ sort: next, page: 1 });
+              }}
+              options={[
+                { value: "newest", label: "Newest first" },
+                { value: "oldest", label: "Oldest first" },
+                { value: "fee_desc", label: "Highest fee" },
+              ]}
+            />
 
             {showStatusFilter && (
-              <select
+              <AppSelect
+                size="sm"
+                ariaLabel="Filter by stage"
                 value={status}
-                onChange={(event) => {
-                  setStatus(event.target.value);
-                  go({ status: event.target.value, page: 1 });
+                onChange={(next) => {
+                  setStatus(next);
+                  go({ status: next, page: 1 });
                 }}
-                className="bg-[var(--surface-alt)] border border-[var(--border-color)] rounded-xl px-3 py-2 text-xs font-semibold text-[var(--foreground)] outline-none cursor-pointer"
-              >
-                <option value="all">Every stage</option>
-                <option value="active">Active only</option>
-                <option value="finished">Finished only</option>
-                {DELIVERY_STATUSES.map((value) => (
-                  <option key={value} value={value}>
-                    {DELIVERY_STATUS_LABELS[value]}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: "all", label: "Every stage" },
+                  { value: "active", label: "Active only" },
+                  { value: "finished", label: "Finished only" },
+                  ...DELIVERY_STATUSES.map((value) => ({
+                    value,
+                    label: DELIVERY_STATUS_LABELS[value],
+                  })),
+                ]}
+              />
             )}
 
-            <select
+            <AppSelect
+              size="sm"
+              ariaLabel="Rows per page"
               value={limit}
-              onChange={(event) => {
-                setLimit(event.target.value);
-                go({ limit: event.target.value, page: 1 });
+              onChange={(next) => {
+                setLimit(next);
+                go({ limit: next, page: 1 });
               }}
-              className="bg-[var(--surface-alt)] border border-[var(--border-color)] rounded-xl px-3 py-2 text-xs font-semibold text-[var(--foreground)] outline-none cursor-pointer"
-            >
-              <option value="10">10 rows</option>
-              <option value="20">20 rows</option>
-              <option value="50">50 rows</option>
-            </select>
+              options={[
+                { value: "10", label: "10 rows" },
+                { value: "20", label: "20 rows" },
+                { value: "50", label: "50 rows" },
+              ]}
+            />
 
             {hasFilters && (
               <Button

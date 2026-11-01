@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import ImageUploader from "@/components/shared/ImageUploader";
+import AppSelect from "@/components/shared/AppSelect";
 import { updateUser } from "@/lib/action/user";
 import { authClient } from "@/lib/auth-client";
 
@@ -304,18 +305,13 @@ export default function RiderProfileClient({ initialProfile }: { initialProfile:
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-[var(--foreground)]">Vehicle</label>
-                  <select
+                  <AppSelect
+                    ariaLabel="Vehicle"
+                    placeholder="Select vehicle"
                     value={vehicleType}
-                    onChange={(event) => setVehicleType(event.target.value)}
-                    className={`${inputClass} cursor-pointer`}
-                  >
-                    <option value="">Select vehicle</option>
-                    {VEHICLE_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setVehicleType}
+                    options={VEHICLE_TYPES.map((type) => ({ value: type, label: type }))}
+                  />
                 </div>
 
                 <div className="space-y-1.5">

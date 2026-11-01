@@ -7,6 +7,8 @@ import { ArrowDownWideNarrow, CheckCheck, Inbox, Loader2, Search, X } from "luci
 import type { LucideIcon } from "lucide-react";
 import { toast } from "react-toastify";
 
+import AppSelect from "@/components/shared/AppSelect";
+
 import {
   loadFeedPage,
   markAllNotificationsRead,
@@ -353,21 +355,17 @@ export default function NotificationCenter({ view, initial }: NotificationCenter
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="relative">
-              <ArrowDownWideNarrow className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none text-[var(--foreground-muted)]" />
-              <select
-                value={sort}
-                onChange={(event) => setSort(event.target.value as SortKey)}
-                aria-label="Sort notifications"
-                className="pl-8 pr-7 py-2 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)] text-xs font-semibold text-[var(--foreground)] outline-none focus:border-[var(--brand-flat)] cursor-pointer appearance-none transition-colors"
-              >
-                {sortOptions.map((option) => (
-                  <option key={option.key} value={option.key}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <AppSelect
+              size="sm"
+              ariaLabel="Sort notifications"
+              icon={<ArrowDownWideNarrow />}
+              value={sort}
+              onChange={(next) => setSort(next as SortKey)}
+              options={sortOptions.map((option) => ({
+                value: option.key,
+                label: option.label,
+              }))}
+            />
 
             {!shared && (
               <button

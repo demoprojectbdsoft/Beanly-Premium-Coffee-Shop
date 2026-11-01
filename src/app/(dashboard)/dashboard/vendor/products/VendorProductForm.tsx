@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import ImageUploader from "@/components/shared/ImageUploader";
+import AppSelect from "@/components/shared/AppSelect";
 import { createVendorProduct, updateVendorProduct } from "@/lib/action/vendor";
 import type { Category, SubCategory } from "@/types";
 import type {
@@ -320,21 +321,19 @@ export default function VendorProductForm({
             </div>
 
             <Field label="Category">
-              <select
+              <AppSelect
+                ariaLabel="Category"
+                placeholder="Choose a category"
                 value={categoryId}
-                onChange={(event) => {
-                  setCategoryId(event.target.value);
+                onChange={(next) => {
+                  setCategoryId(next);
                   setSelectedSubs([]);
                 }}
-                className={inputClass}
-              >
-                <option value="">Choose a category</option>
-                {categories.map((category) => (
-                  <option key={category._id || category.id} value={category._id || category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+                options={categories.map((category) => ({
+                  value: category._id || category.id || "",
+                  label: category.name,
+                }))}
+              />
             </Field>
 
             {visibleSubs.length > 0 && (

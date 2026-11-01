@@ -27,10 +27,26 @@ interface AppSelectProps {
   placeholder?: string;
   isDisabled?: boolean;
   ariaLabel?: string;
+  /**
+   * "md" (default) is the full-width field used inside forms; "sm" is the
+   * compact, content-width chip that sits in a list's filter toolbar.
+   */
+  size?: "sm" | "md";
+  /** Optional leading glyph, e.g. the sort/filter icon in a toolbar chip. */
+  icon?: React.ReactNode;
+  /** Extra classes merged onto the outer wrapper (width/spacing overrides). */
+  className?: string;
 }
 
-const TRIGGER_CLASS =
-  "flex w-full min-w-0 h-10 px-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--foreground)] items-center justify-between gap-2 cursor-pointer transition focus:outline-none focus:ring-2 focus:ring-[var(--brand-flat)]/35 data-[open]:border-[var(--brand-flat)]/50";
+// md fills its column (a labelled form field); sm hugs its content so several
+// can line up in a filter row. The rest of the trigger styling is shared.
+const WRAPPER_CLASS =
+  "flex min-w-0 items-center justify-between gap-2 rounded-xl border border-[var(--border-color)] text-xs text-[var(--foreground)] cursor-pointer transition focus:outline-none focus:ring-2 focus:ring-[var(--brand-flat)]/35 data-[open]:border-[var(--brand-flat)]/50";
+
+const triggerClassFor = (size: "sm" | "md") =>
+  size === "md"
+    ? `${WRAPPER_CLASS} w-full h-10 px-3 bg-[var(--surface)]`
+    : `${WRAPPER_CLASS} h-9 px-3 bg-[var(--surface-alt)] font-semibold`;
 
 const VALUE_CLASS =
   "flex-1 truncate text-left text-[var(--foreground)] data-[placeholder]:text-[var(--foreground-muted)]/70";
@@ -48,6 +64,9 @@ export default function AppSelect({
   placeholder,
   isDisabled,
   ariaLabel,
+  size = "md",
+  icon,
+  className,
 }: AppSelectProps) {
   // A blank value means nothing chosen — let react-aria render the placeholder.
   const selectedKey = value || null;
@@ -63,9 +82,14 @@ export default function AppSelect({
       isDisabled={isDisabled}
       aria-label={ariaLabel}
       placeholder={placeholder || "Choose…"}
-      className="w-full min-w-0"
+      className={`${size === "md" ? "w-full" : "shrink-0"}${className ? ` ${className}` : ""}`}
     >
-      <Select.Trigger className={TRIGGER_CLASS}>
+      <Select.Trigger className={triggerClassFor(size)}>
+        {icon ? (
+          <span className="shrink-0 flex items-center text-[var(--foreground-muted)] [&>svg]:w-3.5 [&>svg]:h-3.5">
+            {icon}
+          </span>
+        ) : null}
         <Select.Value className={VALUE_CLASS} />
         <Select.Indicator className="shrink-0 text-[var(--foreground-muted)] [&>svg]:w-4 [&>svg]:h-4" />
       </Select.Trigger>
