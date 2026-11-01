@@ -443,52 +443,74 @@ export default function NotificationCenter({ view, initial }: NotificationCenter
               const Icon = row.icon;
               const unread = isUnread(row);
 
+              // The same card for every line. When a line has no screen to open
+              // it is drawn as a plain button, so clicking only clears the dot —
+              // never a jump to a page that has nothing to do with the news.
+              const shell = `flex items-start gap-3 rounded-2xl border p-4 transition-colors w-full text-left ${
+                unread
+                  ? "border-[var(--brand-flat)]/35 bg-[var(--brand-flat)]/[0.04] hover:bg-[var(--brand-flat)]/[0.08]"
+                  : "border-[var(--border-color)] bg-[var(--surface-elevated)] hover:bg-[var(--surface-alt)]"
+              }`;
+              const body = (
+                <>
+                  <span className="w-9 h-9 shrink-0 rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)] flex items-center justify-center text-[var(--brand-flat)]">
+                    <Icon className="w-4 h-4" />
+                  </span>
+
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={`min-w-0 flex-1 truncate text-sm ${
+                          unread ? "font-bold" : "font-semibold"
+                        } text-[var(--foreground)]`}
+                      >
+                        {row.title}
+                      </span>
+                      {unread && (
+                        <span
+                          aria-label="Unread"
+                          className="shrink-0 w-1.5 h-1.5 rounded-full bg-red-500"
+                        />
+                      )}
+                    </span>
+
+                    {row.detail && (
+                      <span className="mt-0.5 block text-xs text-[var(--foreground-muted)]">
+                        {row.detail}
+                      </span>
+                    )}
+
+                    <span
+                      className="mt-1 block text-[11px] font-semibold text-[var(--foreground-muted)]"
+                      title={formatOrderDateTime(row.createdAt)}
+                    >
+                      {formatTimeAgo(row.createdAt, nowMs)}
+                    </span>
+                  </span>
+                </>
+              );
+
               return (
                 <li key={row.id}>
-                  <Link
-                    href={row.href}
-                    onClick={() => readOne(row)}
-                    className={`flex items-start gap-3 rounded-2xl border p-4 transition-colors ${
-                      unread
-                        ? "border-[var(--brand-flat)]/35 bg-[var(--brand-flat)]/[0.04] hover:bg-[var(--brand-flat)]/[0.08]"
-                        : "border-[var(--border-color)] bg-[var(--surface-elevated)] hover:bg-[var(--surface-alt)]"
-                    }`}
-                  >
-                    <span className="w-9 h-9 shrink-0 rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)] flex items-center justify-center text-[var(--brand-flat)]">
-                      <Icon className="w-4 h-4" />
-                    </span>
-
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <span
-                          className={`min-w-0 flex-1 truncate text-sm ${
-                            unread ? "font-bold" : "font-semibold"
-                          } text-[var(--foreground)]`}
-                        >
-                          {row.title}
-                        </span>
-                        {unread && (
-                          <span
-                            aria-label="Unread"
-                            className="shrink-0 w-1.5 h-1.5 rounded-full bg-red-500"
-                          />
-                        )}
-                      </span>
-
-                      {row.detail && (
-                        <span className="mt-0.5 block text-xs text-[var(--foreground-muted)]">
-                          {row.detail}
-                        </span>
-                      )}
-
-                      <span
-                        className="mt-1 block text-[11px] font-semibold text-[var(--foreground-muted)]"
-                        title={formatOrderDateTime(row.createdAt)}
-                      >
-                        {formatTimeAgo(row.createdAt, nowMs)}
-                      </span>
-                    </span>
-                  </Link>
+                  {row.href ? (
+                    <Link
+                      href={row.href}
+                      onClick={() => readOne(row)}
+                      className={shell}
+                    >
+                      {body}
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => readOne(row)}
+                      aria-disabled="true"
+                      title="This update has no page to open"
+                      className={`${shell} cursor-default`}
+                    >
+                      {body}
+                    </button>
+                  )}
                 </li>
               );
             })}

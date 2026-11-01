@@ -126,6 +126,11 @@ export const NOTIFICATION_TYPE_ORDER = Object.keys(
  * Vendor types route to their relevant page; since the vendor dashboard is
  * still under construction, application events go to the public status page
  * and operational events go to the notifications list as a safe fallback.
+ *
+ * An empty string means "there is no screen for this activity" — the bell and
+ * the list then draw the line without a link instead of sending the reader to
+ * a page that has nothing to do with what happened. A false redirect is worse
+ * than none: it drops a line on a screen that cannot show the thing it names.
  */
 export function notificationHref(
   notification: Pick<NotificationItem, "type" | "ref">,
@@ -161,6 +166,12 @@ export function notificationHref(
   }
 
   if (view === "customer") {
+    // A shopper who applied to deliver or sell reads that news on their own
+    // public status page — the one screen built for an application. Left
+    // unhandled it would fall through to the order search below with an
+    // application id that no order can ever match, i.e. an empty orders page.
+    if (notification.type === "rider_application") return "/become-a-rider/status";
+    if (notification.type === "vendor_application") return "/become-a-vendor/status";
     // Delivery updates carry the order id so the customer can see live tracking.
     if (notification.type === "delivery_update" && ref) return `/track-order/${ref}`;
     // All order lifecycle notifications carry the order id as ref.
@@ -169,14 +180,22 @@ export function notificationHref(
   }
 
   if (view === "rider") {
-    // Application decisions go to the status page, not the deliveries list.
-    if (notification.type === "rider_application") return "/become-a-rider/status";
+    // A rider already holds the workspace, so the applicant status page would
+    // only bounce them back to the dashboard. An application or account-status
+    // line has no rider-facing screen of its own, so it links nowhere — better
+    // to leave it where it is than to open an unrelated deliveries page.
+    if (notification.type === "rider_application") return "";
     // New delivery requests have their own screen.
     if (notification.type === "delivery_assigned") return "/dashboard/rider/requests";
     // Declined: send them back to requests so they can pick another.
     if (notification.type === "delivery_declined") return "/dashboard/rider/requests";
-    // Active delivery updates go to the deliveries list, filtered.
-    return `/dashboard/rider/deliveries${ref ? `?search=${ref}` : ""}`;
+    // A live delivery update is about one job the rider owns, so it opens the
+    // deliveries list filtered to it.
+    if (notification.type === "delivery_update") {
+      return `/dashboard/rider/deliveries${ref ? `?search=${ref}` : ""}`;
+    }
+    // Anything else has no screen we can honestly point a rider at.
+    return "";
   }
 
   // Vendor: route to the relevant public page since the vendor dashboard is

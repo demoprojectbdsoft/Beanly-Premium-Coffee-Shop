@@ -274,49 +274,68 @@ export default function NotificationBell({ view }: NotificationBellProps) {
                 // Each line stands alone: only its own click clears its dot.
                 const unread = isUnread(item);
 
+                // A line with no page to open is drawn as a plain button, so it
+                // still marks itself read but never jumps to an unrelated screen.
+                const shell = "flex gap-3 px-4 py-3 hover:bg-[var(--surface-alt)] transition-colors w-full text-left";
+                const body = (
+                  <>
+                    <span className="mt-0.5 w-7 h-7 shrink-0 rounded-lg border border-[var(--border-color)] bg-[var(--surface-alt)] flex items-center justify-center text-[var(--brand-flat)]">
+                      <Icon className="w-3.5 h-3.5" />
+                    </span>
+
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={`block text-xs leading-snug truncate ${
+                          unread ? "font-bold" : "font-semibold"
+                        } text-[var(--foreground)]`}
+                      >
+                        {item.title}
+                      </span>
+                      {item.detail && (
+                        <span className="block text-[11px] text-[var(--foreground-muted)] truncate">
+                          {item.detail}
+                        </span>
+                      )}
+                      <span
+                        className="block text-[10px] text-[var(--foreground-muted)] mt-0.5"
+                        title={formatOrderDateTime(item.createdAt)}
+                      >
+                        {formatTimeAgo(item.createdAt, nowMs)}
+                      </span>
+                    </span>
+
+                    {unread && (
+                      <span
+                        aria-hidden="true"
+                        className="mt-1.5 w-1.5 h-1.5 shrink-0 rounded-full bg-red-500"
+                      />
+                    )}
+                  </>
+                );
+
+                const onPress = () => {
+                  readOne(item);
+                  setIsOpen(false);
+                };
+
                 return (
                   <li key={item.id}>
-                    <Link
-                      href={item.href}
-                      role="menuitem"
-                      onClick={() => {
-                        readOne(item);
-                        setIsOpen(false);
-                      }}
-                      className="flex gap-3 px-4 py-3 hover:bg-[var(--surface-alt)] transition-colors"
-                    >
-                      <span className="mt-0.5 w-7 h-7 shrink-0 rounded-lg border border-[var(--border-color)] bg-[var(--surface-alt)] flex items-center justify-center text-[var(--brand-flat)]">
-                        <Icon className="w-3.5 h-3.5" />
-                      </span>
-
-                      <span className="min-w-0 flex-1">
-                        <span
-                          className={`block text-xs leading-snug truncate ${
-                            unread ? "font-bold" : "font-semibold"
-                          } text-[var(--foreground)]`}
-                        >
-                          {item.title}
-                        </span>
-                        {item.detail && (
-                          <span className="block text-[11px] text-[var(--foreground-muted)] truncate">
-                            {item.detail}
-                          </span>
-                        )}
-                        <span
-                          className="block text-[10px] text-[var(--foreground-muted)] mt-0.5"
-                          title={formatOrderDateTime(item.createdAt)}
-                        >
-                          {formatTimeAgo(item.createdAt, nowMs)}
-                        </span>
-                      </span>
-
-                      {unread && (
-                        <span
-                          aria-hidden="true"
-                          className="mt-1.5 w-1.5 h-1.5 shrink-0 rounded-full bg-red-500"
-                        />
-                      )}
-                    </Link>
+                    {item.href ? (
+                      <Link href={item.href} role="menuitem" onClick={onPress} className={shell}>
+                        {body}
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={onPress}
+                        aria-disabled="true"
+                        title="This update has no page to open"
+                        className={`${shell} cursor-default`}
+                      >
+                        {body}
+                      </button>
+                    )}
                   </li>
                 );
               })}
