@@ -134,3 +134,21 @@ export function shopperBlockedResult(user: RoleCarrier, action: string) {
     role === "demoadmin" ? "Demo admin" : role === "admin" ? "Admin" : role === "vendor" ? "Vendors" : "Riders";
   return { success: false as const, message: `${who} cannot ${action}!` };
 }
+
+/**
+ * The dashboard the account should land on after signing in.
+ *
+ * Reads `activeRole`, but only trusts it when the same value also appears in
+ * the approved array — otherwise a stale session would send someone to a
+ * dashboard they no longer hold. Falls back to the first approved role, then
+ * to customer, which is the entry every fresh registration gets.
+ *
+ * This is a pure helper, so it lives with the other role readers rather than
+ * in the `"use server"` session module, where every export must be async.
+ */
+export function resolveActiveRole(user: RoleCarrier): string {
+  const pool = rolesOf(user);
+  const wanted = roleOf(user);
+  if (wanted && pool.includes(wanted)) return wanted;
+  return pool[0] || "customer";
+}

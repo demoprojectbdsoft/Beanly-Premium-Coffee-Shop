@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "../auth";
-import { canShop, hasRole, isAdminRole, roleOf } from "./roles";
+import { canShop, hasRole, isAdminRole } from "./roles";
 
 type Role = "admin" | "customer" | "rider" | "vendor" | "user";
 
@@ -79,29 +79,4 @@ export const getRequiredShopper = async () => {
   }
 
   return user;
-};
-
-/**
- * The dashboard the account should land on after signing in.
- *
- * Reads `activeRole`, but only trusts it when the same value also appears in
- * the approved array — otherwise a stale session would send someone to a
- * dashboard they no longer hold. Falls back to the first approved role, then
- * to customer, which is the entry every fresh registration gets.
- */
-export const resolveActiveRole = (user: {
-  role?: string | null;
-  activeRole?: string | null;
-  roles?: string[] | string | null;
-}): string => {
-  const pool = ((): string[] => {
-    const raw = (user as any).roles;
-    if (Array.isArray(raw)) return raw.map((r) => String(r).toLowerCase());
-    if (typeof raw === "string" && raw) return raw.split(",").map((r) => r.trim().toLowerCase());
-    const fallback = roleOf(user);
-    return fallback ? [fallback] : ["customer"];
-  })();
-  const wanted = roleOf(user);
-  if (wanted && pool.includes(wanted)) return wanted;
-  return pool[0] || "customer";
 };
