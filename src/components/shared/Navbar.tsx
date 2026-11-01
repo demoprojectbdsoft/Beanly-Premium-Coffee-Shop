@@ -170,7 +170,10 @@ export default function Navbar() {
               <WishlistButton />
               <CartButton showTotal={true} />
               <div className="h-5 w-px bg-[var(--border-color)]" />
-              <UserAccountMenu />
+              {/* Storefront variant: Profile / Dashboard / Orders / Settings
+                  plus the dashboard switcher, because out here this dropdown is
+                  the only way into a workspace. */}
+              <UserAccountMenu variant="storefront" />
             </div>
 
             {/* Responsive Navigation Controls: Left Arrow + Hamburger + Right Arrow */}

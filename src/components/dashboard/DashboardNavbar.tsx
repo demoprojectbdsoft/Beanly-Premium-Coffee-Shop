@@ -113,9 +113,12 @@ export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProp
 
         <div className="h-5 w-px bg-[var(--border-color)] hidden sm:block" />
 
-        {/* Profile + dashboard switcher — the same menu the storefront carries,
-            so every approved profile is one click away from any workspace. */}
-        <UserAccountMenu />
+        {/* Identity + dashboard switcher + logout. The dashboard variant
+            deliberately omits the storefront's Profile / Dashboard / Orders /
+            Settings shortcuts, because the sidebar already owns those screens
+            and each role's profile and settings live under that role's own
+            workspace - the way to reach them is to switch dashboards here. */}
+        <UserAccountMenu variant="dashboard" />
       </div>
     </header>
   );

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   User,
+  LayoutDashboard,
+  Settings,
   LogOut,
   ChevronDown,
   Loader2,
@@ -23,14 +25,21 @@ import UserAvatar from "./UserAvatar";
 import { setActiveRole } from "@/lib/action/user";
 
 /**
- * The profile dropdown.
+ * The profile dropdown, shared by the storefront header and the dashboard
+ * shell - but the two are not the same job.
  *
- * Beyond the usual profile / orders / settings links it now carries the
- * dashboard switcher. Every workspace the account has been approved for
- * appears as its own row, and picking one calls the store API and reloads the
- * shell. A single-role account sees the switcher collapsed to one disabled
- * row, so the pattern is stable across every visitor.
+ * `variant="storefront"` (the public site) also carries the Profile /
+ * Dashboard / Orders / Settings links, because there is no sidebar out there
+ * and this dropdown is the only door into a workspace.
+ *
+ * `variant="dashboard"` drops those links on purpose. Inside a dashboard the
+ * sidebar already lists every screen, and each role's profile, orders and
+ * settings are different screens under that role's own workspace - so the
+ * honest way to reach them is to switch into that dashboard. The dropdown
+ * here keeps just three things: who you are, which workspace to open, and how
+ * to sign out.
  */
+export type UserAccountMenuVariant = "storefront" | "dashboard";
 
 type SessionUser = {
   id?: string;
@@ -96,7 +105,11 @@ const iconFor = (role: string) => {
   return <ShoppingBag className="w-4 h-4" />;
 };
 
-export default function UserAccountMenu() {
+export default function UserAccountMenu({
+  variant = "storefront",
+}: {
+  variant?: UserAccountMenuVariant;
+}) {
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -209,12 +222,42 @@ export default function UserAccountMenu() {
     );
   }
 
-  // There is deliberately no generic Profile / Dashboard / Orders / Settings
-  // block here. Each role's profile and settings live inside that role's own
-  // workspace and are different screens, so the only way to reach them is to
-  // switch into the dashboard — which the switcher below is for. The dropdown
-  // therefore keeps just three things: who you are, which workspace to open,
-  // and how to sign out.
+  // Where the storefront dropdown's shortcut rows land. Each one follows the
+  // active role, so an approved rider clicking Profile gets the rider profile
+  // rather than the buyer one. The dashboard variant renders none of these.
+  const profileHref =
+    activeRole === "rider"
+      ? "/dashboard/rider/profile"
+      : activeRole === "vendor"
+        ? "/dashboard/vendor/profile"
+        : "/dashboard/profile";
+  // The dropdown's own "Dashboard" row must land on the workspace for the
+  // active role. A customer's workspace is the buyer dashboard, the same place
+  // the switcher's "Customer profile" row points to.
+  const dashboardHref =
+    activeRole === "customer" ? "/dashboard/customer" : homeFor(activeRole);
+  const settingsHref =
+    activeRole === "rider"
+      ? "/dashboard/rider/settings"
+      : activeRole === "vendor"
+        ? "/dashboard/vendor/settings"
+        : "/dashboard/settings";
+  const ordersHref =
+    activeRole === "admin" || activeRole === "demoadmin"
+      ? "/dashboard/admin/orders"
+      : activeRole === "rider"
+        ? "/dashboard/rider/deliveries"
+        : activeRole === "vendor"
+          ? "/dashboard/vendor/orders"
+          : canShop
+            ? "/dashboard/customer/orders"
+            : "#";
+  const ordersLabel =
+    activeRole === "rider"
+      ? "Deliveries"
+      : activeRole === "vendor"
+        ? "Store orders"
+        : "Orders";
 
   return (
     <div className="relative shrink-0" ref={dropdownRef}>
@@ -309,8 +352,55 @@ export default function UserAccountMenu() {
             </div>
           </div>
 
-          {/* No generic navigation links — each role's profile, orders and
-              settings are separate screens reached by switching dashboards. */}
+          {/* Storefront shortcuts. Out here there is no sidebar, so this
+              dropdown is the only way into a workspace. Inside a dashboard the
+              sidebar owns those screens and the block is skipped, leaving the
+              menu as identity + switcher + logout. */}
+          {variant === "storefront" && (
+            <div className="py-1.5 px-1.5 space-y-0.5 text-xs font-medium text-[var(--foreground)]">
+              {/* Profile */}
+              <Link
+                href={profileHref}
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[var(--surface-alt)] hover:text-primary transition-colors"
+              >
+                <User className="w-4 h-4 text-[var(--foreground-muted)]" />
+                <span>Profile</span>
+              </Link>
+
+              {/* Dashboard */}
+              <Link
+                href={dashboardHref}
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[var(--surface-alt)] hover:text-primary transition-colors"
+              >
+                <LayoutDashboard className="w-4 h-4 text-[var(--foreground-muted)]" />
+                <span>Dashboard</span>
+              </Link>
+
+              {/* Orders / Deliveries */}
+              {ordersHref !== "#" && (
+                <Link
+                  href={ordersHref}
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[var(--surface-alt)] hover:text-primary transition-colors"
+                >
+                  <ShoppingBag className="w-4 h-4 text-[var(--foreground-muted)]" />
+                  <span>{ordersLabel}</span>
+                </Link>
+              )}
+
+              {/* Settings */}
+              <Link
+                href={settingsHref}
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[var(--surface-alt)] hover:text-primary transition-colors"
+              >
+                <Settings className="w-4 h-4 text-[var(--foreground-muted)]" />
+                <span>Settings</span>
+              </Link>
+            </div>
+          )}
 
           {/* Dashboard switcher — only surfaces when the account has more than
               one approved authority. */}
