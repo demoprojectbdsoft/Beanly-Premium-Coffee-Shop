@@ -196,7 +196,11 @@ export default function UserAccountMenu() {
       : activeRole === "vendor"
         ? "/dashboard/vendor/profile"
         : "/dashboard/profile";
-  const dashboardHref = homeFor(activeRole);
+  // The dropdown's own "Dashboard" row must land on the workspace for the
+  // active role. A customer's workspace is the buyer dashboard, even though the
+  // switcher's "Customer storefront" row still means going home to shop.
+  const dashboardHref =
+    activeRole === "customer" ? "/dashboard/customer" : homeFor(activeRole);
   const settingsHref =
     activeRole === "rider"
       ? "/dashboard/rider/settings"
