@@ -1,15 +1,14 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Search, Menu, Sun, Moon } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import CartButton from "@/components/shared/CartButton";
-import UserAvatar from "@/components/shared/UserAvatar";
+import UserAccountMenu from "@/components/shared/UserAccountMenu";
 import NotificationBell from "@/components/dashboard/NotificationBell";
 import type { NotificationView } from "@/lib/notifications";
-import { canShop } from "@/lib/core/roles";
+import { canShop, roleOf, resolveActiveRole } from "@/lib/core/roles";
 
 import { useTheme } from "next-themes";
 
@@ -26,10 +25,19 @@ export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProp
 
   const { data: session } = authClient.useSession();
   const user = session?.user;
-  const isCustomerRoute = pathname.startsWith("/dashboard/customer");
   const isRiderRoute = pathname.startsWith("/dashboard/rider");
   const isVendorRoute = pathname.startsWith("/dashboard/vendor");
-  const userRole = ((user as { role?: string })?.role || (isRiderRoute ? "rider" : isVendorRoute ? "vendor" : isCustomerRoute ? "customer" : "admin")).toLowerCase();
+  // The session's role hint can trail a just-switched dashboard, so the route
+  // itself is the fallback: the header can never say "Customer" over the rider
+  // workspace it is rendering. Better-auth types the user without the role
+  // fields the API writes onto the same row, so they are read through a cast.
+  const roleUser = user as
+    | { role?: string | null; activeRole?: string | null; roles?: string[] | string | null }
+    | undefined;
+  const sessionRole = resolveActiveRole(roleUser);
+  const routeRole = isRiderRoute ? "rider" : isVendorRoute ? "vendor" : "";
+  const userRole =
+    routeRole && (routeRole === sessionRole || !sessionRole) ? routeRole : sessionRole || routeRole;
   // The store's feed names other people's orders and accounts, which is why it
   // is the store's own board and not something a customer could ever read.
   const isAdminView = userRole === "admin" || userRole === "demoadmin";
@@ -42,27 +50,9 @@ export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProp
       : userRole === "vendor"
         ? "vendor"
         : "customer";
-  const canUserShop = canShop((user as { role?: string | null } | undefined) ?? null);
-  const userImage = user?.image || (user as { avatar?: string })?.avatar;
-  // No invented name while the session loads: the header names the role and
-  // swaps to the real account name the moment it arrives.
-  const displayName = user?.name || (isAdminView ? "Store Admin" : isRiderRoute ? "Rider" : isVendorRoute ? "Vendor" : "Customer");
-  const profileHref = isRiderRoute
-    ? "/dashboard/rider/profile"
-    : isVendorRoute
-      ? "/dashboard/vendor/profile"
-      : isCustomerRoute
-        ? "/dashboard/customer/profile"
-        : "/dashboard/admin/profile";
-  const roleLabel = isAdminView
-    ? userRole === "demoadmin"
-      ? "Demo Admin"
-      : "Store Admin"
-    : userRole === "rider"
-      ? "Rider Account"
-      : userRole === "vendor"
-        ? "Vendor Account"
-        : "Customer Account";
+  // The switcher menu wants the dashboard the header is actually showing, so a
+  // stale session hint is corrected with the route before it reaches canShop.
+  const canUserShop = canShop({ activeRole: userRole, role: roleOf(roleUser) || null, roles: roleUser?.roles ?? null });
 
   const isDark = (resolvedTheme || theme) === "dark";
 
@@ -123,26 +113,9 @@ export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProp
 
         <div className="h-5 w-px bg-[var(--border-color)] hidden sm:block" />
 
-        {/* User Profile Link */}
-        <Link
-          href={profileHref}
-          className="flex items-center gap-3 pl-1 hover:opacity-85 transition-opacity"
-        >
-          <UserAvatar
-            src={userImage}
-            name={displayName}
-            size={32}
-            className="rounded-full bg-brand-gradient text-[var(--on-grad-text)] text-xs ring-2 ring-[var(--brand-flat)]/30"
-          />
-          <div className="hidden sm:block text-left">
-            <p className="text-xs font-bold text-[var(--foreground)] leading-none truncate max-w-[120px]">
-              {displayName}
-            </p>
-            <p className="text-[10px] text-[var(--foreground-muted)] mt-1 leading-none capitalize">
-              {roleLabel}
-            </p>
-          </div>
-        </Link>
+        {/* Profile + dashboard switcher — the same menu the storefront carries,
+            so every approved profile is one click away from any workspace. */}
+        <UserAccountMenu />
       </div>
     </header>
   );

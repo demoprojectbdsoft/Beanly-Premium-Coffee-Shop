@@ -25,7 +25,20 @@ export type NotificationType =
   | "order_delivered"
   | "delivery_assigned"
   | "delivery_update"
-  | "delivery_declined";
+  | "delivery_declined"
+  // Rider-specific
+  | "rider_application"
+  // Vendor-specific
+  | "vendor_application"
+  | "vendor_subscription"
+  | "vendor_order"
+  | "vendor_product"
+  | "vendor_promotion"
+  | "vendor_coupon"
+  | "vendor_review"
+  | "vendor_stock"
+  | "vendor_limit"
+  | "vendor_payment";
 
 /** One line, exactly as the API returns it. */
 export interface NotificationItem {

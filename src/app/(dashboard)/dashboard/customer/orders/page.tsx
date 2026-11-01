@@ -174,8 +174,14 @@ function buildTimeline(
 
 // ── Page Component ────────────────────────────────────────────────────────────
 
-export default async function CustomerOrdersPage() {
+interface CustomerOrdersPageProps {
+  searchParams: Promise<{ search?: string | string[] }>;
+}
+
+export default async function CustomerOrdersPage({ searchParams }: CustomerOrdersPageProps) {
   const user = await getUserSession();
+  const params = await searchParams;
+  const initialSearch = typeof params?.search === "string" ? params.search : "";
   let orders: CustomerOrder[] = [];
 
   if (user?.id) {
@@ -309,5 +315,5 @@ export default async function CustomerOrdersPage() {
     }
   }
 
-  return <CustomerOrdersClient initialOrders={orders} />;
+  return <CustomerOrdersClient initialOrders={orders} initialSearch={initialSearch} />;
 }

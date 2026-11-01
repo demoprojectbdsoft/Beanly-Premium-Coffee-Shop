@@ -257,9 +257,11 @@ function WarrantyStatusBadge({ warranty }: { warranty: CustomerWarranty }) {
 
 interface CustomerOrdersClientProps {
   initialOrders: CustomerOrder[];
+  /** Pre-fills the search box, so a notification link can land on the exact order. */
+  initialSearch?: string;
 }
 
-export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrdersClientProps) {
+export default function CustomerOrdersClient({ initialOrders = [], initialSearch = "" }: CustomerOrdersClientProps) {
   const { formatPrice, settings: siteSettings } = useSiteSettings();
   const siteName = siteSettings.siteName || "Sparq";
   const { data: session } = authClient.useSession();
@@ -271,7 +273,7 @@ export default function CustomerOrdersClient({ initialOrders = [] }: CustomerOrd
     Array.isArray(initialOrders) ? initialOrders : []
   );
   const [selectedTab, setSelectedTab] = useState("All Orders");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   // Six tabs used to eat the whole toolbar, so the three filters live in one
   // row: a status select, a sort select and an on/off switch for coverage.
   const [warrantyOnly, setWarrantyOnly] = useState(false);

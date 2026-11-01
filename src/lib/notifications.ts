@@ -1,16 +1,20 @@
 import {
   Bell,
+  Bike,
   CircleCheck,
   CircleX,
   CreditCard,
+  FileText,
   Inbox,
   Mail,
   Navigation,
   Package,
   PackageCheck,
+  Percent,
   ShieldCheck,
   ShoppingBag,
   Star,
+  Store,
   Truck,
   UserPlus,
   UserX,
@@ -52,6 +56,19 @@ export const NOTIFICATION_ICONS: Record<NotificationType, LucideIcon> = {
   delivery_assigned: Inbox,
   delivery_update: Navigation,
   delivery_declined: CircleX,
+  // Rider.
+  rider_application: Bike,
+  // Vendor.
+  vendor_application: Store,
+  vendor_subscription: CreditCard,
+  vendor_order: ShoppingBag,
+  vendor_product: Package,
+  vendor_promotion: Star,
+  vendor_coupon: Percent,
+  vendor_review: Star,
+  vendor_stock: FileText,
+  vendor_limit: ShieldCheck,
+  vendor_payment: CreditCard,
 };
 
 /** The bell, used whenever a line carries a type this build predates. */
@@ -76,6 +93,17 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   delivery_assigned: "Requests",
   delivery_update: "Delivery updates",
   delivery_declined: "Declined",
+  rider_application: "Application",
+  vendor_application: "Application",
+  vendor_subscription: "Subscription",
+  vendor_order: "Orders",
+  vendor_product: "Products",
+  vendor_promotion: "Promotions",
+  vendor_coupon: "Coupons",
+  vendor_review: "Reviews",
+  vendor_stock: "Stock alerts",
+  vendor_limit: "Limits",
+  vendor_payment: "Payments",
 };
 
 /**
@@ -95,8 +123,9 @@ export const NOTIFICATION_TYPE_ORDER = Object.keys(
  * per kind of work: a request is answered, a delivery is opened. A customer's
  * delivery update carries the order id, so it opens the live tracking page —
  * the only screen with the rider's position and the code to read at the door.
- * The seller workspace ships later and keeps reading from this same centre
- * until then, which is why its route is the centre itself.
+ * Vendor types route to their relevant page; since the vendor dashboard is
+ * still under construction, application events go to the public status page
+ * and operational events go to the notifications list as a safe fallback.
  */
 export function notificationHref(
   notification: Pick<NotificationItem, "type" | "ref">,
@@ -109,39 +138,51 @@ export function notificationHref(
       case "order":
       case "order_cancelled":
       case "delivery":
-        // The orders list searches ids, so the full order id finds exactly one.
         return `/dashboard/admin/orders${ref ? `?search=${ref}` : ""}`;
       case "transaction":
         return `/dashboard/admin/transactions${ref ? `?search=${ref}` : ""}`;
       case "user":
         return `/dashboard/admin/users${ref ? `?search=${ref}` : ""}`;
       case "user_deleted":
-        // The account is gone, so there is nothing left to search for.
         return "/dashboard/admin/users";
       case "warranty":
-        // "all" because new coverage is not claimed yet, and the claims view
-        // that the page opens on would hide exactly the record this line is
-        // about.
         return `/dashboard/admin/warranties?status=all${ref ? `&orderId=${ref}` : ""}`;
       case "message":
         return `/dashboard/admin/messages${ref ? `?search=${ref}` : ""}`;
       case "review":
         return `/dashboard/admin/reviews${ref ? `?search=${ref}` : ""}`;
+      case "rider_application":
+        return `/dashboard/admin/riders${ref ? `?search=${ref}` : ""}`;
+      case "vendor_application":
+        return `/dashboard/admin/vendors${ref ? `?search=${ref}` : ""}`;
       default:
         return "/dashboard/admin";
     }
   }
 
   if (view === "customer") {
+    // Delivery updates carry the order id so the customer can see live tracking.
     if (notification.type === "delivery_update" && ref) return `/track-order/${ref}`;
-    return `/dashboard/customer/orders${ref ? `?search=${ref}` : ""}`;
+    // All order lifecycle notifications carry the order id as ref.
+    if (ref) return `/dashboard/customer/orders?search=${ref}`;
+    return "/dashboard/customer/orders";
   }
 
   if (view === "rider") {
+    // Application decisions go to the status page, not the deliveries list.
+    if (notification.type === "rider_application") return "/become-a-rider/status";
+    // New delivery requests have their own screen.
     if (notification.type === "delivery_assigned") return "/dashboard/rider/requests";
+    // Declined: send them back to requests so they can pick another.
+    if (notification.type === "delivery_declined") return "/dashboard/rider/requests";
+    // Active delivery updates go to the deliveries list, filtered.
     return `/dashboard/rider/deliveries${ref ? `?search=${ref}` : ""}`;
   }
 
+  // Vendor: route to the relevant public page since the vendor dashboard is
+  // still under construction.
+  if (notification.type === "vendor_application") return "/become-a-vendor/status";
+  // Operational vendor notifications go to the notifications list as fallback.
   return `/dashboard/vendor/notifications${ref ? `?search=${ref}` : ""}`;
 }
 

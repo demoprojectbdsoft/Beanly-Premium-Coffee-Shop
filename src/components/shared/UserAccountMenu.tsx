@@ -16,6 +16,7 @@ import {
   Store,
   Repeat,
   Check,
+  Home,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "react-toastify";
@@ -69,7 +70,9 @@ const homeFor = (role: string) => {
   if (role === "rider") return "/dashboard/rider";
   if (role === "vendor") return "/dashboard/vendor";
   if (role === "admin" || role === "demoadmin") return "/dashboard/admin";
-  return "/";
+  // A customer's workspace is the buyer dashboard — orders, wishlist, profile.
+  // Buying happens on the storefront, which the switcher links separately.
+  return "/dashboard/customer";
 };
 
 const iconFor = (role: string) => {
@@ -94,8 +97,9 @@ export default function UserAccountMenu() {
     String(user?.activeRole || user?.role || "").toLowerCase() ||
     allRoles[0] ||
     "customer";
-  // The customer entry never appears as a "dashboard" — a plain customer lives
-  // on the storefront. Switching to it means going home.
+  // The customer entry is a profile like any other: switching to it lands on
+  // the buyer dashboard, where orders, wishlist and shopping live. The
+  // storefront itself gets its own link row below the switcher.
   const dashboards = allRoles.filter((role) => role !== "customer");
   const canShop = allRoles.includes("customer");
 
@@ -197,8 +201,8 @@ export default function UserAccountMenu() {
         ? "/dashboard/vendor/profile"
         : "/dashboard/profile";
   // The dropdown's own "Dashboard" row must land on the workspace for the
-  // active role. A customer's workspace is the buyer dashboard, even though the
-  // switcher's "Customer storefront" row still means going home to shop.
+  // active role. A customer's workspace is the buyer dashboard, the same place
+  // the switcher's "Customer profile" row points to.
   const dashboardHref =
     activeRole === "customer" ? "/dashboard/customer" : homeFor(activeRole);
   const settingsHref =
@@ -387,7 +391,7 @@ export default function UserAccountMenu() {
                   ) : (
                     <ShoppingBag className="w-4 h-4 text-[var(--foreground-muted)]" />
                   )}
-                  <span className="flex-1 text-left">Customer storefront</span>
+                  <span className="flex-1 text-left">Customer profile</span>
                   {activeRole === "customer" && (
                     <Check className="w-3.5 h-3.5 text-primary" />
                   )}
@@ -419,6 +423,19 @@ export default function UserAccountMenu() {
                   )}
                 </button>
               ))}
+
+              {/* Shopping lives on the storefront, so the menu carries a door
+                  back to it for every account that can buy. */}
+              {canShop && (
+                <Link
+                  href="/"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface-alt)] hover:text-primary transition-colors"
+                >
+                  <Home className="w-4 h-4 text-[var(--foreground-muted)]" />
+                  <span>Go to storefront</span>
+                </Link>
+              )}
             </div>
           )}
 
