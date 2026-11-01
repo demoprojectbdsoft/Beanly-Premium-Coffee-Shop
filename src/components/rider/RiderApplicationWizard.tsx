@@ -30,6 +30,7 @@ import {
 } from "@/types/rider";
 import { submitRiderApplication } from "@/lib/action/rider";
 import { useWizardDraft } from "@/hooks/useWizardDraft";
+import AppDatePicker from "@/components/shared/AppDatePicker";
 
 /**
  * The six-step rider application.
@@ -56,6 +57,9 @@ interface RiderApplicationWizardProps {
 }
 
 const STORAGE_KEY = "sparq.riderApplicationDraft";
+
+/** A date-of-birth picker never offers tomorrow; captured once per mount. */
+const TODAY_ISO = new Date().toISOString().slice(0, 10);
 
 const STEPS = [
   { title: "Personal", blurb: "Who you are", icon: CircleUser },
@@ -84,8 +88,15 @@ function Field({
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-[11px] font-semibold text-[var(--foreground)]">
-        {label} {required && <span className="text-rose-500">*</span>}
+      <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--foreground)]">
+        {label}
+        {required && (
+          <span
+            className="w-1.5 h-1.5 rounded-full bg-[var(--brand-flat)]"
+            title="Required"
+            aria-label="required"
+          />
+        )}
       </span>
       {children}
       {hint && <span className="block text-[10px] text-[var(--foreground-muted)]">{hint}</span>}
@@ -371,11 +382,11 @@ export default function RiderApplicationWizard({
             </Field>
 
             <Field label="Date of birth">
-              <input
-                type="date"
-                className={INPUT_CLASS}
-                value={draft.personalInfo.dateOfBirth || ""}
-                onChange={(e) => patchPersonal({ dateOfBirth: e.target.value || null })}
+              <AppDatePicker
+                ariaLabel="Date of birth"
+                value={draft.personalInfo.dateOfBirth}
+                maxValue={TODAY_ISO}
+                onChange={(next) => patchPersonal({ dateOfBirth: next })}
               />
             </Field>
 
@@ -588,11 +599,10 @@ export default function RiderApplicationWizard({
                 />
               </Field>
               <Field label="Licence expiry">
-                <input
-                  type="date"
-                  className={INPUT_CLASS}
-                  value={draft.vehicle.licenseExpiry || ""}
-                  onChange={(e) => patchVehicle({ licenseExpiry: e.target.value || null })}
+                <AppDatePicker
+                  ariaLabel="Licence expiry"
+                  value={draft.vehicle.licenseExpiry}
+                  onChange={(next) => patchVehicle({ licenseExpiry: next })}
                 />
               </Field>
               <Field label="Do you own the vehicle?">
