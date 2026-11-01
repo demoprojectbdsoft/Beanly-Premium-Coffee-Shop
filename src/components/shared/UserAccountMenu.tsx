@@ -332,7 +332,7 @@ export default function UserAccountMenu() {
               className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[var(--surface-alt)] hover:text-primary transition-colors"
             >
               <LayoutDashboard className="w-4 h-4 text-[var(--foreground-muted)]" />
-              <span>{labelFor(activeRole)} dashboard</span>
+              <span>Dashboard</span>
             </Link>
 
             {/* Orders / Deliveries */}
