@@ -208,6 +208,19 @@ export const auth = betterAuth({
         input: false,
         defaultValue: ["customer"],
       },
+      /**
+       * Roles the store team parked without closing the account.
+       *
+       * A JSON list of `{ role, reason, suspendedAt }` rows written only by
+       * the store API's suspension desk. The session carries it so the
+       * switcher can show a parked dashboard greyed out instead of offering a
+       * switch the API would refuse.
+       */
+      roleSuspensions: {
+        type: "json",
+        input: false,
+        defaultValue: [],
+      },
     },
   },
 });
