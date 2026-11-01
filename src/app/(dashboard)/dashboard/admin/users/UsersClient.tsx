@@ -22,14 +22,12 @@ import {
   Calendar,
   Sparkles,
   Award,
-  ChevronDown,
+  Eye,
   Bike,
   Store,
 } from "lucide-react";
-import { getUserAdminDetail } from "@/lib/action/user";
 import { rolesOf, roleOf, suspendedRolesOf } from "@/lib/core/roles";
 import UserAvatar from "@/components/shared/UserAvatar";
-import UserDetailClient from "./[id]/UserDetailClient";
 
 const FILTER_TABS = ["All", "Admin", "Customer", "Rider", "Vendor"];
 const STATUS_FILTER_TABS = ["All", "Active", "Suspended"];
@@ -184,19 +182,6 @@ export default function UsersClient({
 
   const [users, setUsers] = useState<UserItem[]>(initialUsers);
 
-  // Inline detail: the one expanded row and the freshly-fetched bundle that
-  // fills it. The bundle is pulled from the server on expand, so the panel
-  // shows the same thing the standalone profile page does rather than the
-  // trimmed summary this list already holds.
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<{
-    user: Record<string, unknown>;
-    orders: unknown[];
-    vendorDetail: Record<string, unknown> | null;
-    riderDetail: Record<string, unknown> | null;
-  } | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
-
   useEffect(() => {
     setUsers(Array.isArray(initialUsers) ? initialUsers : []);
   }, [initialUsers]);
@@ -256,32 +241,6 @@ export default function UsersClient({
     });
   };
 
-  // Expand or collapse one row. Opening fetches the full account bundle from
-  // the store API — the fresh user row, the purchase list, and any marketplace
-  // applications — so the inline panel is authoritative, never a stale claim.
-  const handleToggleRow = async (user: UserItem) => {
-    const userId = user._id || user.id || "";
-    if (!userId) return;
-
-    if (expandedId === userId) {
-      setExpandedId(null);
-      setDetail(null);
-      return;
-    }
-
-    setExpandedId(userId);
-    setDetail(null);
-    setLoadingDetail(true);
-    try {
-      const bundle = await getUserAdminDetail(userId);
-      if (bundle) setDetail(bundle);
-    } catch {
-      setDetail(null);
-    } finally {
-      setLoadingDetail(false);
-    }
-  };
-
   const { page, limit, total, totalPages } = pagination || {
     page: 1,
     limit: 10,
@@ -322,7 +281,7 @@ export default function UsersClient({
             </span>
           </h1>
           <p className="text-xs md:text-sm text-[var(--foreground-muted)] mt-1">
-            Click any user row to expand their full profile — role controls, purchase history and rider/vendor details — right here on the page.
+            Click any user row to open their full profile — role controls, purchase history and rider/vendor details — on its own page.
           </p>
         </div>
 
@@ -518,17 +477,13 @@ export default function UsersClient({
                       })
                     : "—";
 
-                  const isExpanded = expandedId === id;
+                  const detailHref = `/dashboard/admin/users/${id}`;
                   return (
-                    <React.Fragment key={id}>
-                      <tr
-                        onClick={() => handleToggleRow(user)}
-                        className={`transition-colors cursor-pointer group ${
-                          isExpanded
-                            ? "bg-[var(--surface-alt)]"
-                            : "hover:bg-[var(--surface-alt)]/80 dark:hover:bg-[var(--surface)]/40"
-                        }`}
-                      >
+                    <tr
+                      key={id}
+                      onClick={() => router.push(detailHref)}
+                      className="transition-colors cursor-pointer group hover:bg-[var(--surface-alt)]/80 dark:hover:bg-[var(--surface)]/40"
+                    >
                         {/* User Avatar & Name */}
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-2.5">
@@ -605,55 +560,16 @@ export default function UsersClient({
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="flex items-center justify-end gap-1.5">
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="ghost"
-                              onPress={() => handleToggleRow(user)}
-                              aria-label={isExpanded ? `Hide ${name}` : `View ${name}`}
-                              className="w-8 h-8 rounded-lg text-[var(--foreground-muted)] hover:text-primary hover:bg-primary/10 cursor-pointer transition-colors"
+                            <Link
+                              href={detailHref}
+                              aria-label={`View ${name}`}
+                              className="inline-flex items-center gap-1.5 w-8 h-8 justify-center rounded-lg text-[var(--foreground-muted)] hover:text-primary hover:bg-primary/10 cursor-pointer transition-colors"
                             >
-                              <ChevronDown
-                                className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180 text-primary" : ""}`}
-                              />
-                            </Button>
+                              <Eye className="w-4 h-4" />
+                            </Link>
                           </div>
                         </td>
                       </tr>
-
-                      {isExpanded && (
-                        <tr>
-                          <td
-                            colSpan={8}
-                            className="p-0 bg-[var(--surface-alt)]/40 dark:bg-[var(--surface)]/20 border-t border-[var(--border-color)]"
-                          >
-                            <div className="p-4 sm:p-5">
-                              {loadingDetail ? (
-                                <div className="py-10 text-center">
-                                  <div className="w-7 h-7 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                                  <p className="text-xs font-semibold text-[var(--foreground-muted)]">
-                                    Loading profile…
-                                  </p>
-                                </div>
-                              ) : detail ? (
-                                <UserDetailClient
-                                  key={id}
-                                  variant="inline"
-                                  user={detail.user as any}
-                                  orders={detail.orders as any}
-                                  vendorDetail={detail.vendorDetail as any}
-                                  riderDetail={detail.riderDetail as any}
-                                />
-                              ) : (
-                                <p className="py-8 text-center text-xs text-[var(--foreground-muted)]">
-                                  Could not load this account’s details.
-                                </p>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
                   );
                 })}
               </tbody>

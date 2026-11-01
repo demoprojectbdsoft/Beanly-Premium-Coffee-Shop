@@ -87,9 +87,6 @@ interface UserDetailClientProps {
   orders: OrderRow[];
   vendorDetail: VendorApplicationDetail | null;
   riderDetail: RiderApplicationDetail | null;
-  /** "page" is the standalone profile route; "inline" nests the same view in an
-   *  expanded row on the users desk, so the back link is dropped. */
-  variant?: "page" | "inline";
 }
 
 const ROLE_META: Record<
@@ -204,7 +201,6 @@ export default function UserDetailClient({
   orders,
   vendorDetail,
   riderDetail,
-  variant = "page",
 }: UserDetailClientProps) {
   const router = useRouter();
   const { guardDemo } = useDemoAdmin();
@@ -342,15 +338,13 @@ export default function UserDetailClient({
   return (
     <div className="space-y-6">
       {/* ── Back link ── */}
-      {variant === "page" && (
-        <Link
-          href="/dashboard/admin/users"
-          className="inline-flex items-center gap-2 text-xs font-bold text-[var(--foreground-muted)] hover:text-primary transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to users
-        </Link>
-      )}
+      <Link
+        href="/dashboard/admin/users"
+        className="inline-flex items-center gap-2 text-xs font-bold text-[var(--foreground-muted)] hover:text-primary transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to users
+      </Link>
 
       {/* ── Account header ── */}
       <Card className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-2xl shadow-xs p-5 sm:p-6">
