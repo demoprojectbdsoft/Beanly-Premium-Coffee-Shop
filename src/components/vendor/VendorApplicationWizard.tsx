@@ -84,8 +84,15 @@ function Field({
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-[11px] font-semibold text-[var(--foreground)]">
-        {label} {required && <span className="text-rose-500">*</span>}
+      <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--foreground)]">
+        {label}
+        {required && (
+          <span
+            className="w-1.5 h-1.5 rounded-full bg-[var(--brand-flat)]"
+            title="Required"
+            aria-label="required"
+          />
+        )}
       </span>
       {children}
       {hint && (
