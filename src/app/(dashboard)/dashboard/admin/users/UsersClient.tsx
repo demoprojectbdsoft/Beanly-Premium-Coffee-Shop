@@ -356,27 +356,99 @@ export default function UsersClient({
     setTimeout(() => setCopiedId(false), 2000);
   };
 
-  // Role change
-  const handleRoleChange = async (userId: string, newRole: string) => {
-    if (!userId || !newRole) return;
+  // Reflect a fresh server answer onto the row and the open modal together, so
+  // the chips re-render without waiting for the router to re-fetch.
+  const applyUserPatch = (userId: string, patch: Partial<UserItem>) => {
+    setUsers((prev) =>
+      prev.map((u) => ((u._id || u.id) === userId ? { ...u, ...patch } : u))
+    );
+    setSelectedUser((prev) =>
+      prev && (prev._id || prev.id) === userId ? { ...prev, ...patch } : prev
+    );
+  };
+
+  // Grant or revoke one role. The whole approved list is sent so the store API
+  // can re-apply its invariants: an admin collapses to a single authority,
+  // every other pool keeps its customer entry, and the active dashboard falls
+  // back if the role being removed was the one the account was standing on.
+  const handleToggleRole = async (
+    user: UserItem,
+    role: string,
+    checked: boolean
+  ) => {
+    const userId = user._id || user.id;
+    if (!userId) return;
     if (guardDemo()) return;
+
+    const current = rolesOf(user);
+    const next = checked
+      ? Array.from(new Set([...current, role]))
+      : current.filter((r) => r !== role);
+    if (next.length === 0) {
+      toast.error("An account must keep at least one role");
+      return;
+    }
+
     setIsUpdating(true);
     try {
-      const res = await updateUser(userId, { role: newRole });
+      const res = await setUserRoles(userId, next);
       if (res?.success !== false) {
-        toast.success(`Role updated to ${newRole.toUpperCase()}`);
-        setUsers((prev) =>
-          prev.map((u) => ((u._id || u.id) === userId ? { ...u, role: newRole } : u))
-        );
-        if (selectedUser && (selectedUser._id || selectedUser.id) === userId) {
-          setSelectedUser((prev) => (prev ? { ...prev, role: newRole } : null));
-        }
+        const data = (res?.data || {}) as {
+          roles?: string[];
+          activeRole?: string;
+          roleSuspensions?: RoleSuspensionRow[];
+        };
+        applyUserPatch(userId, {
+          roles: data.roles ?? next,
+          activeRole: data.activeRole ?? user.activeRole,
+          role: data.activeRole ?? user.role,
+          roleSuspensions: data.roleSuspensions ?? user.roleSuspensions,
+        });
+        toast.success(checked ? `${role} granted` : `${role} revoked`);
         router.refresh();
       } else {
-        toast.error(res?.message || "Failed to update role");
+        toast.error(res?.message || "Failed to update roles");
       }
     } catch {
-      toast.error("Error updating user role");
+      toast.error("Error updating user roles");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Park or release one approved role. The role stays granted — the account
+  // just cannot enter that dashboard until it is released, so it never needs a
+  // fresh application. Customer and admin authority are refused by the API here;
+  // those use the account status and the role toggles instead.
+  const handleToggleSuspension = async (
+    user: UserItem,
+    role: string,
+    suspended: boolean
+  ) => {
+    const userId = user._id || user.id;
+    if (!userId) return;
+    if (guardDemo()) return;
+
+    setIsUpdating(true);
+    try {
+      const res = await setUserRoleSuspension(userId, { role, suspended });
+      if (res?.success !== false) {
+        const data = (res?.data || {}) as {
+          roleSuspensions?: RoleSuspensionRow[];
+          activeRole?: string;
+        };
+        applyUserPatch(userId, {
+          roleSuspensions: data.roleSuspensions ?? user.roleSuspensions,
+          activeRole: data.activeRole ?? user.activeRole,
+          role: data.activeRole ?? user.role,
+        });
+        toast.success(suspended ? `${role} suspended` : `${role} released`);
+        router.refresh();
+      } else {
+        toast.error(res?.message || "Failed to update suspension");
+      }
+    } catch {
+      toast.error("Error updating role suspension");
     } finally {
       setIsUpdating(false);
     }
@@ -951,45 +1023,96 @@ export default function UsersClient({
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                        {/* Role Select Control */}
-                        <div className="space-y-1.5">
+                        {/* Approved Roles — multi-select */}
+                        <div className="space-y-2">
                           <label className="text-[11px] font-bold text-[var(--foreground-muted)]">
-                            User Role
+                            Approved Roles
                           </label>
-                          <Select
-                            aria-label="Change Role"
-                            placeholder="Select Role"
-                            selectedKey={(selectedUser.role || "customer").toLowerCase()}
-                            onSelectionChange={(key) => {
-                              if (key) {
-                                handleRoleChange(selectedUser._id || selectedUser.id!, String(key));
-                              }
-                            }}
-                            isDisabled={isUpdating}
-                          >
-                            <Select.Trigger className="h-10 w-full px-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-elevated)] text-xs font-bold text-[var(--foreground)] flex items-center justify-between gap-2 cursor-pointer hover:border-primary transition-colors shadow-xs [&>span]:text-xs [&>span]:font-bold [&>span]:truncate [&>span]:text-left">
-                              <Select.Value className="text-xs font-bold capitalize truncate flex-1 text-left" />
-                              <Select.Indicator className="[&>svg]:w-3.5 [&>svg]:h-3.5 text-[var(--foreground-muted)] shrink-0" />
-                            </Select.Trigger>
-                            <Select.Popover className="w-(--trigger-width) min-w-[200px] p-1.5 bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-xl shadow-xl z-50">
-                              <ListBox>
-                                {ROLE_OPTIONS.map((opt) => (
-                                  <ListBox.Item
-                                    key={opt.id}
-                                    id={opt.id}
-                                    textValue={opt.label}
-                                    className="text-xs font-semibold px-3 py-2 rounded-lg hover:bg-[var(--surface-alt)] text-[var(--foreground)] cursor-pointer flex items-center justify-between"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <opt.icon className="w-3.5 h-3.5 text-primary" />
-                                      <span>{opt.label}</span>
+                          <div className="flex flex-wrap gap-2">
+                            {ROLE_OPTIONS.map((opt) => {
+                              const held = rolesOf(selectedUser).includes(opt.id);
+                              const Icon = opt.icon;
+                              return (
+                                <button
+                                  key={opt.id}
+                                  type="button"
+                                  disabled={isUpdating}
+                                  onClick={() => handleToggleRole(selectedUser, opt.id, !held)}
+                                  title={opt.desc}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                                    held
+                                      ? "bg-primary text-white border-primary shadow-xs"
+                                      : "bg-[var(--surface-elevated)] text-[var(--foreground-muted)] border-[var(--border-color)] hover:border-primary hover:text-primary"
+                                  }`}
+                                >
+                                  <Icon className="w-3.5 h-3.5" />
+                                  <span>{opt.label}</span>
+                                  {held && <Check className="w-3 h-3" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <p className="text-[10px] leading-relaxed text-[var(--foreground-muted)]">
+                            Tapping a role grants or revokes it. Admin is a single
+                            authority on its own, and every other account always
+                            keeps the customer role so it can still shop.
+                          </p>
+
+                          {/* Park or release one marketplace dashboard */}
+                          {(() => {
+                            const suspensable = rolesOf(selectedUser).filter(
+                              (r) => r === "rider" || r === "vendor"
+                            );
+                            if (suspensable.length === 0) return null;
+                            const suspended = suspendedRolesOf(selectedUser);
+                            return (
+                              <div className="space-y-1.5 pt-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+                                  Suspend per role
+                                </span>
+                                {suspensable.map((role) => {
+                                  const isSuspended = suspended.includes(role);
+                                  return (
+                                    <div
+                                      key={role}
+                                      className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-color)]"
+                                    >
+                                      <span className="text-xs font-semibold capitalize text-[var(--foreground)]">
+                                        {role} dashboard
+                                      </span>
+                                      <button
+                                        type="button"
+                                        disabled={isUpdating}
+                                        onClick={() => handleToggleSuspension(selectedUser, role, !isSuspended)}
+                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition cursor-pointer disabled:opacity-60 ${
+                                          isSuspended
+                                            ? "bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/60"
+                                            : "bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60"
+                                        }`}
+                                      >
+                                        {isSuspended ? (
+                                          <Ban className="w-3 h-3" />
+                                        ) : (
+                                          <CheckCircle2 className="w-3 h-3" />
+                                        )}
+                                        <span>{isSuspended ? "Suspended · release" : "Active · suspend"}</span>
+                                      </button>
                                     </div>
-                                    <ListBox.ItemIndicator />
-                                  </ListBox.Item>
-                                ))}
-                              </ListBox>
-                            </Select.Popover>
-                          </Select>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
+
+                          {(selectedUser._id || selectedUser.id) && (
+                            <Link
+                              href={`/dashboard/admin/users/${selectedUser._id || selectedUser.id}`}
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline pt-1"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              Open full role profile
+                            </Link>
+                          )}
                         </div>
 
                         {/* Status Select Control */}
