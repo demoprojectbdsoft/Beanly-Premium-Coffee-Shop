@@ -221,6 +221,20 @@ export const auth = betterAuth({
         input: false,
         defaultValue: [],
       },
+      /**
+       * The rider's live online/offline switch.
+       *
+       * Without this field the session never carries it, and the rider
+       * sidebar has nothing to read and always falls back to "Online".
+       * The value itself is written by the store API when the rider toggles
+       * availability on the profile page; the session only mirrors it, so the
+       * client must refetch the session after a toggle to see the new state.
+       */
+      availability: {
+        type: "string",
+        input: false,
+        defaultValue: "online",
+      },
     },
   },
 });

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Inbox,
@@ -60,12 +59,10 @@ export default function RiderSidebar({ isOpen, onClose }: RiderSidebarProps) {
   const { data: session } = authClient.useSession();
   const rider = session?.user as { name?: string; email?: string; availability?: string } | undefined;
 
-  // Live availability, so the sidebar says the same thing the profile page does.
-  const [availability, setAvailability] = useState<string>(rider?.availability || "online");
-
-  useEffect(() => {
-    if (rider?.availability) setAvailability(rider.availability);
-  }, [rider?.availability]);
+  // Live availability, so the sidebar says the same thing the profile page
+  // does. `useSession()` is a shared reactive store: the profile page
+  // refetches it after a toggle and this badge updates with it.
+  const availability = rider?.availability || "online";
 
   const handleSignOut = async () => {
     try {

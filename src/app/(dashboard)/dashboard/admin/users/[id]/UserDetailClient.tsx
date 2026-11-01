@@ -740,8 +740,24 @@ export default function UserDetailClient({
               </p>
             )}
 
+            {/* Live online/offline state — the same switch the rider toggles
+                on their profile, and what the assignment list filters on. */}
+            <div
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                (user.availability || "online") === "offline"
+                  ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25"
+                  : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
+              }`}
+            >
+              <span
+                className={`inline-block w-1.5 h-1.5 rounded-full ${
+                  (user.availability || "online") === "offline" ? "bg-rose-500" : "bg-emerald-500"
+                }`}
+              />
+              {(user.availability || "online") === "offline" ? "Offline — not getting new jobs" : "Online — available for jobs"}
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Availability" value={<span className="capitalize">{user.availability || "online"}</span>} />
               <Field label="Vehicle" value={user.vehicleType ? <span className="capitalize">{user.vehicleType}</span> : undefined} />
               <Field label="Vehicle number" value={user.vehicleNumber} />
               <Field label="License number" value={user.licenseNumber} />

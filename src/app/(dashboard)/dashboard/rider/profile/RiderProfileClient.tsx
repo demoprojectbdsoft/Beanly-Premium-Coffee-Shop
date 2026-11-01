@@ -18,6 +18,7 @@ import {
 import { toast } from "react-toastify";
 import ImageUploader from "@/components/shared/ImageUploader";
 import { updateUser } from "@/lib/action/user";
+import { authClient } from "@/lib/auth-client";
 
 export interface RiderProfile {
   id: string;
@@ -40,6 +41,12 @@ const inputClass =
 
 export default function RiderProfileClient({ initialProfile }: { initialProfile: RiderProfile }) {
   const router = useRouter();
+  // The sidebar badge and the account chip read availability from the
+  // better-auth session. A save writes through the store API, which
+  // better-auth knows nothing about, so the client session is refetched
+  // afterwards. `disableCookieCache` forces the server to re-read the user
+  // document instead of answering from its cached session cookie.
+  const { refetch } = authClient.useSession();
 
   const [name, setName] = useState(initialProfile.name);
   // The photo is saved with the rest of the details, so the card on the left
@@ -88,6 +95,7 @@ export default function RiderProfileClient({ initialProfile }: { initialProfile:
 
       toast.success("Profile updated successfully!");
       router.refresh();
+      refetch({ query: { disableCookieCache: true } });
     } catch {
       toast.error("Could not save your profile. Please try again.");
     } finally {
@@ -112,6 +120,7 @@ export default function RiderProfileClient({ initialProfile }: { initialProfile:
 
       toast.success(next === "online" ? "You are online — new jobs can reach you." : "You are offline.");
       router.refresh();
+      refetch({ query: { disableCookieCache: true } });
     } catch {
       setAvailability(previous);
       toast.error("Could not change your availability.");

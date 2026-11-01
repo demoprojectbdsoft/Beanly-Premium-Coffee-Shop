@@ -17,7 +17,15 @@ const readSession = async () => {
 /** The signed-in user, or null when the request has no session. */
 export const getUserSession = async () => {
   const session = await readSession();
-  return session?.user ?? null;
+  if (!session?.user) return null;
+  // better-auth types `availability` as a plain string because it is an
+  // additionalField. The rest of the app only ever sees the two real values
+  // the schema allows, so narrow it here instead of at every call site.
+  const { availability, ...rest } = session.user;
+  return {
+    ...rest,
+    availability: availability === "offline" ? ("offline" as const) : ("online" as const),
+  };
 };
 
 /** The session token the backend expects as a Bearer credential. */
