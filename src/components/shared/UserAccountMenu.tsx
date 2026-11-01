@@ -17,6 +17,7 @@ import {
   Repeat,
   Check,
   Home,
+  Ban,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "react-toastify";
@@ -41,6 +42,7 @@ type SessionUser = {
   role?: string | null;
   activeRole?: string | null;
   roles?: string[] | string | null;
+  roleSuspensions?: { role?: string }[] | null;
   vendorStatus?: string | null;
   riderStatus?: string | null;
 };
@@ -65,6 +67,20 @@ const labelFor = (role: string) =>
   role === "demoadmin"
     ? "Demo admin"
     : role.charAt(0).toUpperCase() + role.slice(1);
+
+/**
+ * The parked dashboards, read from the session's suspension rows.
+ *
+ * A suspended role stays in `roles` — the door is only closed for now — so
+ * the switcher shows it greyed out instead of hiding it, and the account
+ * never lands on it through a stale `activeRole` claim.
+ */
+const suspendedFor = (user: SessionUser | undefined): string[] => {
+  const rows = Array.isArray(user?.roleSuspensions) ? user!.roleSuspensions : [];
+  return rows
+    .map((row) => (typeof row?.role === "string" ? row.role.toLowerCase() : ""))
+    .filter(Boolean);
+};
 
 const homeFor = (role: string) => {
   if (role === "rider") return "/dashboard/rider";
@@ -93,6 +109,7 @@ export default function UserAccountMenu() {
   const user = session?.user as SessionUser | undefined;
 
   const allRoles = normaliseRoles(user);
+  const suspended = suspendedFor(user);
   const activeRole =
     String(user?.activeRole || user?.role || "").toLowerCase() ||
     allRoles[0] ||
@@ -398,31 +415,43 @@ export default function UserAccountMenu() {
                 </button>
               )}
 
-              {dashboards.map((role) => (
+              {dashboards.map((role) => {
+                const parked = suspended.includes(role);
+                return (
                 <button
                   key={role}
                   type="button"
                   onClick={() => handleSwitch(role)}
-                  disabled={switching !== null || role === activeRole}
+                  disabled={switching !== null || role === activeRole || parked}
+                  title={parked ? "This dashboard is suspended by the store team" : undefined}
                   className={`flex items-center gap-3 w-full px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer disabled:cursor-not-allowed ${
-                    role === activeRole
-                      ? "bg-primary/10 text-primary"
-                      : "hover:bg-[var(--surface-alt)] hover:text-primary"
+                    parked
+                      ? "text-[var(--foreground-muted)]/60"
+                      : role === activeRole
+                        ? "bg-primary/10 text-primary"
+                        : "hover:bg-[var(--surface-alt)] hover:text-primary"
                   }`}
                 >
                   {switching === role ? (
                     <Loader2 className="w-4 h-4 animate-spin text-[var(--foreground-muted)]" />
+                  ) : parked ? (
+                    <Ban className="w-4 h-4 text-rose-500/70" />
                   ) : (
                     <span className="text-[var(--foreground-muted)]">{iconFor(role)}</span>
                   )}
                   <span className="flex-1 text-left capitalize">
                     {labelFor(role)} dashboard
                   </span>
-                  {role === activeRole && (
-                    <Check className="w-3.5 h-3.5 text-primary" />
+                  {parked ? (
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                      Suspended
+                    </span>
+                  ) : (
+                    role === activeRole && <Check className="w-3.5 h-3.5 text-primary" />
                   )}
                 </button>
-              ))}
+                );
+              })}
 
               {/* Shopping lives on the storefront, so the menu carries a door
                   back to it for every account that can buy. */}

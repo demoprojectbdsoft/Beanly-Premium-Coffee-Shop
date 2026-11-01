@@ -19,6 +19,8 @@ type RoleCarrier = {
   role?: string | null;
   activeRole?: string | null;
   roles?: string[] | string | null;
+  /** Per-role suspensions as the API stores them: [{ role, reason, ... }]. */
+  roleSuspensions?: unknown;
 } | null | undefined;
 
 /** The user's active role, lowercased, or "" when unknown. */
@@ -136,19 +138,40 @@ export function shopperBlockedResult(user: RoleCarrier, action: string) {
 }
 
 /**
+ * The roles parked by the store team, normalised to lowercase names.
+ *
+ * A suspended role is still approved — it only cannot be entered — so every
+ * switcher and fallback needs this list beside the approved array.
+ */
+export function suspendedRolesOf(user: RoleCarrier): string[] {
+  const raw = (user as any)?.roleSuspensions;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((row: unknown) =>
+      typeof (row as any)?.role === "string" ? ((row as any).role as string).toLowerCase() : ""
+    )
+    .filter(Boolean);
+}
+
+/**
  * The dashboard the account should land on after signing in.
  *
  * Reads `activeRole`, but only trusts it when the same value also appears in
  * the approved array — otherwise a stale session would send someone to a
- * dashboard they no longer hold. Falls back to the first approved role, then
- * to customer, which is the entry every fresh registration gets.
+ * dashboard they no longer hold. A suspended entry is skipped the same way:
+ * the role is still approved, but the door is parked until an admin reopens
+ * it. Falls back to the first approved, unsuspended role, then to customer,
+ * which is the entry every fresh registration gets.
  *
  * This is a pure helper, so it lives with the other role readers rather than
  * in the `"use server"` session module, where every export must be async.
  */
 export function resolveActiveRole(user: RoleCarrier): string {
   const pool = rolesOf(user);
+  const suspended = suspendedRolesOf(user);
   const wanted = roleOf(user);
-  if (wanted && pool.includes(wanted)) return wanted;
-  return pool[0] || "customer";
+  if (wanted && pool.includes(wanted) && (wanted === "customer" || !suspended.includes(wanted))) {
+    return wanted;
+  }
+  return pool.find((role) => role === "customer" || !suspended.includes(role)) || pool[0] || "customer";
 }

@@ -34,3 +34,17 @@ export const revokeUserRole = async (
 export const setUserRoles = async (id: string, roles: string[]) => {
   return serverMutation(`/users/${id}/roles`, { roles }, "POST");
 };
+
+/**
+ * Admin-only: park or release one approved role.
+ *
+ * A suspension closes one dashboard while the person keeps every other role
+ * — unlike a revoke, the entry stays approved, so releasing it never needs a
+ * fresh application.
+ */
+export const setUserRoleSuspension = async (
+  id: string,
+  payload: { role: string; suspended: boolean; reason?: string }
+) => {
+  return serverMutation(`/users/${id}/roles/suspension`, payload, "PATCH");
+};
