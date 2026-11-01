@@ -25,6 +25,7 @@ import type {
 } from "@/types/vendor";
 import { submitVendorApplication } from "@/lib/action/vendor";
 import { useWizardDraft } from "@/hooks/useWizardDraft";
+import AppSelect from "@/components/shared/AppSelect";
 import { planPrice } from "@/lib/vendorPlan";
 import { formatPrice } from "@/lib/currency";
 import PlanCards from "./PlanCards";
@@ -562,18 +563,13 @@ export default function VendorApplicationWizard({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Business type">
-                <select
-                  className={INPUT_CLASS}
+                <AppSelect
+                  ariaLabel="Business type"
                   value={draft.verification.businessType || ""}
-                  onChange={(event) => patchVerification({ businessType: event.target.value })}
-                >
-                  <option value="">Not registered</option>
-                  {BUSINESS_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => patchVerification({ businessType: v })}
+                  options={BUSINESS_TYPES.map((type) => ({ value: type, label: type }))}
+                  placeholder="Not registered"
+                />
               </Field>
 
               <Field label="Registration number">

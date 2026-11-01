@@ -31,6 +31,7 @@ import {
 import { submitRiderApplication } from "@/lib/action/rider";
 import { useWizardDraft } from "@/hooks/useWizardDraft";
 import AppDatePicker from "@/components/shared/AppDatePicker";
+import AppSelect from "@/components/shared/AppSelect";
 
 /**
  * The six-step rider application.
@@ -431,19 +432,20 @@ export default function RiderApplicationWizard({
                 />
               </Field>
               <Field label="Preferred contact">
-                <select
-                  className={INPUT_CLASS}
+                <AppSelect
+                  ariaLabel="Preferred contact"
                   value={draft.contactInfo.preferredContact || "phone"}
-                  onChange={(e) =>
+                  onChange={(v) =>
                     patchContact({
-                      preferredContact: e.target.value as "phone" | "email" | "whatsapp",
+                      preferredContact: v as "phone" | "email" | "whatsapp",
                     })
                   }
-                >
-                  <option value="phone">Phone call</option>
-                  <option value="email">Email</option>
-                  <option value="whatsapp">WhatsApp</option>
-                </select>
+                  options={[
+                    { value: "phone", label: "Phone call" },
+                    { value: "email", label: "Email" },
+                    { value: "whatsapp", label: "WhatsApp" },
+                  ]}
+                />
               </Field>
             </div>
 
@@ -568,17 +570,13 @@ export default function RiderApplicationWizard({
         return (
           <div className="space-y-4">
             <Field label="Vehicle type" required>
-              <select
-                className={INPUT_CLASS}
+              <AppSelect
+                ariaLabel="Vehicle type"
                 value={draft.vehicle.type}
-                onChange={(e) => patchVehicle({ type: e.target.value as RiderVehicleType })}
-              >
-                {RIDER_VEHICLE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => patchVehicle({ type: v as RiderVehicleType })}
+                options={RIDER_VEHICLE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                placeholder="Select vehicle"
+              />
             </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -606,14 +604,15 @@ export default function RiderApplicationWizard({
                 />
               </Field>
               <Field label="Do you own the vehicle?">
-                <select
-                  className={INPUT_CLASS}
+                <AppSelect
+                  ariaLabel="Do you own the vehicle?"
                   value={draft.vehicle.hasOwnVehicle ? "yes" : "no"}
-                  onChange={(e) => patchVehicle({ hasOwnVehicle: e.target.value === "yes" })}
-                >
-                  <option value="yes">Yes, it is mine</option>
-                  <option value="no">No, borrowed or rented</option>
-                </select>
+                  onChange={(v) => patchVehicle({ hasOwnVehicle: v === "yes" })}
+                  options={[
+                    { value: "yes", label: "Yes, it is mine" },
+                    { value: "no", label: "No, borrowed or rented" },
+                  ]}
+                />
               </Field>
             </div>
           </div>

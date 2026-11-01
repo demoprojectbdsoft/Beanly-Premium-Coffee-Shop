@@ -44,7 +44,7 @@ interface AppDatePickerProps {
 }
 
 const CONTROL_CLASS =
-  "flex w-full items-center justify-between gap-2 h-10 px-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-xs transition focus-within:ring-2 focus-within:ring-[var(--brand-flat)]/35";
+  "flex w-full min-w-0 items-center justify-between gap-2 h-10 px-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-xs transition focus-within:ring-2 focus-within:ring-[var(--brand-flat)]/35";
 
 const SEGMENT_CLASS =
   "tabular-nums text-[var(--foreground)] data-[placeholder]:text-[var(--foreground-muted)]/70 focus:bg-[var(--brand-flat)]/15 focus:text-[var(--brand-flat)] focus:outline-none rounded px-0.5 caret-transparent";
@@ -87,7 +87,7 @@ export default function AppDatePicker({
       onChange={(next) => onChange(fromCalendarDate(next))}
       isDisabled={isDisabled}
       isRequired={isRequired}
-      className={`space-y-1.5 ${className}`}
+      className={`w-full min-w-0 space-y-1.5 ${className}`}
     >
       {label && (
         <span className="flex items-center gap-1 text-[11px] font-semibold text-[var(--foreground)]">
@@ -103,7 +103,7 @@ export default function AppDatePicker({
       )}
 
       <Group className={CONTROL_CLASS}>
-        <DateInput className="flex items-center gap-0.5 text-xs">
+        <DateInput className="flex min-w-0 items-center gap-0.5 text-xs">
           {(segment) => <DateSegment segment={segment} className={SEGMENT_CLASS} />}
         </DateInput>
         <DatePicker.Trigger
