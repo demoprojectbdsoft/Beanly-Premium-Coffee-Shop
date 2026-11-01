@@ -19,6 +19,7 @@ import {
   Star,
   Bell,
   Store,
+  Bike,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "react-toastify";
@@ -37,9 +38,10 @@ const CUSTOMER_NAV_ITEMS = [
 const CUSTOMER_ACCOUNT_ITEMS = [
   { name: "My Profile", href: "/dashboard/customer/profile", icon: User },
   { name: "Settings", href: "/dashboard/customer/settings", icon: Settings },
-  // The conversion entry: an existing customer opens the marketplace
+  // The conversion entries: an existing customer opens either marketplace
   // application from the account they already have, never a second signup.
   { name: "Become a Vendor", href: "/become-a-vendor", icon: Store },
+  { name: "Become a Rider", href: "/become-a-rider", icon: Bike },
 ];
 
 /** Maps raw member string to a proper display label */
@@ -79,16 +81,32 @@ export default function CustomerSidebar({ isOpen, onClose }: CustomerSidebarProp
     member?: string;
     points?: number;
     role?: string;
+    activeRole?: string;
+    roles?: string[] | string;
   } | undefined;
 
-  // A vendor browsing their buyer pages keeps the account they shopped from,
-  // so the "Become a Vendor" entry becomes the way back to the seller workspace.
-  const isVendor = (sessionUser?.role || "").toLowerCase() === "vendor";
-  const accountItems = CUSTOMER_ACCOUNT_ITEMS.map((item) =>
-    item.href === "/become-a-vendor" && isVendor
-      ? { name: "Seller Dashboard", href: "/dashboard/vendor", icon: Store }
-      : item
-  );
+  // Multi-role design: the approved array is the truth, `role` is only the
+  // dashboard alias. A customer who later becomes a vendor or a rider keeps
+  // the same buyer account, so the sidebar entries flip to their respective
+  // workspaces without losing the buyer pages.
+  const approved = ((): string[] => {
+    const raw = sessionUser?.roles;
+    if (Array.isArray(raw)) return raw.map((r) => String(r).toLowerCase());
+    if (typeof raw === "string" && raw) return raw.split(",").map((r) => r.trim().toLowerCase());
+    const single = String(sessionUser?.role || "").toLowerCase();
+    return single ? [single] : [];
+  })();
+  const isVendor = approved.includes("vendor");
+  const isRider = approved.includes("rider");
+  const accountItems = CUSTOMER_ACCOUNT_ITEMS.map((item) => {
+    if (item.href === "/become-a-vendor" && isVendor) {
+      return { name: "Seller Dashboard", href: "/dashboard/vendor", icon: Store };
+    }
+    if (item.href === "/become-a-rider" && isRider) {
+      return { name: "Rider Dashboard", href: "/dashboard/rider", icon: Bike };
+    }
+    return item;
+  });
 
   // Live member/points fetched from DB
   const [liveData, setLiveData] = useState<{

@@ -17,26 +17,38 @@ import {
   Alert,
   AlertDescription,
 } from "@heroui/react";
-import { Mail, Lock, Eye, EyeOff, LogIn, Store, ArrowRight } from "lucide-react";
-import { authClient, signIn } from "@/lib/auth-client";
+import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
 import { toast } from "react-toastify";
 import SparqLogo from "@/components/shared/SparqLogo";
 
 /**
- * The two refusal codes the API's session hook throws for an applicant.
+ * Where a fresh session should land.
  *
- * They arrive instead of a session, and only after the password was accepted,
- * so the screen may explain the state without naming anything about the
- * application itself — there is no public lookup by design.
+ * The multi-role account stores every authority in `roles` and the dashboard
+ * the person last chose in `activeRole`. Sign-in honours that choice when it
+ * is still valid, then falls back to the first non-customer authority so a
+ * rider or a vendor reaches their workspace without an extra click. A plain
+ * customer keeps the callback page they were originally sent to.
  */
-type VendorGate = "pending" | "under_review";
-
-const readVendorGate = (message?: string | null): VendorGate | null => {
-  const text = String(message || "");
-  if (text.includes("VENDOR_APPLICATION_UNDER_REVIEW")) return "under_review";
-  if (text.includes("VENDOR_APPLICATION_PENDING")) return "pending";
-  return null;
-};
+function homeFor(user: unknown): string {
+  const u = (user || {}) as {
+    role?: string | null;
+    activeRole?: string | null;
+    roles?: string[] | string | null;
+  };
+  const pool: string[] = Array.isArray(u.roles)
+    ? u.roles.map((r) => String(r).toLowerCase())
+    : typeof u.roles === "string" && u.roles
+      ? u.roles.split(",").map((r) => r.trim().toLowerCase())
+      : [String(u.activeRole || u.role || "customer").toLowerCase()];
+  const active = String(u.activeRole || u.role || "").toLowerCase();
+  const chosen = active && pool.includes(active) ? active : pool[0] || "customer";
+  if (chosen === "rider") return "/dashboard/rider";
+  if (chosen === "vendor") return "/dashboard/vendor";
+  if (chosen === "admin" || chosen === "demoadmin") return "/dashboard/admin";
+  return "/";
+}
 
 export function LoginForm() {
   const router = useRouter();
@@ -48,7 +60,6 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [demoMessage, setDemoMessage] = useState<string | null>(null);
-  const [vendorGate, setVendorGate] = useState<VendorGate | null>(null);
 
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -62,7 +73,6 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
     setDemoMessage(null);
-    setVendorGate(null);
 
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData);
@@ -85,38 +95,22 @@ export function LoginForm() {
       });
       if (loginData) {
         toast.success("Authentication Successful!");
-        // Every workspace has its own home; anyone else keeps the page they
+        // Every workspace has its own home; a customer keeps the page they
         // were originally sent to.
-        const role = String((loginData.user as { role?: string } | undefined)?.role || "").toLowerCase();
-        const home =
-          role === "rider" ? "/dashboard/rider" : role === "vendor" ? "/dashboard/vendor" : "/";
+        const home = homeFor(loginData.user);
         const destination = callbackUrl === "/" ? home : callbackUrl;
         router.push(destination);
         router.refresh();
       }
       if (error) {
-        const gate = readVendorGate(error.message);
-        if (gate) {
-          // The password was right; the account is simply parked until the
-          // store team decides. No session was created, so nothing is signed in.
-          setVendorGate(gate);
-          toast.warn("Your vendor application is still open.");
-        } else {
-          toast.error(error.message);
-        }
+        toast.error(error.message);
       }
     } catch (err: unknown) {
       const message =
         err instanceof Error
           ? err.message
           : "An unexpected error occurred during sign in.";
-      const gate = readVendorGate(message);
-      if (gate) {
-        setVendorGate(gate);
-        toast.warn("Your vendor application is still open.");
-      } else {
-        setError(message);
-      }
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -183,41 +177,6 @@ export function LoginForm() {
                   {error}
                 </AlertDescription>
               </Alert>
-            )}
-
-            {vendorGate && (
-              <div className="space-y-2 rounded-xl border border-amber-300/50 dark:border-amber-900/50 bg-amber-500/10 p-3">
-                <p className="flex items-center gap-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-300">
-                  <Store className="w-3.5 h-3.5" />
-                  {vendorGate === "pending"
-                    ? "Vendor application pending"
-                    : "Vendor application under review"}
-                </p>
-                <p className="text-[11px] leading-relaxed text-amber-900 dark:text-amber-200">
-                  {vendorGate === "pending"
-                    ? "Your application is queued with the store team. Sign-in stays closed until they decide, and you will be emailed the outcome."
-                    : "The store team is checking your store details and documents. Sign-in reopens once the review ends."}
-                </p>
-                <p className="text-[11px] leading-relaxed text-amber-900/80 dark:text-amber-200/80">
-                  If the application is not approved, this account stays a customer — you can sign
-                  in normally and apply again.
-                </p>
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <Link
-                    href="/become-a-vendor"
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-2.5 py-1.5 text-[10px] font-bold text-white transition-colors hover:bg-amber-600"
-                  >
-                    About selling
-                    <ArrowRight className="w-3 h-3" />
-                  </Link>
-                  <Link
-                    href="/contact"
-                    className="rounded-lg border border-amber-400/40 px-2.5 py-1.5 text-[10px] font-semibold text-amber-800 transition-colors hover:bg-amber-500/10 dark:text-amber-300"
-                  >
-                    Contact the store team
-                  </Link>
-                </div>
-              </div>
             )}
 
             {demoMessage && (

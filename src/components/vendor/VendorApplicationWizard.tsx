@@ -24,6 +24,7 @@ import type {
   VendorPlanId,
 } from "@/types/vendor";
 import { submitVendorApplication } from "@/lib/action/vendor";
+import { useWizardDraft } from "@/hooks/useWizardDraft";
 import { planPrice } from "@/lib/vendorPlan";
 import { formatPrice } from "@/lib/currency";
 import PlanCards from "./PlanCards";
@@ -45,6 +46,8 @@ interface VendorApplicationWizardProps {
   /** A rejected applicant is applying again; the wording says so. */
   isResubmission?: boolean;
 }
+
+const STORAGE_KEY = "sparq.vendorApplicationDraft";
 
 const STEPS = [
   { title: "Personal", blurb: "Who is behind the store", icon: CircleUser },
@@ -139,7 +142,14 @@ export default function VendorApplicationWizard({
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [draft, setDraft] = useState<VendorApplicationDraft>(initialDraft);
+  // A first-time applicant gets their in-progress answers back after a refresh;
+  // a resubmission is driven by the server copy, so the stale local draft is not
+  // restored over it (see `useWizardDraft`).
+  const { draft, patch: setDraft, clearDraft } = useWizardDraft<VendorApplicationDraft>(
+    STORAGE_KEY,
+    initialDraft,
+    { enabled: !isResubmission }
+  );
 
   const activePlan = useMemo(
     () => plans.find((plan) => plan.id === draft.selectedPlan) ?? plans[0],
@@ -268,6 +278,7 @@ export default function VendorApplicationWizard({
       toast.success(
         isResubmission ? "Application resubmitted" : "Application submitted for review"
       );
+      clearDraft();
       router.push("/become-a-vendor/status");
       router.refresh();
     } catch (error) {

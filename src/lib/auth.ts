@@ -1,6 +1,5 @@
 import { betterAuth } from "better-auth";
-import { APIError } from "better-auth/api";
-import { MongoClient, ObjectId } from "mongodb";
+import { MongoClient } from "mongodb";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { jwt } from "better-auth/plugins";
 
@@ -44,38 +43,6 @@ export const auth = betterAuth({
   }),
   plugins: [jwt()],
   databaseHooks: {
-    session: {
-      create: {
-        /**
-         * The vendor application gate.
-         *
-         * A pending or in-review applicant must not receive a session at all,
-         * whether they signed in with a password or with Google — every
-         * provider creates its session through this same hook, so the check
-         * cannot be sidestepped by switching method. It runs before the token
-         * exists, which is why the account never holds a usable credential
-         * while its application is open.
-         */
-        before: async (session) => {
-          const rawId = String(session.userId);
-          const objectId = ObjectId.isValid(rawId) ? new ObjectId(rawId) : null;
-
-          const user = await db.collection("user").findOne({
-            $or: objectId ? [{ _id: rawId }, { _id: objectId }] : [{ _id: rawId }],
-          } as any);
-
-          const state = (user as any)?.vendorStatus;
-          if (state === "pending" || state === "under_review") {
-            throw new APIError("FORBIDDEN", {
-              message:
-                state === "pending"
-                  ? "VENDOR_APPLICATION_PENDING"
-                  : "VENDOR_APPLICATION_UNDER_REVIEW",
-            });
-          }
-        },
-      },
-    },
     user: {
       create: {
         // A new account, whether the customer signed up with a password or
@@ -199,6 +166,47 @@ export const auth = betterAuth({
         type: "string",
         input: false,
         defaultValue: "none",
+      },
+      /**
+       * The rider counterpart of `vendorStatus`. Same rule: readable from the
+       * session so the shell can surface the "Become a Rider" entry or the
+       * application banner, writable only through the store API.
+       */
+      riderStatus: {
+        type: "string",
+        input: false,
+        defaultValue: "none",
+      },
+      /**
+       * The dashboard the account is currently looking at.
+       *
+       * The store API mirrors this into the legacy `role` string. The session
+       * only carries the hint — the actual authority comes from `roles`, and
+       * the backend re-reads both on every request so a spoofed cookie can
+       * never widen access.
+       */
+      activeRole: {
+        type: "string",
+        input: false,
+        defaultValue: "customer",
+      },
+      /**
+       * Every role the account has been approved for.
+       *
+       * A single user may hold `customer`, `rider` and `vendor` at the same
+       * time. The array is the source of truth for authority — the switcher
+       * in the profile menu only offers entries that appear here, and the
+       * shopping rule requires `customer` to be present. Only the store API
+       * writes it, after an admin approves an application.
+       *
+       * `type: "string[]"` with `input: false` keeps the field out of the
+       * sign-up form; the migration in the store API fills it for existing
+       * rows and the default covers a fresh customer registration.
+       */
+      roles: {
+        type: "string[]",
+        input: false,
+        defaultValue: ["customer"],
       },
     },
   },

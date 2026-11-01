@@ -25,6 +25,7 @@ import {
   Ticket,
   Truck,
   Store,
+  Bike,
   type LucideIcon,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
@@ -73,6 +74,7 @@ const NAV_GROUPS = [
     items: [
       { name: "Users", href: "/dashboard/admin/users", icon: Users },
       { name: "Vendor applications", href: "/dashboard/admin/vendors", icon: Store },
+      { name: "Rider applications", href: "/dashboard/admin/riders", icon: Bike },
     ],
   },
   {
