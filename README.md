@@ -384,6 +384,18 @@ stateDiagram-v2
 
 </details>
 
+### 📝 Role Applications (Rider & Vendor)
+
+<details>
+<summary><b>Onboarding Forms</b></summary>
+
+- **Phone number required** — the personal step of both wizards will not advance without a real contact number, and the API validates it again on submit (`min 6`, `max 30`). The field arrives prefilled from the account, but an account created without a phone has to supply one before the application can be sent: dispatch and the review team need a number that actually reaches the applicant.
+- **Uploadable profile image** — the rider's profile photo and the vendor's store logo use the shared `ImageUploader`: drag-and-drop or file browse uploads to ImgBB, with an "Image URL" tab kept for a link the applicant already hosts, and a preview with a remove action once a value is set.
+- **HeroUI controls** — choice fields render through `AppSelect` and date fields through `AppDatePicker`, both on the same surface tokens as the dashboard.
+- **Draft persistence** — step progress is kept locally and rehydrated on return, so a half-filled application survives a reload.
+
+</details>
+
 ### 🧪 Demo Admin
 
 <details>

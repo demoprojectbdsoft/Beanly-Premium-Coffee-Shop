@@ -32,6 +32,7 @@ import { submitRiderApplication } from "@/lib/action/rider";
 import { useWizardDraft } from "@/hooks/useWizardDraft";
 import AppDatePicker from "@/components/shared/AppDatePicker";
 import AppSelect from "@/components/shared/AppSelect";
+import ImageUploader from "@/components/shared/ImageUploader";
 
 /**
  * The six-step rider application.
@@ -220,6 +221,10 @@ export default function RiderApplicationWizard({
       if (draft.personalInfo.fullName.trim().length < 2) return "Enter your full name.";
       if (!/^\S+@\S+\.\S+$/.test(draft.personalInfo.email.trim()))
         return "Enter a valid email address.";
+      // The account usually prefills this, but a customer who signed up without
+      // a phone has to add one — the team needs a number that reaches the rider.
+      if ((draft.personalInfo.phone || "").trim().length < 6)
+        return "Enter a phone number so the team can reach you.";
     }
     if (index === 1) {
       const emergencyPhone = draft.contactInfo.emergencyContactPhone?.trim();
@@ -372,7 +377,7 @@ export default function RiderApplicationWizard({
               />
             </Field>
 
-            <Field label="Phone">
+            <Field label="Phone" required hint="Needed to reach you about new jobs.">
               <input
                 className={INPUT_CLASS}
                 value={draft.personalInfo.phone || ""}
@@ -400,14 +405,20 @@ export default function RiderApplicationWizard({
               />
             </Field>
 
-            <Field label="Profile photo URL" hint="A clear face photo helps the review.">
-              <input
-                className={INPUT_CLASS}
+            {/* Upload-or-paste, exactly like the rider profile page: someone
+                applying from a phone has the photo in their gallery, not on a
+                hosting site, so a bare URL box was never usable. */}
+            <div className="sm:col-span-2">
+              <ImageUploader
+                label="Profile photo"
                 value={draft.personalInfo.photoUrl || ""}
-                onChange={(e) => patchPersonal({ photoUrl: e.target.value })}
-                placeholder="https://"
+                onChange={(url) => patchPersonal({ photoUrl: url })}
+                urlPlaceholder="https://"
               />
-            </Field>
+              <p className="mt-1.5 text-[11px] text-[var(--foreground-muted)]">
+                A clear face photo helps the review.
+              </p>
+            </div>
           </div>
         );
 

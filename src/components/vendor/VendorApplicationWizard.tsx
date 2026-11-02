@@ -26,6 +26,7 @@ import type {
 import { submitVendorApplication } from "@/lib/action/vendor";
 import { useWizardDraft } from "@/hooks/useWizardDraft";
 import AppSelect from "@/components/shared/AppSelect";
+import ImageUploader from "@/components/shared/ImageUploader";
 import { planPrice } from "@/lib/vendorPlan";
 import { formatPrice } from "@/lib/currency";
 import PlanCards from "./PlanCards";
@@ -198,23 +199,10 @@ export default function VendorApplicationWizard({
     setDraft((current) => ({ ...current, selectedPlan: planId }));
 
   // ── Step validation ─────────────────────────────────────────────────────────
-  const stepError = (): string | null => {
-    if (step === 0) {
-      if (draft.personalInfo.fullName.trim().length < 2) return "Enter your full name.";
-      if (!/^\S+@\S+\.\S+$/.test(draft.personalInfo.email.trim()))
-        return "Enter a valid email address.";
-    }
-    if (step === 1) {
-      if (draft.storeInfo.name.trim().length < 2) return "Enter your store name.";
-      if (linkedStore.length < 2) return "Enter a store link using letters or numbers.";
-    }
-    if (step === 2) {
-      if (!draft.businessAddress.country?.trim()) return "Select the country.";
-      if (!draft.businessAddress.city?.trim()) return "Enter the city.";
-      if (!draft.businessAddress.address?.trim()) return "Enter the street address.";
-    }
-    return null;
-  };
+  // One rule set, defined once in `stepErrorFor` below: the Next button checks
+  // the current step, and the final submit walks every step with the same
+  // function, so a rule can never be live in one place and missing in the other.
+  const stepError = (): string | null => stepErrorFor(step, draft, linkedStore);
 
   const goNext = () => {
     const error = stepError();
@@ -321,7 +309,7 @@ export default function VendorApplicationWizard({
               />
             </Field>
 
-            <Field label="Phone">
+            <Field label="Phone" required hint="Buyers and the review team reach you here.">
               <input
                 className={INPUT_CLASS}
                 value={draft.personalInfo.phone || ""}
@@ -417,24 +405,24 @@ export default function VendorApplicationWizard({
               />
             </Field>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Logo URL">
-                <input
-                  className={INPUT_CLASS}
-                  value={draft.storeInfo.logo || ""}
-                  onChange={(event) => patchStore({ logo: event.target.value })}
-                  placeholder="https://"
-                />
-              </Field>
-              <Field label="Cover image URL">
-                <input
-                  className={INPUT_CLASS}
-                  value={draft.storeInfo.coverImage || ""}
-                  onChange={(event) => patchStore({ coverImage: event.target.value })}
-                  placeholder="https://"
-                />
-              </Field>
-            </div>
+            {/* The store's profile image. Upload-or-paste like every other
+                image in the app, so a seller with the logo on their laptop can
+                attach it instead of hosting it somewhere first. */}
+            <ImageUploader
+              label="Store logo"
+              value={draft.storeInfo.logo || ""}
+              onChange={(url) => patchStore({ logo: url })}
+              urlPlaceholder="https://"
+            />
+
+            <Field label="Cover image URL">
+              <input
+                className={INPUT_CLASS}
+                value={draft.storeInfo.coverImage || ""}
+                onChange={(event) => patchStore({ coverImage: event.target.value })}
+                placeholder="https://"
+              />
+            </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Facebook">
@@ -843,6 +831,10 @@ function stepErrorFor(
     if (draft.personalInfo.fullName.trim().length < 2) return "Enter your full name.";
     if (!/^\S+@\S+\.\S+$/.test(draft.personalInfo.email.trim()))
       return "Enter a valid email address.";
+    // A store has to be reachable: the review team and buyers both need a
+    // working number, even when the account itself was created without one.
+    if ((draft.personalInfo.phone || "").trim().length < 6)
+      return "Enter a phone number so the team can reach you.";
   }
   if (step === 1) {
     if (draft.storeInfo.name.trim().length < 2) return "Enter your store name.";
