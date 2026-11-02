@@ -264,7 +264,7 @@ stateDiagram-v2
   - Status management workflow
   - Multi-vendor order coordination
   - Delivery assignment to riders
-  - **The rider picker reads the approved role, not the open dashboard** — an account's `role` field only mirrors whichever dashboard the person is looking at, so a rider who is currently shopping as a customer used to vanish from the list and the assignment would then refuse them as "not a rider". The picker now queries the approved `roles` array, the same authority every route check uses, and the online/offline counter on the delivery board counts the same set. An offer is only refused for a suspended account or a rider access the store team has parked.
+  - **The rider picker reads the approved role, not the open dashboard** — an account's `role` field only mirrors whichever dashboard the person is looking at, so a rider who is currently shopping as a customer used to vanish from the list and the assignment would then refuse them as "not a rider". The picker now queries the approved `roles` array, the same authority every route check uses, and the online/offline counter on the delivery board counts the same set. An offer is only refused for a suspended account or a rider access the store team has parked. A list that never arrived says the API did not answer and offers a retry, rather than claiming no rider accounts exist — a quiet backend must not look like missing staff.
 
 </details>
 

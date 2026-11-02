@@ -9,6 +9,7 @@ import {
   Loader2,
   MapPin,
   Package,
+  RefreshCw,
   Search,
   ShieldAlert,
   Truck,
@@ -73,6 +74,12 @@ export default function AssignRiderModal({
   const [fee, setFee] = useState("");
   const [distance, setDistance] = useState("");
   const [note, setNote] = useState("");
+  // A read that failed is not a read that came back empty. Telling the store
+  // "no rider accounts yet" when the API never answered sends them off to
+  // promote someone who is already a rider, so the two cases get different
+  // screens and the failure gets a retry.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   // A fresh open resets everything: a leftover fee from the last order would be
   // applied to an order it was never meant for.
@@ -89,7 +96,15 @@ export default function AssignRiderModal({
     setIsLoading(true);
     fetchAssignableRidersAction(order._id)
       .then((data) => {
-        if (!cancelled) setFeed(data);
+        if (cancelled) return;
+        setFeed(data);
+        setLoadFailed(data === null);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFeed(null);
+          setLoadFailed(true);
+        }
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -98,7 +113,7 @@ export default function AssignRiderModal({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, order?._id, order?.shippingFee]);
+  }, [isOpen, order?._id, order?.shippingFee, attempt]);
 
   const riders = feed?.riders ?? [];
   // A live job means this picker is a hand-over, not a first assignment.
@@ -254,15 +269,39 @@ export default function AssignRiderModal({
                   </div>
                 ) : visible.length === 0 ? (
                   <div className="py-8 text-center">
-                    <UserIcon className="w-8 h-8 mx-auto text-[var(--foreground-muted)]" />
-                    <p className="text-xs font-semibold text-[var(--foreground)] mt-2">
-                      {riders.length === 0 ? "No rider accounts yet" : "No rider matches that search"}
-                    </p>
-                    <p className="text-[11px] text-[var(--foreground-muted)] mt-1">
-                      {riders.length === 0
-                        ? "Promote a user to the rider role from the Users page."
-                        : "Try a shorter search."}
-                    </p>
+                    {loadFailed && riders.length === 0 ? (
+                      <>
+                        <WifiOff className="w-8 h-8 mx-auto text-[var(--foreground-muted)]" />
+                        <p className="text-xs font-semibold text-[var(--foreground)] mt-2">
+                          Could not load the riders
+                        </p>
+                        <p className="text-[11px] text-[var(--foreground-muted)] mt-1">
+                          The store API did not answer, so this is not an empty list.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setAttempt((value) => value + 1)}
+                          className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-[11px] font-bold text-[var(--foreground)] hover:border-[var(--brand-flat)]/50 cursor-pointer"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          Try again
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <UserIcon className="w-8 h-8 mx-auto text-[var(--foreground-muted)]" />
+                        <p className="text-xs font-semibold text-[var(--foreground)] mt-2">
+                          {riders.length === 0
+                            ? "No rider accounts yet"
+                            : "No rider matches that search"}
+                        </p>
+                        <p className="text-[11px] text-[var(--foreground-muted)] mt-1">
+                          {riders.length === 0
+                            ? "Promote a user to the rider role from the Users page."
+                            : "Try a shorter search."}
+                        </p>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
