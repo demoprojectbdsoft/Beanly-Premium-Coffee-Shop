@@ -13,6 +13,7 @@ import {
 } from "@/lib/couponDraft";
 import { createStoreCoupon, updateStoreCoupon } from "@/lib/action/coupons";
 import { formatPrice } from "@/lib/currency";
+import AppDatePicker from "@/components/shared/AppDatePicker";
 
 /**
  * Writing one store-wide code.
@@ -299,27 +300,27 @@ export default function AdminCouponForm({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className={labelClass} htmlFor="admin-coupon-start">
+          <label className={labelClass}>
             Runs from
           </label>
-          <input
-            id="admin-coupon-start"
-            type="datetime-local"
+          <AppDatePicker
+            size="sm"
+            withTime
+            ariaLabel="Coupon start date and time"
             value={draft.startDate}
-            onChange={(event) => set("startDate", event.target.value)}
-            className={inputClass}
+            onChange={(next) => set("startDate", next ?? "")}
           />
         </div>
         <div>
-          <label className={labelClass} htmlFor="admin-coupon-end">
+          <label className={labelClass}>
             Until
           </label>
-          <input
-            id="admin-coupon-end"
-            type="datetime-local"
+          <AppDatePicker
+            size="sm"
+            withTime
+            ariaLabel="Coupon end date and time"
             value={draft.endDate}
-            onChange={(event) => set("endDate", event.target.value)}
-            className={inputClass}
+            onChange={(next) => set("endDate", next ?? "")}
           />
         </div>
       </div>

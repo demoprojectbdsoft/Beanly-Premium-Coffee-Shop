@@ -29,9 +29,11 @@ interface AppSelectProps {
   ariaLabel?: string;
   /**
    * "md" (default) is the full-width field used inside forms; "sm" is the
-   * compact, content-width chip that sits in a list's filter toolbar.
+   * compact, content-width chip that sits in a list's filter toolbar; "xs" is
+   * the tight dropdown that fills a width the caller sets, which is what the
+   * calendar header's month and year pickers need.
    */
-  size?: "sm" | "md";
+  size?: "xs" | "sm" | "md";
   /** Optional leading glyph, e.g. the sort/filter icon in a toolbar chip. */
   icon?: React.ReactNode;
   /** Extra classes merged onto the outer wrapper (width/spacing overrides). */
@@ -39,14 +41,17 @@ interface AppSelectProps {
 }
 
 // md fills its column (a labelled form field); sm hugs its content so several
-// can line up in a filter row. The rest of the trigger styling is shared.
+// can line up in a filter row; xs fills whatever width the caller gives it, so
+// two of them can share a calendar header. The rest is shared.
 const WRAPPER_CLASS =
   "flex min-w-0 items-center justify-between gap-2 rounded-xl border border-[var(--border-color)] text-xs text-[var(--foreground)] cursor-pointer transition focus:outline-none focus:ring-2 focus:ring-[var(--brand-flat)]/35 data-[open]:border-[var(--brand-flat)]/50";
 
-const triggerClassFor = (size: "sm" | "md") =>
+const triggerClassFor = (size: "xs" | "sm" | "md") =>
   size === "md"
     ? `${WRAPPER_CLASS} w-full h-10 px-3 bg-[var(--surface)]`
-    : `${WRAPPER_CLASS} h-9 px-3 bg-[var(--surface-alt)] font-semibold`;
+    : size === "sm"
+      ? `${WRAPPER_CLASS} h-9 px-3 bg-[var(--surface-alt)] font-semibold`
+      : `${WRAPPER_CLASS} w-full h-8 px-2 text-[11px] bg-[var(--surface-alt)] font-semibold`;
 
 const VALUE_CLASS =
   "flex-1 truncate text-left text-[var(--foreground)] data-[placeholder]:text-[var(--foreground-muted)]/70";

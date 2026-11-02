@@ -396,6 +396,18 @@ stateDiagram-v2
 
 </details>
 
+### 📅 Date & Time Fields
+
+<details>
+<summary><b>Picking a date without clicking for ten minutes</b></summary>
+
+- **Month and year jump** — every calendar header is the shared `AppCalendarHeader`: a previous/next month chevron pair around two dropdowns, so a date of birth in 1998 is a couple of picks instead of ~340 month clicks. The dropdowns are the HeroUI `AppSelect` (compact `xs` size) fed by React Aria's `CalendarMonthPicker` and `CalendarYearPicker` primitives, which read the surrounding `<Calendar>`'s state and re-page it when a choice is made — so the picker moves with the list rather than tracking it by hand.
+- **A hundred-year window** — `CalendarYearPicker` defaults to 20 years, which still needed paging for older dates. The header asks for 100, centred on the focused year and clamped by the calendar's own min/max (a date of birth ends at today, so its list runs back exactly a century), and picking near an edge recentres the window.
+- **One header, both calendars** — `AppDatePicker` (react-aria calendar inside the HeroUI popover, plain `YYYY-MM-DD` in and out) and `HeroUIDateTimePicker` (deal-countdown fields, `ZonedDateTime` in Asia/Dhaka, ISO out) render the same header, so the growth path never runs two kinds of month navigation. HeroUI's own year-grid toggle was dropped in favour of the dropdown: it capped at twenty years and had no month choice at all.
+- **No native datetime inputs left** — both coupon desks used to hand the browser an `<input type="datetime-local">`, which styled nothing and offered whatever paging the browser felt like. `AppDatePicker` now takes `withTime`, which adds editable hour and minute segments to the field itself (24-hour, minute granularity) and reads/writes `YYYY-MM-DDTHH:mm`. The draft keeps that wall-clock shape, so `couponDraft`/`couponPayload` and the API's `z.coerce.date()` are untouched, and `size="sm"` keeps the compact height the rest of the desk uses.
+
+</details>
+
 ### 🧪 Demo Admin
 
 <details>
@@ -683,6 +695,8 @@ sparq/
 │   │   │   ├── ImageUploader.tsx
 │   │   │   ├── AppSelect.tsx
 │   │   │   ├── AppDatePicker.tsx
+│   │   │   ├── AppCalendarHeader.tsx
+│   │   │   ├── HeroUIDateTimePicker.tsx
 │   │   │   └── ...
 │   │   │
 │   │   ├── shop/                      # Shop-specific

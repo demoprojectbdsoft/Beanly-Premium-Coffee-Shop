@@ -17,6 +17,7 @@ import {
   fromDate,
   ZonedDateTime,
 } from "@internationalized/date";
+import AppCalendarHeader from "./AppCalendarHeader";
 import {
   Timer,
   Clock,
@@ -268,22 +269,8 @@ export default function HeroUIDateTimePicker({
 
               <DatePicker.Popover className="flex flex-col gap-3 p-4 bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-2xl shadow-2xl z-50 min-w-[280px]">
                 <Calendar aria-label={label}>
-                  <Calendar.Header className="flex items-center justify-between pb-2 border-b border-[var(--border-color)]">
-                    <Calendar.YearPickerTrigger className="font-bold text-xs hover:text-primary cursor-pointer flex items-center gap-1">
-                      <Calendar.YearPickerTriggerHeading />
-                      <Calendar.YearPickerTriggerIndicator />
-                    </Calendar.YearPickerTrigger>
-                    <div className="flex items-center gap-1">
-                      <Calendar.NavButton
-                        slot="previous"
-                        className="p-1 rounded-lg hover:bg-[var(--surface-alt)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] cursor-pointer"
-                      />
-                      <Calendar.NavButton
-                        slot="next"
-                        className="p-1 rounded-lg hover:bg-[var(--surface-alt)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] cursor-pointer"
-                      />
-                    </div>
-                  </Calendar.Header>
+                  {/* Month and year dropdowns, the same header every calendar here uses. */}
+                  <AppCalendarHeader className="pb-2 border-b border-[var(--border-color)]" />
 
                   <Calendar.Grid className="w-full mt-2">
                     <Calendar.GridHeader>
@@ -302,17 +289,6 @@ export default function HeroUIDateTimePicker({
                       )}
                     </Calendar.GridBody>
                   </Calendar.Grid>
-
-                  <Calendar.YearPickerGrid className="mt-2">
-                    <Calendar.YearPickerGridBody>
-                      {({ year }) => (
-                        <Calendar.YearPickerCell
-                          year={year}
-                          className="text-xs p-1.5 text-center rounded-lg hover:bg-primary/10 cursor-pointer aria-selected:bg-primary aria-selected:text-white"
-                        />
-                      )}
-                    </Calendar.YearPickerGridBody>
-                  </Calendar.YearPickerGrid>
                 </Calendar>
 
                 {showTimeField && (
