@@ -13,6 +13,8 @@ import {
   Star,
   Store,
 } from "lucide-react";
+import LocatorMap, { type LocatorMapPoint } from "@/components/store/LocatorMap";
+import { geocodePlaceAction } from "@/lib/action/geo";
 
 /**
  * The two sources the server page hands down, in one shape: the platform's own
@@ -77,6 +79,12 @@ export default function LocatorClient({ branch, shops, siteName }: LocatorClient
   const [locating, setLocating] = useState(false);
   const [locationNote, setLocationNote] = useState("");
 
+  // Seller shops publish only an area and a city, so their map point is looked
+  // up the first time a shopper opens their card and remembered for the visit.
+  // The branch already carries coordinates from the server page.
+  const [geocoded, setGeocoded] = useState<Record<string, { lat: number; lng: number } | null>>({});
+  const [geocodingId, setGeocodingId] = useState<string | null>(null);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const list = q
@@ -103,6 +111,51 @@ export default function LocatorClient({ branch, shops, siteName }: LocatorClient
   }, [places, search, myLocation]);
 
   const active = filtered.find((place) => place.id === selectedId) ?? filtered[0] ?? null;
+
+  // Looks up a shop's coordinates the first time a shopper opens its card, and
+  // remembers the result for the visit. The branch already carries coordinates
+  // from the server page. Run on the click so the free geocoder is asked once
+  // per shop, never in a render effect.
+  const selectPlace = async (place: LocatorPlace) => {
+    setSelectedId(place.id);
+    if (place.kind !== "shop") return;
+    if (place.lat !== null && place.lng !== null) return;
+    if (geocoded[place.id] !== undefined) return;
+
+    setGeocodingId(place.id);
+    try {
+      const res = await geocodePlaceAction(place.address || place.area, place.city);
+      setGeocoded((prev) => ({
+        ...prev,
+        [place.id]: res ? { lat: res.lat, lng: res.lng } : null,
+      }));
+    } catch {
+      setGeocoded((prev) => ({ ...prev, [place.id]: null }));
+    } finally {
+      setGeocodingId(null);
+    }
+  };
+
+  // Every place that has coordinates, ready for the map. The branch is always
+  // here; a shop joins the moment its lookup resolves. The active place's pin
+  // is drawn in the brand colour.
+  const mapPoints: LocatorMapPoint[] = useMemo(() => {
+    return places
+      .map((place) => {
+        const own = place.lat !== null && place.lng !== null ? { lat: place.lat, lng: place.lng } : null;
+        const resolved = geocoded[place.id] ?? null;
+        const coords = own ?? resolved;
+        if (!coords) return null;
+        return {
+          id: place.id,
+          lat: coords.lat,
+          lng: coords.lng,
+          label: place.name,
+          active: active?.id === place.id,
+        };
+      })
+      .filter(Boolean) as LocatorMapPoint[];
+  }, [places, geocoded, active]);
 
   const askNearMe = () => {
     if (!("geolocation" in navigator)) {
@@ -216,7 +269,7 @@ export default function LocatorClient({ branch, shops, siteName }: LocatorClient
                   <button
                     key={place.id}
                     type="button"
-                    onClick={() => setSelectedId(place.id)}
+                    onClick={() => selectPlace(place)}
                     className={`w-full text-left p-5 rounded-2xl border transition-all duration-300 cursor-pointer ${
                       isSelected
                         ? "bg-[var(--surface-elevated)] border-primary shadow-md ring-2 ring-primary/20"
@@ -291,43 +344,49 @@ export default function LocatorClient({ branch, shops, siteName }: LocatorClient
           {/* Active place detail */}
           {active && (
             <div className="lg:col-span-7 bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 md:p-8 shadow-xs space-y-6">
-              {/* Map box */}
-              <div className="relative w-full h-64 md:h-72 bg-[var(--surface-alt)] rounded-2xl overflow-hidden border border-[var(--border-color)] flex flex-col items-center justify-center p-6 text-center group">
-                <div className="relative z-10 flex flex-col items-center space-y-3">
-                  <div className="w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <MapPin className="w-7 h-7" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-lg">{active.name}</h4>
+              {/* Map */}
+              <div className="w-full">
+                <LocatorMap points={mapPoints} myLocation={myLocation} height={288} />
+                <div className="mt-3 flex items-start gap-2">
+                  <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-sm text-[var(--foreground)]">{active.name}</h4>
                     <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
                       {[active.address, active.city].filter(Boolean).join(", ") ||
                         "Address on request"}
                       {distanceWords(active) ? ` · ${distanceWords(active)}` : ""}
                     </p>
                   </div>
-
-                  <div className="flex items-center gap-2 flex-wrap justify-center">
-                    <a
-                      href={directionsHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold transition-colors shadow-xs cursor-pointer"
-                    >
-                      <Navigation className="w-3.5 h-3.5" />
-                      Get Directions
-                      <ExternalLink className="w-3.5 h-3.5 opacity-60" />
-                    </a>
-                    {active.kind === "shop" && active.slug && (
-                      <Link
-                        href={`/stores/${active.slug}`}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-elevated)] text-xs font-bold hover:border-primary/50 transition-colors cursor-pointer"
-                      >
-                        <Store className="w-3.5 h-3.5" />
-                        Visit shop
-                      </Link>
-                    )}
-                  </div>
                 </div>
+                {geocodingId === active.id && (
+                  <p className="mt-2 text-[11px] text-[var(--foreground-muted)] flex items-center gap-1.5">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Locating this shop on the map…
+                  </p>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <a
+                  href={directionsHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                >
+                  <Navigation className="w-3.5 h-3.5" />
+                  Get Directions
+                  <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+                </a>
+                {active.kind === "shop" && active.slug && (
+                  <Link
+                    href={`/stores/${active.slug}`}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-elevated)] text-xs font-bold hover:border-primary/50 transition-colors cursor-pointer"
+                  >
+                    <Store className="w-3.5 h-3.5" />
+                    Visit shop
+                  </Link>
+                )}
               </div>
 
               {/* Details */}

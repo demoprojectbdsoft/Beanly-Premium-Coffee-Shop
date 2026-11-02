@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -15,14 +15,18 @@ import {
 import {
   ShoppingBag,
   Package,
+  Bike,
   Truck,
   Navigation,
+  Phone,
   Calendar,
+  Check,
   CheckCircle2,
   Clock,
   Search,
   Download,
   RotateCcw,
+  RefreshCw,
   Star,
   Copy,
   XCircle,
@@ -58,6 +62,16 @@ import {
   warrantyTypeLabel,
 } from "@/lib/warranty";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
+import { fetchTrackingAction } from "@/lib/action/deliveries";
+import UserAvatar from "@/components/shared/UserAvatar";
+import type { DeliveryTracking } from "@/types/delivery";
+import {
+  DELIVERY_STAGE_LABELS,
+  DELIVERY_STATUS_NEUTRAL_LABELS,
+  DELIVERY_STATUS_STYLES,
+  formatEta,
+  formatMoment,
+} from "@/lib/rider";
 
 /** Options for the status filter, in the order a shopper expects to see them. */
 const STATUS_OPTIONS = ["All Orders", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled"];
@@ -281,6 +295,12 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
   const [page, setPage] = useState(1);
   const [trackingModalOrder, setTrackingModalOrder] = useState<CustomerOrder | null>(null);
 
+  // Live delivery data behind the Track Shipment modal: rider, stage, ETA and
+  // the rider-driven statuses. Fetched on open and on demand (Refresh), so the
+  // token stays on the server and the page is never blocked on it.
+  const [tracking, setTracking] = useState<DeliveryTracking | null>(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
+
   // Customer Response State
   const [responseModalOrder, setResponseModalOrder] = useState<CustomerOrder | null>(null);
   const [selectedResponse, setSelectedResponse] = useState<"received" | "not_received" | "cancelled">("received");
@@ -298,6 +318,70 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmittingClaim, setIsSubmittingClaim] = useState(false);
   const IMGBB_API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY ?? "";
+
+  // ── Track Shipment modal: live delivery ────────────────────────────────────
+  // Fetches the delivery behind an order when the modal opens, so the rider and
+  // every rider-driven stage (assigned → accepted → picked up → out for
+  // delivery → delivered) show up alongside the order's own timeline. A failed
+  // read simply leaves the modal on the order timeline, never blocking it.
+  const openTrackingModal = (order: CustomerOrder) => {
+    // Clear the previous order's live data first, so a different order never
+    // flashes the last order's rider while the next read is in flight.
+    setTracking(null);
+    setTrackingLoading(true);
+    setTrackingModalOrder(order);
+  };
+
+  useEffect(() => {
+    if (!trackingModalOrder) return;
+    let cancelled = false;
+    fetchTrackingAction(trackingModalOrder.id)
+      .then((res) => {
+        if (!cancelled) setTracking(res);
+      })
+      .catch(() => {
+        if (!cancelled) setTracking(null);
+      })
+      .finally(() => {
+        if (!cancelled) setTrackingLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trackingModalOrder]);
+
+  const isDeliveryLive = tracking?.delivery
+    ? !["delivered", "cancelled", "declined"].includes(tracking.delivery.status)
+    : false;
+
+  // The finer statuses the rider drives, in order. Mirrors the tracking page's
+  // own step list so the modal and the live page tell the same story.
+  const deliverySteps = useMemo(() => {
+    const d = tracking?.delivery;
+    if (!d) return [];
+    return [
+      { key: "assigned", label: DELIVERY_STAGE_LABELS.assigned, at: d.createdAt },
+      { key: "accepted", label: DELIVERY_STAGE_LABELS.accepted, at: d.acceptedAt },
+      { key: "picked_up", label: DELIVERY_STAGE_LABELS.picked_up, at: d.pickedUpAt },
+      {
+        key: "out_for_delivery",
+        label: DELIVERY_STAGE_LABELS.out_for_delivery,
+        at: d.outForDeliveryAt,
+      },
+      { key: "delivered", label: DELIVERY_STAGE_LABELS.delivered, at: d.deliveredAt },
+    ];
+  }, [tracking]);
+
+  const refreshTracking = async () => {
+    if (!trackingModalOrder) return;
+    setTrackingLoading(true);
+    try {
+      const res = await fetchTrackingAction(trackingModalOrder.id);
+      setTracking(res);
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
 
   const openWarrantyModal = (
     warranty: CustomerWarranty | null,
@@ -1096,7 +1180,7 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                   {order.timeline && (
                     <Button
                       size="sm"
-                      onClick={() => setTrackingModalOrder(order)}
+                      onClick={() => openTrackingModal(order)}
                       className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 font-bold transition-colors cursor-pointer h-8 border border-primary/20"
                     >
                       <Truck className="w-4 h-4" />
@@ -1161,10 +1245,28 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                   </h3>
                   <OrderStatusBadge status={trackingModalOrder.status} size="sm" />
                 </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    {trackingModalOrder.carrier} • #{trackingModalOrder.trackingNumber}
-                  </p>
+                <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                  {tracking?.delivery ? (
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-bold ${
+                        DELIVERY_STATUS_STYLES[tracking.delivery.status] ??
+                        "bg-[var(--surface-alt)] text-[var(--foreground-muted)] border-[var(--border-color)]"
+                      }`}
+                    >
+                      <Truck className="w-3.5 h-3.5" />
+                      {DELIVERY_STATUS_NEUTRAL_LABELS[tracking.delivery.status] ??
+                        "In progress"}
+                    </span>
+                  ) : trackingModalOrder.trackingNumber ? (
+                    <p className="text-xs text-[var(--foreground-muted)]">
+                      {trackingModalOrder.carrier ?? "Carrier"} • #
+                      {trackingModalOrder.trackingNumber}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-[var(--foreground-muted)]">
+                      {trackingLoading ? "Loading delivery…" : "Preparing your order"}
+                    </p>
+                  )}
                   {trackingModalOrder.trackingNumber && (
                     <button
                       onClick={() => copyTracking(trackingModalOrder.trackingNumber!)}
@@ -1173,6 +1275,9 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                     >
                       <Copy className="w-3.5 h-3.5" />
                     </button>
+                  )}
+                  {trackingLoading && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--foreground-muted)]" />
                   )}
                 </div>
               </div>
@@ -1201,8 +1306,101 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
               )}
             </div>
 
+            {/* Rider & live delivery status */}
+            {tracking?.delivery && (
+              <div className="space-y-3 -mt-1">
+                {tracking.delivery.rider && (
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--surface-alt)] border border-[var(--border-color)]">
+                    <UserAvatar
+                      src={tracking.delivery.rider.image}
+                      name={tracking.delivery.rider.name}
+                      size={40}
+                      alt={tracking.delivery.rider.name}
+                      className="rounded-xl bg-brand-gradient text-[var(--on-grad-text)] text-xs font-extrabold border border-[var(--border-color)]"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-[var(--foreground)] truncate">
+                        {tracking.delivery.rider.name}
+                      </p>
+                      <p className="text-[11px] text-[var(--foreground-muted)] flex items-center gap-1 truncate">
+                        <Bike className="w-3 h-3 shrink-0" />
+                        {[
+                          tracking.delivery.rider.vehicleType,
+                          tracking.delivery.rider.vehicleNumber,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || "Your rider"}
+                      </p>
+                    </div>
+                    {tracking.delivery.rider.phone && (
+                      <a
+                        href={`tel:${tracking.delivery.rider.phone}`}
+                        className="inline-flex items-center gap-1.5 px-3 h-9 rounded-xl bg-primary hover:bg-primary-hover text-white text-[11px] font-bold shrink-0"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        Call
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* Delivery progress — every status the rider drives */}
+                <div className="space-y-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+                    Delivery progress
+                  </p>
+                  {deliverySteps.map((step) => {
+                    const done = Boolean(step.at);
+                    return (
+                      <div key={step.key} className="flex gap-3 items-center">
+                        <div
+                          className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                            done
+                              ? "bg-primary text-white"
+                              : "bg-[var(--surface-alt)] text-[var(--foreground-muted)] border border-[var(--border-color)]"
+                          }`}
+                        >
+                          {done ? (
+                            <Check className="w-3 h-3" />
+                          ) : (
+                            <Clock className="w-3 h-3" />
+                          )}
+                        </div>
+                        <div className="flex-1 flex items-center justify-between">
+                          <span
+                            className={`text-[11px] font-semibold ${
+                              done
+                                ? "text-[var(--foreground)]"
+                                : "text-[var(--foreground-muted)]"
+                            }`}
+                          >
+                            {step.label}
+                          </span>
+                          {step.at && (
+                            <span className="text-[10px] text-[var(--foreground-muted)]">
+                              {formatMoment(step.at)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {tracking.eta && isDeliveryLive && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                    <Navigation className="w-3.5 h-3.5" />
+                    Arriving in about {formatEta(tracking.eta.minutes)}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Timeline */}
             <div className="space-y-4 py-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+                Order progress
+              </p>
               {trackingModalOrder.timeline.map((step, idx) => (
                 <div key={idx} className="flex gap-4 items-start relative">
                   {idx !== trackingModalOrder.timeline.length - 1 && (
@@ -1252,14 +1450,26 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                 </span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                {tracking?.delivery && (
+                  <Button
+                    onClick={refreshTracking}
+                    isDisabled={trackingLoading}
+                    className="inline-flex items-center gap-1.5 px-4 h-9 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)] text-[var(--foreground)] font-bold transition-colors cursor-pointer"
+                  >
+                    <RefreshCw
+                      className={`w-3.5 h-3.5 ${trackingLoading ? "animate-spin" : ""}`}
+                    />
+                    Refresh
+                  </Button>
+                )}
                 {/* The stepper above is the order's own story; this is the map
                     with the rider carrying it, which only the live page has. */}
                 <Link
                   href={`/track-order/${trackingModalOrder.id}`}
-                  className="inline-flex items-center gap-1.5 px-4 h-9 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)] text-[var(--foreground)] font-bold transition-colors hover:text-primary"
+                  className="inline-flex items-center gap-1.5 px-4 h-9 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold transition-colors"
                 >
                   <Navigation className="w-3.5 h-3.5" />
-                  Live map &amp; rider
+                  Track live
                 </Link>
                 <Button
                   onClick={() => setTrackingModalOrder(null)}

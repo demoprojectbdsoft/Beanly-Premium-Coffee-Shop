@@ -172,8 +172,14 @@ export function notificationHref(
     // application id that no order can ever match, i.e. an empty orders page.
     if (notification.type === "rider_application") return "/become-a-rider/status";
     if (notification.type === "vendor_application") return "/become-a-vendor/status";
-    // Delivery updates carry the order id so the customer can see live tracking.
-    if (notification.type === "delivery_update" && ref) return `/track-order/${ref}`;
+    // Delivery updates and the shipped line both carry the order id, and a
+    // shipped order always has a rider on it, so either opens the live tracking
+    // page rather than the orders list.
+    if (
+      (notification.type === "delivery_update" || notification.type === "order_shipped") &&
+      ref
+    )
+      return `/track-order/${ref}`;
     // All order lifecycle notifications carry the order id as ref.
     if (ref) return `/dashboard/customer/orders?search=${ref}`;
     return "/dashboard/customer/orders";
