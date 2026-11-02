@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   LogOut,
   Package,
+  Settings,
   ShoppingBag,
   Sparkles,
   Store,
@@ -47,6 +48,7 @@ const VENDOR_NAV_GROUPS = [
       { name: "Store Profile", href: "/dashboard/vendor/profile", icon: Store },
       { name: "Plan & Billing", href: "/dashboard/vendor/subscription", icon: CreditCard },
       { name: "Notifications", href: "/dashboard/vendor/notifications", icon: Bell },
+      { name: "Settings", href: "/dashboard/vendor/settings", icon: Settings },
     ],
   },
   {

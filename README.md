@@ -326,10 +326,11 @@ stateDiagram-v2
 <details>
 <summary><b>Storefront & Products</b></summary>
 
-- **Store Profile**: Branding, description, contact, cover image
+- **Store Profile**: The whole seller file in one form — branding, description, contact, cover image, the applicant's own lines and the verification papers, all editable
 - **Product Catalog**: Add/edit/archive with plan limits
 - **Status Management**: Draft → Published → Out of Stock
 - **Featured Promotions**: Buy product slots from subscription plan
+- **Settings**: Password, session and account controls on their own screen
 
 </details>
 
@@ -379,8 +380,8 @@ stateDiagram-v2
 <details>
 <summary><b>Profile & Settings</b></summary>
 
-- **Profile**: Vehicle info, license details, photo
-- **Availability**: Online/offline toggle
+- **Profile** — the rider's own page is the entire application file, editable: see [Per-Role Profile & Settings](#-per-role-profile--settings).
+- **Availability**: Online/offline toggle in Settings
 - **Settings**: Password, notifications
 - **Exports**: CSV and PDF reports
 
@@ -395,6 +396,19 @@ stateDiagram-v2
 - **Uploadable profile image** — the rider's profile photo and the vendor's store logo use the shared `ImageUploader`: drag-and-drop or file browse uploads to ImgBB, with an "Image URL" tab kept for a link the applicant already hosts, and a preview with a remove action once a value is set.
 - **HeroUI controls** — choice fields render through `AppSelect` and date fields through `AppDatePicker`, both on the same surface tokens as the dashboard.
 - **Draft persistence** — step progress is kept locally and rehydrated on return, so a half-filled application survives a reload.
+
+</details>
+
+### 🪪 Per-Role Profile & Settings
+
+<details>
+<summary><b>Every workspace owns its own profile and settings screen</b></summary>
+
+- **The rule** — a dashboard page is chosen by the role being looked at, and the profile and settings are no exception. A plain customer edits the buyer profile; a rider gets the rider profile; a seller gets the seller profile. `/dashboard/profile` and `/dashboard/settings` only ever redirect to whichever one the active dashboard is, and the account menu and every sidebar link the role's own screen.
+- **The profile shows the application file** — the rider's page repeats every step the wizard collected, filled or not: the birthday and national ID, the emergency contact and preferred channel, the service address down to the postcode, the vehicle with its plate, licence number, expiry and ownership, the four document links with the reviewer note, the working days and time slots, the maximum distance and the experience. An answer that was never given shows an empty box instead of being hidden, because a renewed licence has to be fixable without a support ticket. The vendor's page does the same for its file: the seller behind the shop, the storefront, the business address and the verification papers.
+- **Saving writes the file, and the account follows it** — the rider's save goes to `PATCH /rider-applications/mine` and the vendor's to `PATCH /vendor-applications/mine`. Both sections arrive as optional groups, so a form that touched the vehicle cannot blank the emergency contact, and a field whose value already matched is not treated as an edit — a date in the file and the `YYYY-MM-DD` text the picker writes are compared as the same instant, so an untouched birthday never restamps the row. The API then mirrors the answers the other screens read onto the account (name, photo, phone, vehicle for a rider; name and phone for a seller) and, for a vendor, onto the storefront row, so dispatch, the customer's tracking page and the public shop all describe the same person and the same business. Only the short bio is written straight to the account.
+- **What stays out of the form** — the login email is read-only everywhere, a store's slug is never editable because every published link is built from it, and a plan is bought on the subscription desk rather than typed into a settings box.
+- **Settings holds the account, not the shop** — the rider's screen keeps the online/offline switch, the password and the sign-out, so the toggle exists exactly once. The seller's screen was a redirect to the profile until now: it has its own `VendorSettingsClient` with the account summary, the password change that revokes other sessions, the sign-out, and pointers to Plan & Billing and Notifications. A hand-promoted account with no application file is told so on the profile, and the lines that would need a file are disabled instead of offering a save that cannot land.
 
 </details>
 

@@ -3,7 +3,15 @@
 import { serverMutation } from "../core/server";
 import { getUserSession } from "../core/session";
 import { isAdminRole, isVendorRole } from "../core/roles";
-import type { BillingCycle, VendorPlanId, VendorProductDraft } from "@/types/vendor";
+import type {
+  BillingCycle,
+  VendorBusinessAddress,
+  VendorPersonalInfo,
+  VendorPlanId,
+  VendorProductDraft,
+  VendorStoreInfo,
+  VendorVerification,
+} from "@/types/vendor";
 
 /**
  * The marketplace writes.
@@ -146,6 +154,40 @@ export const updateMyStore = async (data: VendorStoreUpdate) => {
     return { success: false as const, message: "Sign in to edit your store." };
   }
   return serverMutation("/vendor-store/mine", data, "PATCH");
+};
+
+/**
+ * What the seller's own profile page sends.
+ *
+ * The profile shows the whole application file — the person, the shop, the
+ * business address and the verification upload — so a save carries the sections
+ * the form holds rather than one strict submission. The slug is left out of the
+ * payload because every published link to the shop is built from it, and the
+ * plan is left out because changing one is a paid action that belongs on the
+ * subscription desk.
+ */
+export interface VendorProfileUpdate {
+  personalInfo?: Partial<VendorPersonalInfo>;
+  storeInfo?: Partial<Omit<VendorStoreInfo, "slug">>;
+  businessAddress?: Partial<VendorBusinessAddress>;
+  verification?: Partial<VendorVerification>;
+  isVisible?: boolean;
+}
+
+/**
+ * Saves the signed-in seller's application file.
+ *
+ * One call writes the record the review desk read, the storefront row buyers
+ * actually see, and the account's display name and phone, because those are the
+ * same answers kept in three places. The API resolves every row from the token,
+ * so this can never be pointed at another seller's shop.
+ */
+export const updateMyVendorProfile = async (data: VendorProfileUpdate) => {
+  const user = await getUserSession();
+  if (!user?.id) {
+    return { success: false as const, message: "Sign in to edit your store profile." };
+  }
+  return serverMutation("/vendor-applications/mine", data, "PATCH");
 };
 
 /** Saves a new product as a draft, or publishes it in the same call. */

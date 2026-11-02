@@ -23,6 +23,7 @@ import type {
   VendorPlan,
   VendorPlanId,
 } from "@/types/vendor";
+import { VENDOR_BUSINESS_TYPES } from "@/types/vendor";
 import { submitVendorApplication } from "@/lib/action/vendor";
 import { useWizardDraft } from "@/hooks/useWizardDraft";
 import AppSelect from "@/components/shared/AppSelect";
@@ -63,14 +64,6 @@ const STEPS = [
 const INPUT_CLASS =
   "w-full h-10 px-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]/70 focus:outline-none focus:ring-2 focus:ring-[var(--brand-flat)]/35";
 const AREA_CLASS = `${INPUT_CLASS} h-auto min-h-[90px] py-2 resize-y`;
-
-const BUSINESS_TYPES = [
-  "Sole proprietor",
-  "Partnership",
-  "Limited company",
-  "Family business",
-  "Other",
-];
 
 /** One labelled field, so every step looks the same. */
 function Field({
@@ -555,7 +548,10 @@ export default function VendorApplicationWizard({
                   ariaLabel="Business type"
                   value={draft.verification.businessType || ""}
                   onChange={(v) => patchVerification({ businessType: v })}
-                  options={BUSINESS_TYPES.map((type) => ({ value: type, label: type }))}
+                  options={VENDOR_BUSINESS_TYPES.map((type) => ({
+                    value: type,
+                    label: type,
+                  }))}
                   placeholder="Not registered"
                 />
               </Field>

@@ -9,12 +9,14 @@ import StoreProfileClient from "./StoreProfileClient";
 export const dynamic = "force-dynamic";
 
 /**
- * The store as the marketplace currently holds it.
+ * The seller's own profile.
  *
- * The editable half is the store row itself — the same row the public
- * storefront will read — so a change saved here is what buyers see. The
- * verification details below stay read-only: they are part of the application
- * the store team approved, and an edit would need a fresh review.
+ * Like every other role screen, this is the whole file the application wizard
+ * collected — the person behind the shop, the storefront, the business address
+ * and the verification upload — and every one of those answers can be changed
+ * here. The storefront the buyers see is the same record: the API writes the
+ * file and mirrors it onto the store row, so a save cannot leave the two
+ * describing different shops.
  */
 
 function Row({ label, value }: { label: string; value?: string | null }) {
@@ -28,18 +30,28 @@ function Row({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
+/** The record's timestamp, as the day the seller signed the file. */
+function asDay(value?: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 export default async function VendorStoreProfilePage() {
   await getRequiredRole("vendor");
 
   const [storeResponse, applicationResponse] = await Promise.all([
-    getMyStore(),
-    getMyVendorApplication(),
+    getMyStore().catch(() => null),
+    getMyVendorApplication().catch(() => null),
   ]);
 
   const store = asStore(storeResponse);
   const application = asApplication(applicationResponse);
-  const verification = application?.verification;
-  const personal = application?.personalInfo;
 
   if (!store) {
     return (
@@ -74,22 +86,41 @@ export default async function VendorStoreProfilePage() {
 
   return (
     <div className="space-y-5">
-      <StoreProfileClient store={store} />
+      <StoreProfileClient store={store} application={application} />
 
-      <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-4 shadow-2xs">
-        <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
-          Verification on file
-        </h2>
-        <Row label="Business type" value={verification?.businessType} />
-        <Row label="Registration" value={verification?.registrationNumber} />
-        <Row label="Document" value={verification?.documentUrl} />
-        <Row label="Account email" value={personal?.email} />
-        <Row label="Account phone" value={personal?.phone} />
-        <p className="mt-2 text-[10px] leading-relaxed text-[var(--foreground-muted)]">
-          These come from the application the store team approved. To change them, contact support so
-          the update can be reviewed.
-        </p>
-      </section>
+      {application && (
+        <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-4 shadow-2xs">
+          <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+            Application record
+          </h2>
+          <Row label="Reference" value={application.reference} />
+          <Row
+            label="Status"
+            value={application.status.replace("_", " ").replace(/^./, (letter) => letter.toUpperCase())}
+          />
+          <Row label="Applied" value={asDay(application.submittedAt)} />
+          <Row
+            label="Plan"
+            value={`${application.selectedPlan} · ${application.billingCycle}`}
+          />
+          {application.reviewNotes ? (
+            <Row label="Reviewer note" value={application.reviewNotes} />
+          ) : null}
+          {application.rejectionReason ? (
+            <Row label="Rejection reason" value={application.rejectionReason} />
+          ) : null}
+          <p className="mt-2 text-[10px] leading-relaxed text-[var(--foreground-muted)]">
+            The plan is bought, not typed — change it on the{" "}
+            <Link
+              href="/dashboard/vendor/subscription"
+              className="font-semibold text-primary hover:underline"
+            >
+              Plan &amp; Billing
+            </Link>{" "}
+            desk.
+          </p>
+        </section>
+      )}
     </div>
   );
 }

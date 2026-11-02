@@ -87,6 +87,21 @@ export interface VendorVerification {
   notes?: string;
 }
 
+/**
+ * The business types the application offers and the profile page repeats.
+ *
+ * The API stores a plain string — a seller can describe a form nobody thought
+ * of — but both screens must offer the same list, or the profile would show a
+ * value the picker cannot select.
+ */
+export const VENDOR_BUSINESS_TYPES = [
+  "Sole proprietor",
+  "Partnership",
+  "Limited company",
+  "Family business",
+  "Other",
+];
+
 export interface VendorApplication {
   _id: string;
   reference: string;

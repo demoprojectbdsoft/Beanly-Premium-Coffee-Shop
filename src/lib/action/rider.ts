@@ -3,7 +3,7 @@
 import { serverMutation } from "../core/server";
 import { getUserSession } from "../core/session";
 import { isAdminRole } from "../core/roles";
-import type { RiderApplicationDraft } from "@/types/rider";
+import type { RiderApplicationDraft, RiderApplicationProfileUpdate } from "@/types/rider";
 
 /**
  * The rider writes.
@@ -29,6 +29,24 @@ export const submitRiderApplication = async (data: RiderApplicationDraft) => {
     return { success: false as const, message: "Sign in to apply as a rider." };
   }
   return serverMutation("/rider-applications", data, "POST");
+};
+
+/**
+ * Saves the rider's own copy of the application file.
+ *
+ * The profile page shows everything the wizard once collected — filled and
+ * unfilled — so this is the one place a rider may correct a plate number, renew
+ * a licence date or swap a document without a support ticket. The API finds the
+ * row from the token, so the body can never name another person's file, and the
+ * service keeps the account row in step so dispatch and the customer's tracking
+ * screen read the same vehicle.
+ */
+export const updateMyRiderProfile = async (data: RiderApplicationProfileUpdate) => {
+  const user = await getUserSession();
+  if (!user?.id) {
+    return { success: false as const, message: "Sign in to edit your rider profile." };
+  }
+  return serverMutation("/rider-applications/mine", data, "PATCH");
 };
 
 /** Withdraws the caller's pending rider application. */

@@ -129,6 +129,24 @@ export interface RiderApplicationDraft {
   confirm: boolean;
 }
 
+/**
+ * What the rider's own profile page sends.
+ *
+ * A submission has to be a complete draft; a profile save is only the sections
+ * the rider actually touched, and inside them only the fields the form holds.
+ * The API merges that onto the file, so a section left out of the body keeps
+ * whatever it already said.
+ */
+export interface RiderApplicationProfileUpdate {
+  personalInfo?: Partial<RiderPersonalInfo>;
+  contactInfo?: Partial<RiderContactInfo>;
+  serviceAddress?: Partial<RiderServiceAddress>;
+  vehicle?: Partial<RiderVehicle>;
+  documents?: Partial<RiderDocuments>;
+  availability?: Partial<RiderAvailability>;
+  experience?: Partial<RiderExperience>;
+}
+
 /** Query for the admin review desk. */
 export type RiderApplicationQuery = {
   status?: string;
