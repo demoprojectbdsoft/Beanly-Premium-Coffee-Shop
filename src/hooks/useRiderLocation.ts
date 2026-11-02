@@ -19,6 +19,16 @@ import { shareLocationAction } from "@/lib/action/deliveries";
 
 const MIN_INTERVAL_MS = 15_000;
 
+/*
+ * A fix wider than this is a city, not a street. Browsers fall back to
+ * network/IP location when the device has no GPS or the rider only granted
+ * approximate access, and that can be tens of kilometres out — it would put the
+ * customer's map in the wrong suburb. The position is still sent, because
+ * "roughly east Dhaka" beats nothing and the customer's line says how wide it
+ * is, but the rider is told what the phone is actually giving them.
+ */
+const COARSE_ACCURACY_M = 2_000;
+
 interface UseRiderLocationOptions {
   /**
    * Start on the rider's behalf as soon as a job arrives.
@@ -85,6 +95,12 @@ export function useRiderLocation(
         lastSentRef.current = now;
 
         const { latitude, longitude, accuracy, heading, speed } = position.coords;
+        const isCoarse = Number.isFinite(accuracy) && accuracy > COARSE_ACCURACY_M;
+        setError(
+          isCoarse
+            ? `Your browser is only giving a position about ${Math.max(1, Math.round(accuracy / 1000))} km wide. Turn on GPS or allow precise location so the customer can see you properly.`
+            : ""
+        );
         shareLocationAction(deliveryId, {
           lat: latitude,
           lng: longitude,

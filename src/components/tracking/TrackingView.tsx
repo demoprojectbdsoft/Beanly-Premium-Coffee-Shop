@@ -48,6 +48,13 @@ const POLL_MS = 8_000;
 /** A ping older than this is called stale rather than live. */
 const STALE_MS = 90_000;
 
+/*
+ * Wider than this and the pin is a neighbourhood, not a person: the device
+ * answered with a network location rather than its GPS. Saying "±50000 m" is
+ * technically true and useless to read, so the line says what it means.
+ */
+const COARSE_ACCURACY_M = 2_000;
+
 interface TrackingViewProps {
   initial: DeliveryTracking;
   destination: DeliveryDestination | null;
@@ -265,11 +272,17 @@ export default function TrackingView({ initial, destination }: TrackingViewProps
                 <Navigation className="w-3.5 h-3.5 text-emerald-500" />
                 {vehicle ? `${vehicle.label} last seen` : "Last position"}{" "}
                 {formatMoment(data.location.updatedAt)}
-                {data.location.accuracy !== null && (
-                  <span className="font-medium text-[var(--foreground-muted)]">
-                    · ±{Math.round(data.location.accuracy)} m
-                  </span>
-                )}
+                {data.location.accuracy !== null &&
+                  (data.location.accuracy > COARSE_ACCURACY_M ? (
+                    <span className="font-semibold text-amber-600 dark:text-amber-400">
+                      · approximate — the device is not reporting a precise
+                      position
+                    </span>
+                  ) : (
+                    <span className="font-medium text-[var(--foreground-muted)]">
+                      · ±{Math.round(data.location.accuracy)} m
+                    </span>
+                  ))}
               </p>
               {isStale ? (
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">

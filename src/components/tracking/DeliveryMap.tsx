@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Map as LeafletMap, Marker, Polyline } from "leaflet";
 import type { DeliveryDestination } from "@/types/delivery";
 import { vehicleMarker } from "@/lib/rider";
@@ -84,6 +84,16 @@ export default function DeliveryMap({
   const leafletRef = useRef<typeof import("leaflet") | null>(null);
   /** The marker HTML last drawn, so a vehicle change swaps the icon only once. */
   const riderHtmlRef = useRef("");
+  /*
+   * True once Leaflet has arrived and there is a map to draw on.
+   *
+   * The library comes in through a dynamic import, so it resolves after the
+   * first render. Without a flag to re-run on, the marker effect and the framing
+   * effect both take their one pass at mount, find no map, bail — and a position
+   * that already came with the page is never drawn and never looked at, leaving
+   * the view parked on the default city while the rider is somewhere else.
+   */
+  const [isReady, setIsReady] = useState(false);
 
   /** Frames everything we know about, once, and again on demand. */
   const frame = useCallback(() => {
@@ -121,6 +131,7 @@ export default function DeliveryMap({
 
       L.tileLayer(TILE_URL, { attribution: ATTRIBUTION, maxZoom: 19 }).addTo(created);
       mapRef.current = created;
+      setIsReady(true);
     })();
 
     return () => {
@@ -130,6 +141,7 @@ export default function DeliveryMap({
       riderRef.current = null;
       destinationRef.current = null;
       trailRef.current = null;
+      riderHtmlRef.current = "";
     };
   }, []);
 
@@ -200,14 +212,14 @@ export default function DeliveryMap({
       destinationRef.current.remove();
       destinationRef.current = null;
     }
-  }, [rider, trail, destination, vehicleType, height]);
+  }, [rider, trail, destination, vehicleType, height, isReady]);
 
   // The first time a position arrives the map should jump to it, not sit on
   // the city centre; afterwards it only reframes when the reader asks.
   useEffect(() => {
     if (rider || destination) frame();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Boolean(rider), Boolean(destination)]);
+  }, [Boolean(rider), Boolean(destination), isReady]);
 
   return (
     <div className="space-y-2">

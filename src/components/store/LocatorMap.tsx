@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Map as LeafletMap, Marker } from "leaflet";
 
 /* Leaflet's panes are positioned by this file, not by inline styles. See the
@@ -64,6 +64,13 @@ export default function LocatorMap({
   const markersRef = useRef<Map<string, Marker>>(new Map());
   const youRef = useRef<Marker | null>(null);
   const leafletRef = useRef<typeof import("leaflet") | null>(null);
+  /*
+   * True once the dynamically imported library has built the map. Every effect
+   * below needs a map to draw on, and they all run at mount, before the import
+   * has resolved — so without this flag a list that arrived with the page gets
+   * no pins and no framing until something else changes.
+   */
+  const [isReady, setIsReady] = useState(false);
 
   /** Frames every pin, plus the shopper when they are on the map. */
   const frame = useCallback(() => {
@@ -85,6 +92,9 @@ export default function LocatorMap({
   useEffect(() => {
     let cancelled = false;
     let created: LeafletMap | null = null;
+    // Held in a local because the cleanup below outlives this render, and the
+    // ref it would otherwise read is the one React has moved on from.
+    const markers = markersRef.current;
 
     (async () => {
       const L = await import("leaflet");
@@ -99,6 +109,7 @@ export default function LocatorMap({
 
       L.tileLayer(TILE_URL, { attribution: ATTRIBUTION, maxZoom: 19 }).addTo(created);
       mapRef.current = created;
+      setIsReady(true);
     })();
 
     return () => {
@@ -108,6 +119,7 @@ export default function LocatorMap({
       created?.remove();
       mapRef.current = null;
       youRef.current = null;
+      markers.clear();
     };
   }, []);
 
@@ -175,13 +187,13 @@ export default function LocatorMap({
       youRef.current.remove();
       youRef.current = null;
     }
-  }, [points, myLocation]);
+  }, [points, myLocation, isReady]);
 
   // Reframe when the set of pins or the active pin changes.
   useEffect(() => {
     frame();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [points, myLocation]);
+  }, [points, myLocation, isReady]);
 
   // Pan to the active pin when the shopper picks a place, without reframing
   // the whole bounds (which would jump around as more shops load in).
@@ -191,7 +203,7 @@ export default function LocatorMap({
     const active = points.find((p) => p.active);
     if (active) map.panTo([active.lat, active.lng], { animate: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [points.find((p) => p.active)?.id]);
+  }, [points.find((p) => p.active)?.id, isReady]);
 
   return (
     <div className="relative w-full rounded-2xl overflow-hidden border border-[var(--border-color)] bg-[var(--surface-alt)]">
