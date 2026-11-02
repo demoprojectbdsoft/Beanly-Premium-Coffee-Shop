@@ -10,13 +10,31 @@ import { shareLocationAction } from "@/lib/action/deliveries";
  * and the customer's tracking page polls for it. There is no socket and no paid
  * map service anywhere in the path.
  *
- * Two rules keep it honest and cheap: a fix is only sent every 15 seconds, and
- * the watch stops the moment the rider switches it off or the screen unmounts.
+ * Three rules keep it honest and cheap: a fix is only sent every 15 seconds,
+ * the watch stops the moment the rider switches it off or the screen unmounts,
+ * and a manual stop is remembered for that job — auto-start must not press the
+ * rider's own button back on.
  */
 
 const MIN_INTERVAL_MS = 15_000;
 
-export function useRiderLocation(deliveryId: string | null) {
+interface UseRiderLocationOptions {
+  /**
+   * Start on the rider's behalf as soon as a job arrives.
+   *
+   * The customer's map is only worth watching if the phone keeps reporting
+   * while the rider is driving, and nobody presses a button mid-journey. The
+   * rider can still stop it, and the next job starts again by itself.
+   */
+  autoStart?: boolean;
+}
+
+export function useRiderLocation(
+  deliveryId: string | null,
+  options: UseRiderLocationOptions = {}
+) {
+  const { autoStart = false } = options;
+
   const [isSharing, setIsSharing] = useState(false);
   const [error, setError] = useState("");
   const [lastSentAt, setLastSentAt] = useState<string | null>(null);
@@ -24,6 +42,10 @@ export function useRiderLocation(deliveryId: string | null) {
 
   const watchRef = useRef<number | null>(null);
   const lastSentRef = useRef(0);
+  /** The rider pressed Stop for this job, so nothing restarts it here. */
+  const stoppedRef = useRef(false);
+  /** The job auto-start has already been asked to report for. */
+  const startedRef = useRef<string | null>(null);
 
   const stop = useCallback(() => {
     if (watchRef.current !== null && typeof navigator !== "undefined") {
@@ -83,13 +105,37 @@ export function useRiderLocation(deliveryId: string | null) {
     setIsSharing(true);
   }, [deliveryId, stop]);
 
+  /** The rider's own off switch, which auto-start has to respect. */
+  const stopManually = useCallback(() => {
+    stoppedRef.current = true;
+    startedRef.current = null;
+    stop();
+  }, [stop]);
+
   const toggle = useCallback(() => {
-    if (isSharing) stop();
+    if (isSharing) stopManually();
     else start();
-  }, [isSharing, start, stop]);
+  }, [isSharing, start, stopManually]);
+
+  /*
+   * A new job is a fresh start: whatever the rider stopped belongs to the one
+   * before it. The reset runs before the auto-start below because effects fire
+   * in the order they are declared.
+   */
+  useEffect(() => {
+    stoppedRef.current = false;
+    startedRef.current = null;
+  }, [deliveryId]);
+
+  useEffect(() => {
+    if (!deliveryId || !autoStart) return;
+    if (stoppedRef.current || startedRef.current === deliveryId) return;
+    startedRef.current = deliveryId;
+    start();
+  }, [deliveryId, autoStart, start]);
 
   // Leaving the screen must not leave the phone reporting.
   useEffect(() => stop, [stop]);
 
-  return { isSharing, error, lastSentAt, points, start, stop, toggle };
+  return { isSharing, error, lastSentAt, points, start, stop: stopManually, toggle };
 }

@@ -90,6 +90,21 @@ export interface Order {
   customerResponse?: "received" | "not_received" | "cancelled" | null;
   customerResponseNote?: string;
   customerResponseAt?: string | Date | null;
+  /**
+   * The delivery currently on this order, live stages only (assigned through
+   * out\_for\_delivery). "holds" says a rider still answers for the parcel: an
+   * offer that has run past its window is counted dead even before the sweep
+   * closes it. While a rider holds the job, the store cannot deliver or cancel
+   * the order — only stand the rider down first.
+   */
+  delivery?: {
+    _id: string;
+    status: string;
+    fee?: number;
+    expiresAt?: string | null;
+    holds?: boolean;
+    rider?: { name?: string } | null;
+  } | null;
   pointsEarned?: number;
   /** Points this order used up, and the money they took off the total. */
   pointsRedeemed?: number;

@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import type { Map as LeafletMap, Marker, Polyline } from "leaflet";
 import type { DeliveryDestination } from "@/types/delivery";
+import { vehicleMarker } from "@/lib/rider";
 
 /**
  * The customer's map.
@@ -18,11 +19,21 @@ const TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors';
 
-/** A dot with a halo — the rider. Drawn as HTML so no image assets are needed. */
-const RIDER_ICON = `<div style="position:relative;width:30px;height:30px">
-  <span style="position:absolute;inset:0;border-radius:9999px;background:rgba(22,163,74,0.18);border:1px solid rgba(22,163,74,0.45)"></span>
-  <span style="position:absolute;left:50%;top:50%;width:13px;height:13px;margin:-6.5px 0 0 -6.5px;border-radius:9999px;background:#16a34a;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.35)"></span>
-</div>`;
+/** A dot with a halo — the rider, when no vehicle is on file. */
+const RIDER_DOT = `<span style="position:absolute;left:50%;top:50%;width:13px;height:13px;margin:-6.5px 0 0 -6.5px;border-radius:9999px;background:#16a34a;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.35)"></span>`;
+
+/** The halo every rider marker wears, so a moving dot reads as live. */
+const RIDER_HALO = `<span style="position:absolute;inset:0;border-radius:9999px;background:rgba(22,163,74,0.18);border:1px solid rgba(22,163,74,0.45)"></span>`;
+
+/** The marker's HTML: the halo, then the vehicle or a dot inside it. */
+function riderIconHtml(vehicleType?: string | null): string {
+  const vehicle = vehicleMarker(vehicleType);
+  if (!vehicle) {
+    return `<div style="position:relative;width:30px;height:30px">${RIDER_HALO}${RIDER_DOT}</div>`;
+  }
+  const badge = `<span style="position:absolute;left:50%;top:50%;width:23px;height:23px;margin:-11.5px 0 0 -11.5px;border-radius:9999px;background:#fff;border:2px solid #16a34a;box-shadow:0 1px 5px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1">${vehicle.glyph}</span>`;
+  return `<div style="position:relative;width:30px;height:30px">${RIDER_HALO}${badge}</div>`;
+}
 
 /** A teardrop — the delivery address. */
 const DESTINATION_ICON = `<div style="width:18px;height:18px;background:#ef4444;border:2px solid #fff;border-radius:3px 12px 3px 12px;transform:rotate(-45deg);box-shadow:0 1px 6px rgba(0,0,0,0.35)"></div>`;
@@ -38,6 +49,8 @@ interface DeliveryMapProps {
   /** Where the rider has already been, oldest first. */
   trail: DeliveryMapPoint[];
   destination: DeliveryDestination | null;
+  /** The rider's vehicle, so the marker shows what is coming. */
+  vehicleType?: string | null;
   /** The address we could not place on the map, so the panel can say so. */
   destinationUnavailable?: boolean;
   height?: number;
@@ -47,15 +60,19 @@ export default function DeliveryMap({
   rider,
   trail,
   destination,
+  vehicleType,
   destinationUnavailable = false,
   height = 340,
 }: DeliveryMapProps) {
+  const vehicle = vehicleMarker(vehicleType);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const riderRef = useRef<Marker | null>(null);
   const destinationRef = useRef<Marker | null>(null);
   const trailRef = useRef<Polyline | null>(null);
   const leafletRef = useRef<typeof import("leaflet") | null>(null);
+  /** The marker HTML last drawn, so a vehicle change swaps the icon only once. */
+  const riderHtmlRef = useRef("");
 
   /** Frames everything we know about, once, and again on demand. */
   const frame = useCallback(() => {
@@ -131,17 +148,26 @@ export default function DeliveryMap({
 
     if (rider) {
       const at: [number, number] = [rider.lat, rider.lng];
+      const html = riderIconHtml(vehicleType);
       if (riderRef.current) {
         riderRef.current.setLatLng(at);
+        if (riderHtmlRef.current !== html) {
+          riderRef.current.setIcon(
+            L.divIcon({ html, className: "", iconSize: [30, 30], iconAnchor: [15, 15] })
+          );
+          riderHtmlRef.current = html;
+        }
       } else {
         riderRef.current = L.marker(at, {
-          icon: L.divIcon({ html: RIDER_ICON, className: "", iconSize: [30, 30], iconAnchor: [15, 15] }),
+          icon: L.divIcon({ html, className: "", iconSize: [30, 30], iconAnchor: [15, 15] }),
           title: "Your rider",
         }).addTo(map);
+        riderHtmlRef.current = html;
       }
     } else if (riderRef.current) {
       riderRef.current.remove();
       riderRef.current = null;
+      riderHtmlRef.current = "";
     }
 
     if (destination) {
@@ -163,7 +189,7 @@ export default function DeliveryMap({
       destinationRef.current.remove();
       destinationRef.current = null;
     }
-  }, [rider, trail, destination, height]);
+  }, [rider, trail, destination, vehicleType, height]);
 
   // The first time a position arrives the map should jump to it, not sit on
   // the city centre; afterwards it only reframes when the reader asks.
@@ -194,8 +220,14 @@ export default function DeliveryMap({
 
       <div className="flex flex-wrap items-center gap-3 text-[10px] font-semibold text-[var(--foreground-muted)]">
         <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/70 shadow-xs" />
-          Rider, live
+          {vehicle ? (
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white border-2 border-emerald-600 text-[11px] leading-none shadow-xs">
+              {vehicle.glyph}
+            </span>
+          ) : (
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/70 shadow-xs" />
+          )}
+          Rider, live{vehicle ? ` · ${vehicle.label}` : ""}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-2.5 h-2.5 rounded-sm bg-rose-500 border border-white/70 shadow-xs" />

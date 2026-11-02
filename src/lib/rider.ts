@@ -111,6 +111,60 @@ export function nextRiderStep(
   return null;
 }
 
+/**
+ * The stages with the parcel physically on the rider. This is when the
+ * customer's map becomes worth watching, so it is what the rider's own device
+ * starts reporting for on its own.
+ */
+export const CARRIED_DELIVERY_STATUSES: DeliveryStatus[] = ["picked_up", "out_for_delivery"];
+
+/** Whether a job has been picked up and not yet handed over. */
+export function isCarriedDelivery(delivery: { status: DeliveryStatus }): boolean {
+  return CARRIED_DELIVERY_STATUSES.includes(delivery.status);
+}
+
+/**
+ * The job a rider's phone should report for: the carried one that has come
+ * furthest, and the most recently moved when two are level. A rider who takes a
+ * second parcel should not leave the first customer watching a frozen dot.
+ */
+export function pickCarriedDelivery(deliveries: DeliveryRecord[]): DeliveryRecord | null {
+  const carried = deliveries.filter(isCarriedDelivery);
+  if (carried.length === 0) return null;
+
+  const rank = (status: DeliveryStatus) => DELIVERY_STAGE_SEQUENCE.indexOf(status);
+  const moved = (delivery: DeliveryRecord) => new Date(delivery.updatedAt).getTime() || 0;
+
+  return [...carried].sort(
+    (a, b) => rank(b.status) - rank(a.status) || moved(b) - moved(a)
+  )[0];
+}
+
+/**
+ * The rider's vehicle as a marker on the customer's map.
+ *
+ * A Leaflet divIcon is HTML rather than an image, so a glyph costs no asset, no
+ * licence and no work to keep it in step with the theme. Order matters:
+ * "motorcycle" ends in "cycle" and "autorickshaw" contains "auto", so the
+ * unmistakable words are tested first. A vehicle none of them matches gets no
+ * marker, and the map draws its plain live dot instead.
+ */
+export const RIDER_VEHICLE_MARKERS: { pattern: RegExp; glyph: string; label: string }[] = [
+  { pattern: /(rickshaw|rick)/i, glyph: "🛺", label: "Rickshaw" },
+  { pattern: /(foot|walk|ped)/i, glyph: "🚶", label: "On foot" },
+  { pattern: /(motor|moto|scoot|bike)/i, glyph: "🛵", label: "Motorbike" },
+  { pattern: /(bicycle|cycle)/i, glyph: "🚲", label: "Bicycle" },
+  { pattern: /(van|truck|lorry)/i, glyph: "🚚", label: "Van" },
+  { pattern: /(car|auto|sedan|hatch)/i, glyph: "🚗", label: "Car" },
+];
+
+/** The marker for a vehicle type, or null when the rider has none recorded. */
+export function vehicleMarker(vehicleType?: string | null) {
+  const value = (vehicleType || "").trim();
+  if (!value) return null;
+  return RIDER_VEHICLE_MARKERS.find((marker) => marker.pattern.test(value)) || null;
+}
+
 /** "Arriving in 12 min" for the tracking page. */
 export function formatEta(minutes: number | null | undefined): string {
   if (!minutes || minutes <= 0) return "Arriving soon";

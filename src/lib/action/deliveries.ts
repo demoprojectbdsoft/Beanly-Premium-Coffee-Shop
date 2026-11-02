@@ -98,6 +98,19 @@ export const shareLocationAction = async (
 };
 
 /**
+ * The rider's live jobs, for the tracker that runs outside a job list.
+ *
+ * Position sharing has to survive the rider closing the sheet it was started
+ * from, so whatever owns the watch needs a read of its own. It asks for the
+ * active page only, and the tracker pairs it with a re-read the moment a stage
+ * button is pressed, so this is never the thing keeping a stale job alive.
+ */
+export const fetchRiderActiveDeliveriesAction = async (): Promise<DeliveryRecord[]> => {
+  const res = await serverFetch("/deliveries?status=active&limit=20", true);
+  return Array.isArray(res?.data?.deliveries) ? res.data.deliveries : [];
+};
+
+/**
  * One job, with the order behind it.
  *
  * A list row only carries the copy the delivery keeps for itself — name, phone,

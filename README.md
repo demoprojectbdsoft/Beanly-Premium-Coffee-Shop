@@ -227,6 +227,7 @@ stateDiagram-v2
 - **Overview**: Spending analytics, recent orders, savings charts
 - **Orders**: Full history, tracking, invoices, warranty cards
   - **The Track Shipment dialog tells two stories side by side** — Delivery progress (the stages a rider drives, their name, vehicle, the call button and the live ETA) sits beside Order progress (Placed → Processing → Shipped → Delivered) on a wide screen, and folds into one column under the other on a phone. Each list is framed so the two never read as one long stack, and when no rider has been assigned the second column simply isn't there — an empty frame beside a timeline is worse than no grid. The dialog also used to be centred inside a fixed overlay with no height limit and no scroll, so as soon as its content was taller than the screen the top was pushed above the scroll area and the Close and Track live buttons could not be reached at all; it now scrolls as a page and centres itself with auto margins, which behave when the content outgrows the viewport. The connector between two timeline steps is stretched to the next node instead of a fixed height, because a row is as tall as its description and a measured line left gaps in the middle of the spine.
+  - **A customer can say two things about an order** — the response button offers *Not received yet* and *Cancel*, and nothing else. "Delivered" left the list because the rider already stamps that verdict with the code read at the door, so a tap from the buyer was a second, weaker vote on a fact the courier had settled — and once sent it could not be taken back. The window runs from placing the order until it is delivered or cancelled: while nothing has shipped only cancellation makes sense, the *not received* line appears once a rider carries the parcel, and after the hand-over what went wrong is a warranty claim or a support ticket rather than something this list can settle.
 - **Transactions**: Payment records with PDF receipts
 - **Wishlist**: Saved products with quick add-to-cart
 - **Reviews**: Manage submitted reviews with edit support
@@ -266,6 +267,7 @@ stateDiagram-v2
   - Multi-vendor order coordination
   - Delivery assignment to riders
   - **One order, one rider at a time** — the picker now says whose hands the order is already in instead of letting the store double-book a parcel. When a job is live the modal shows the holding rider, their stage (awaiting an answer, accepted, picked up, out for delivery), what the job pays and how many minutes the rider has left, and the list below is closed: nobody else can be assigned while that claim stands, and the API refuses it in those same words rather than pointing at a hand-over. The claim ends when the rider answers, and the store can end it by cancelling the delivery from inside the modal — the rider and the customer are told it stopped, the picker re-reads the board and opens again. A request whose 30-minute window ran out no longer holds the order: it is reported as lapsed history, the picker stays open, and assigning a new rider closes the unanswered request in the same step. `PATCH /deliveries/:id/reassign` only accepts a lapsed request now; moving an open or accepted job behind a rider's back is not an option any more.
+  - **Delivered is a dead end, and a rider's hands lock the status** — the status menu no longer offers *Delivered* or *Cancelled* on an order that has already landed: the sale is finished, and anything wrong after it is a refund or a warranty claim, each with its own screen. The lock runs the other way too: the store can cancel an order up until it is put in a courier's hands, and from that moment only the rider's own answer moves it — a rejection, or the hand-over code that finishes the job. Two customer answers still carry weight: *not received* blocks closing the order as delivered until the store looks into it, and a cancellation request lets the store stand the rider down and cancel. The row chip says which of these is in play — "With Rashid", "Delivered is blocked", "Cancellation requested" — instead of waiting on a response box that no longer decides anything.
   - **The rider picker reads the approved role, not the open dashboard** — an account's `role` field only mirrors whichever dashboard the person is looking at, so a rider who is currently shopping as a customer used to vanish from the list and the assignment would then refuse them as "not a rider". The picker now queries the approved `roles` array, the same authority every route check uses, and the online/offline counter on the delivery board counts the same set. An offer is only refused for a suspended account or a rider access the store team has parked. A list that never arrived says the API did not answer and offers a retry, rather than claiming no rider accounts exist — a quiet backend must not look like missing staff.
 
 </details>
@@ -375,6 +377,7 @@ stateDiagram-v2
 - **Active Deliveries**: Current jobs with tracking
 - **History**: Completed and cancelled jobs
 - **Earnings**: Total, monthly, and per-job averages
+- **The phone reports by itself from "picked up"** — the live watch used to live inside the job sheet, so closing that sheet took the rider off the customer's map and nobody was reporting while the parcel was actually on the road. It belongs to the rider workspace now: picking a job up starts the feed, the stage buttons keep it pointed at the right job, and it ends with the job. A rider carrying two live jobs can point the phone at the other one, and that hand-pick is dropped as soon as the job stops being active. The customer's tracking page draws the position as the rider's vehicle — motorbike, car, rickshaw, bicycle, on foot or van, matched from the vehicle on the application file — in a green-ringed disc with a pulse halo, the same glyph in the map legend, and a plain emerald dot when no vehicle is on record.
 - **Job detail shows the whole order** — the list row only carries the delivery's own copy of the drop-off, so opening a job now reads the order behind it and shows what the rider is actually carrying: every line with its quantity, price each and line total, the money the customer was charged (items, delivery charge, discount with its coupon code, points used, order total), the payment method with the exact cash amount to collect at the door — or "Paid in full" when nothing is owed — the complete address including the postcode, and the store's name, address and phone for the pickup. If that read fails, the sheet still works from the list row and offers a retry rather than showing an empty panel.
 
 </details>
@@ -742,11 +745,12 @@ sparq/
 │   │       └── PlanCards.tsx
 │   │
 │   ├── context/
-│   │   └── SiteSettingsContext.tsx    # Global site settings provider
+│   │   ├── SiteSettingsContext.tsx    # Global site settings provider
+│   │   └── RiderLocationContext.tsx   # Rider live-location feed for the workspace
 │   │
 │   ├── hooks/
 │   │   ├── useDemoAdmin.ts            # Demo admin write guard
-│   │   └── useRiderLocation.ts        # Geolocation for riders
+│   │   └── useRiderLocation.ts        # Geolocation watch, auto-started per job
 │   │
 │   ├── lib/
 │   │   ├── api/                       # Server-side API clients
@@ -1052,7 +1056,7 @@ NEXT_PUBLIC_IMGBB_API_KEY=<imgbb-key>
 ### Phase 3: Delivery System 🚧
 - [x] Rider role and dashboard
 - [x] Delivery assignment
-- [ ] Live GPS tracking
+- [x] Live GPS tracking
 - [ ] OTP verification
 - [ ] Delivery completion
 

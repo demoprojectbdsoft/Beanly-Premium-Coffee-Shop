@@ -33,7 +33,7 @@ import {
 } from "@/lib/rider";
 import { fetchDeliveryInvoiceAction } from "@/lib/action/deliveries";
 import { downloadDeliveryInvoicePdf } from "@/lib/deliveryInvoicePdf";
-import { useRiderLocation } from "@/hooks/useRiderLocation";
+import { useRiderLocationShare } from "@/context/RiderLocationContext";
 import DeliveryActions from "./DeliveryActions";
 import type { DeliveryRecord } from "@/types/delivery";
 
@@ -88,9 +88,21 @@ export default function DeliveryDetailModal({
   const order = view?.order ?? null;
   const pickup = view?.pickup ?? null;
   const active = delivery ? isActiveDelivery(delivery.status) : false;
-  const { isSharing, error, lastSentAt, points, toggle } = useRiderLocation(
-    active && delivery ? delivery._id : null
-  );
+  /*
+   * The position feed is the workspace's, not this sheet's: it starts on its
+   * own at "picked up" and keeps running after the sheet closes. So this is a
+   * window onto it, and the one thing it can do is stop the phone reporting for
+   * the job in hand.
+   */
+  const share = useRiderLocationShare();
+  const { isSharing, error, lastSentAt, points } = share;
+  // The feed reports one job at a time, which is not always the one open here.
+  const reportingHere = Boolean(delivery && share.reported?._id === delivery._id);
+  const handleReport = () => {
+    if (!delivery) return;
+    if (reportingHere) share.toggle();
+    else share.startFor(delivery);
+  };
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false);
 
   const handleChanged = () => {
@@ -395,27 +407,35 @@ export default function DeliveryDetailModal({
                           />
                           <div>
                             <p className="text-[11px] font-bold text-[var(--foreground)]">
-                              Share my live location
+                              My live location
                             </p>
                             <p className="text-[10px] text-[var(--foreground-muted)]">
-                              {isSharing
+                              {isSharing && reportingHere
                                 ? lastSentAt
                                   ? `Sending every 15s · ${points} update${points === 1 ? "" : "s"} sent`
                                   : "Waiting for the first position…"
-                                : "The customer sees where you are on their tracking page"}
+                                : reportingHere
+                                  ? "Stopped for this job. Start it again and the customer sees you on their map."
+                                  : share.reported
+                                    ? `Your phone is reporting for ${share.reported.orderNumber}. Switch it to this job if that is the one you are on.`
+                                    : "It starts on its own once you pick the parcel up."}
                             </p>
                           </div>
                         </div>
                         <Button
                           size="sm"
-                          onPress={toggle}
+                          onPress={handleReport}
                           className={`h-8 px-3 rounded-xl text-[10px] font-bold shrink-0 ${
-                            isSharing
+                            isSharing && reportingHere
                               ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25"
                               : "bg-[var(--surface-elevated)] text-[var(--foreground)] border border-[var(--border-color)]"
                           }`}
                         >
-                          {isSharing ? "Stop" : "Start"}
+                          {isSharing && reportingHere
+                            ? "Stop"
+                            : reportingHere
+                              ? "Start"
+                              : "Report this job"}
                         </Button>
                       </div>
                       {error && (

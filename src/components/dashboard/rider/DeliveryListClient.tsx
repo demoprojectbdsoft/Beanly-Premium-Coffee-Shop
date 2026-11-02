@@ -28,6 +28,7 @@ import {
   type DeliveryRecord,
 } from "@/types/delivery";
 import { fetchMyDeliveryAction } from "@/lib/action/deliveries";
+import { useRiderLocationShare } from "@/context/RiderLocationContext";
 import DeliveryActions from "./DeliveryActions";
 import AppSelect from "@/components/shared/AppSelect";
 import DeliveryDetailModal from "./DeliveryDetailModal";
@@ -60,6 +61,10 @@ export default function DeliveryListClient({
 }: DeliveryListClientProps) {
   const router = useRouter();
   const { formatPrice } = useSiteSettings();
+  // The workspace's position feed. Every stage button on this page changes what
+  // it should be reporting for, so each one asks for a re-read rather than
+  // waiting on the tracker's own minute.
+  const share = useRiderLocationShare();
 
   const [search, setSearch] = useState(filters.search);
   const [status, setStatus] = useState(filters.status);
@@ -104,6 +109,7 @@ export default function DeliveryListClient({
   const handleChanged = () => {
     setDetail(null);
     setOrderRead(null);
+    share.refresh();
     router.refresh();
   };
 
@@ -415,7 +421,9 @@ export default function DeliveryListClient({
       {scope === "active" && deliveries.length > 0 && (
         <div className="flex items-center gap-2 text-[11px] text-[var(--foreground-muted)]">
           <PackageCheck className="w-3.5 h-3.5" />
-          Open a job to share your live location and close it with the customer&apos;s code.
+          {share.isSharing
+            ? `Your position is sharing live${share.reported ? ` for ${share.reported.orderNumber}` : ""} — the customer sees it move on their tracking page.`
+            : "Pick a parcel up and your position starts sharing on its own. Open a job to switch it off."}
         </div>
       )}
 

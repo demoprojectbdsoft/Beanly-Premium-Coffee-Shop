@@ -14,9 +14,14 @@ export const updateOrderStatus = async (id: string, orderStatus: string) => {
   return serverMutation(`/orders/${id}/status`, { orderStatus }, "PATCH");
 };
 
+/**
+ * The two answers a customer can still give: the parcel has not arrived, or they
+ * want it called off. "received" is gone — the rider's delivery code closes the
+ * order, so the hand-over is confirmed without the customer pressing anything.
+ */
 export const submitCustomerOrderResponse = async (
   id: string,
-  response: "received" | "not_received" | "cancelled",
+  response: "not_received" | "cancelled",
   note?: string
 ) => {
   return serverMutation(`/orders/${id}/customer-response`, { response, note }, "PATCH");

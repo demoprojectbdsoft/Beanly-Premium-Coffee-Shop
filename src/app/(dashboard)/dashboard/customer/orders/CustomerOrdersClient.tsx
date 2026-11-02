@@ -100,12 +100,40 @@ function shippingMethodLabel(method?: CustomerOrder["shippingMethod"]): string {
 
 // ── Delivery response rules ──────────────────────────────────────────────────
 
-/** The customer's final answers. Once sent, the response is locked. */
+/**
+ * The customer's final answers. Once sent, the response is locked.
+ *
+ * "received" is not offered any more: the rider closes a job with the code read
+ * at the door, which already sets the order to delivered. The word stays here so
+ * orders that answered it earlier keep the answer they gave.
+ */
 const FINAL_RESPONSES = ["received", "cancelled"];
 
 /** True when the delivery response can no longer be changed. */
 function isResponseLocked(response?: string | null): boolean {
   return Boolean(response && FINAL_RESPONSES.includes(response));
+}
+
+/** Whether the order is at the stage the report describes: on the road. */
+function isOnTheRoad(order: CustomerOrder): boolean {
+  const raw = (order.rawStatus || "").toLowerCase();
+  return raw ? raw === "shipped" : order.status === "Shipped";
+}
+
+/**
+ * The window a report is worth making runs from the moment the order exists
+ * until the moment it is delivered or cancelled. After that the parcel has an
+ * owner and a receipt, and what went wrong is a warranty claim or a support
+ * ticket rather than something this list can settle.
+ */
+function canReportOrder(order: CustomerOrder): boolean {
+  const raw = (order.rawStatus || "").toLowerCase();
+  if (raw) return raw === "confirmed" || raw === "processing" || raw === "shipped";
+  return (
+    order.status === "Confirmed" ||
+    order.status === "Processing" ||
+    order.status === "Shipped"
+  );
 }
 
 // ── Warranty helpers ─────────────────────────────────────────────────────────
@@ -303,7 +331,7 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
 
   // Customer Response State
   const [responseModalOrder, setResponseModalOrder] = useState<CustomerOrder | null>(null);
-  const [selectedResponse, setSelectedResponse] = useState<"received" | "not_received" | "cancelled">("received");
+  const [selectedResponse, setSelectedResponse] = useState<"not_received" | "cancelled">("not_received");
   const [responseNote, setResponseNote] = useState("");
   const [isSubmittingResponse, setIsSubmittingResponse] = useState(false);
 
@@ -620,14 +648,22 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
   };
 
   const handleOpenResponseModal = (order: CustomerOrder) => {
-    // A received or cancelled answer is final, so there is nothing to edit.
+    // A cancellation is final, and so is the legacy "received" answer.
     if (isResponseLocked(order.customerResponse)) {
       toast.info("This response is final. Please contact support if it needs to change.");
       return;
     }
 
+    // The rider has already handed the parcel over, or the order is closed.
+    if (!canReportOrder(order)) {
+      toast.info("This order is closed, so there is nothing left to report.");
+      return;
+    }
+
     setResponseModalOrder(order);
-    setSelectedResponse(order.customerResponse || "received");
+    // Nothing has left the store yet on a confirmed or processing order, so
+    // calling it off is the only thing the customer can honestly say.
+    setSelectedResponse(isOnTheRoad(order) ? "not_received" : "cancelled");
     setResponseNote(order.customerResponseNote || "");
   };
 
@@ -652,11 +688,9 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
 
       if (res?.success !== false) {
         toast.success(
-          selectedResponse === "received"
-            ? "Thank you! Your delivery confirmation has been sent to the store."
-            : selectedResponse === "not_received"
-            ? "Your report has been submitted. The store admin has been alerted."
-            : "Cancellation request submitted. The store admin has been alerted."
+          selectedResponse === "not_received"
+            ? "Reported. The store has been told your parcel has not arrived."
+            : "Cancellation requested. The store has been told and will stop the order."
         );
 
         setOrders((prev) =>
@@ -1066,8 +1100,11 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                 ))}
               </div>
 
-              {/* ── Customer Delivery Response Banner (Available when Shipped) ── */}
-              {((order.status === "Shipped" || order.rawStatus === "shipped") || order.customerResponse) && (
+              {/* ── Customer Delivery Response Banner ──
+                The report is open from the moment the order exists until the
+                moment it is delivered or cancelled: the parcel stays the
+                customer's to call off right up to the door. */}
+              {(canReportOrder(order) || order.customerResponse) && (
                 <div className="px-4 sm:px-5">
                   {!order.customerResponse ? (
                     <div className="p-4 rounded-2xl bg-primary/5 border border-primary/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
@@ -1078,14 +1115,20 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                         <div>
                           <div className="flex items-center gap-2">
                             <h4 className="text-xs sm:text-sm font-bold text-[var(--foreground)]">
-                              Shipment in Transit — Response Requested
+                              {isOnTheRoad(order)
+                                ? "Shipment in Transit — Response Requested"
+                                : "Not on the road yet"}
                             </h4>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-primary text-white animate-pulse">
-                              Action Required
-                            </span>
+                            {isOnTheRoad(order) && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-primary text-white animate-pulse">
+                                Action Required
+                              </span>
+                            )}
                           </div>
                           <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
-                            Please submit a response confirming whether you received your package, did not receive it, or want to cancel.
+                            {isOnTheRoad(order)
+                              ? "Tell the store if your parcel has not arrived, or cancel it. The rider confirms the hand-over with your delivery code, so there is nothing to say when it reaches you."
+                              : "Nothing has left the store yet, so there is nothing to report. Cancel this order here if you changed your mind."}
                           </p>
                         </div>
                       </div>
@@ -1095,7 +1138,7 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                         className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-md shadow-primary/20 transition-all cursor-pointer self-start sm:self-auto h-9 shrink-0"
                       >
                         <CheckCircle2 className="w-4 h-4" />
-                        <span>Submit Response</span>
+                        <span>{isOnTheRoad(order) ? "Submit Response" : "Cancel Order"}</span>
                       </Button>
                     </div>
                   ) : (
@@ -1147,15 +1190,14 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                         {order.customerResponseAt && (
                           <span>{formatOrderDateTime(order.customerResponseAt)}</span>
                         )}
-                        {order.customerResponse === "not_received" &&
-                          (order.status === "Shipped" || order.rawStatus === "shipped") && (
-                            <button
-                              onClick={() => handleOpenResponseModal(order)}
-                              className="text-primary hover:underline font-semibold text-[11px] cursor-pointer ml-1"
-                            >
-                              Update
-                            </button>
-                          )}
+                        {order.customerResponse === "not_received" && isOnTheRoad(order) && (
+                          <button
+                            onClick={() => handleOpenResponseModal(order)}
+                            className="text-primary hover:underline font-semibold text-[11px] cursor-pointer ml-1"
+                          >
+                            Update
+                          </button>
+                        )}
                         {isResponseLocked(order.customerResponse) && (
                           <span className="italic ml-1">Final — contact support to change</span>
                         )}
@@ -1506,21 +1548,29 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
         </div>
       )}
 
-      {/* ── Order Delivery Response Modal ── */}
+      {/* ── Order Delivery Response Modal ──
+        The same overlay rule as the tracking dialog beside it: the overlay
+        scrolls and the card is centred with auto margins. Centring a card taller
+        than the phone pushes its header above the scroll area, where the Close
+        button cannot be reached. */}
       {responseModalOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--surface)]/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <Card className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 text-[var(--foreground)]">
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-start justify-center p-3 sm:p-4 bg-[var(--surface)]/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <Card className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl max-w-lg w-full my-auto p-5 sm:p-6 shadow-2xl space-y-5 text-[var(--foreground)]">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
               <div>
                 <h3 className="text-base font-bold text-[var(--foreground)] flex items-center gap-2">
-                  <span>Order Delivery Feedback</span>
+                  <span>
+                    {isOnTheRoad(responseModalOrder) ? "Delivery Report" : "Cancel This Order"}
+                  </span>
                   <span className="text-xs font-mono text-primary">
                     {responseModalOrder.orderNumber}
                   </span>
                 </h3>
                 <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
-                  Let the store know if you received this package or have an issue.
+                  {isOnTheRoad(responseModalOrder)
+                    ? "The rider confirms the hand-over with your delivery code, so this is only for when something went wrong."
+                    : "Nothing has left the store yet. Tell them now and the parcel can be stopped before it goes out."}
                 </p>
               </div>
               <Button
@@ -1537,84 +1587,55 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
             {/* Response Options */}
             <div className="space-y-3">
               <label className="text-xs font-bold text-[var(--foreground)] block">
-                Select Your Delivery Status:
+                {isOnTheRoad(responseModalOrder)
+                  ? "What happened to this delivery?"
+                  : "What would you like to do?"}
               </label>
 
-              {/* Option 1: Received */}
-              <div
-                onClick={() => setSelectedResponse("received")}
-                className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
-                  selectedResponse === "received"
-                    ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 shadow-xs"
-                    : "border-[var(--border-color)] dark:border-[var(--border-color)] hover:border-[var(--border-color)] dark:hover:border-[var(--border-color)] bg-[var(--surface-elevated)]"
-                }`}
-              >
+              {/* Not Received. Only a parcel that is actually out can be missing,
+                  so a confirmed or processing order never shows it. */}
+              {isOnTheRoad(responseModalOrder) && (
                 <div
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                    selectedResponse === "received"
-                      ? "bg-emerald-500 text-white"
-                      : "bg-[var(--surface-alt)] text-[var(--foreground-muted)]"
-                  }`}
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-[var(--foreground)]">
-                      Order Received
-                    </p>
-                    <input
-                      type="radio"
-                      name="orderResponse"
-                      checked={selectedResponse === "received"}
-                      onChange={() => setSelectedResponse("received")}
-                      className="accent-emerald-600 cursor-pointer"
-                    />
-                  </div>
-                  <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
-                    I have received my package safely with all items in good condition.
-                  </p>
-                </div>
-              </div>
-
-              {/* Option 2: Not Received */}
-              <div
-                onClick={() => setSelectedResponse("not_received")}
-                className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
-                  selectedResponse === "not_received"
-                    ? "border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 shadow-xs"
-                    : "border-[var(--border-color)] dark:border-[var(--border-color)] hover:border-[var(--border-color)] dark:hover:border-[var(--border-color)] bg-[var(--surface-elevated)]"
-                }`}
-              >
-                <div
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                  onClick={() => setSelectedResponse("not_received")}
+                  className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
                     selectedResponse === "not_received"
-                      ? "bg-amber-500 text-white"
-                      : "bg-[var(--surface-alt)] text-[var(--foreground-muted)]"
+                      ? "border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 shadow-xs"
+                      : "border-[var(--border-color)] dark:border-[var(--border-color)] hover:border-[var(--border-color)] dark:hover:border-[var(--border-color)] bg-[var(--surface-elevated)]"
                   }`}
                 >
-                  <AlertTriangle className="w-4 h-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-[var(--foreground)]">
-                      Order Not Received
-                    </p>
-                    <input
-                      type="radio"
-                      name="orderResponse"
-                      checked={selectedResponse === "not_received"}
-                      onChange={() => setSelectedResponse("not_received")}
-                      className="accent-amber-600 cursor-pointer"
-                    />
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                      selectedResponse === "not_received"
+                        ? "bg-amber-500 text-white"
+                        : "bg-[var(--surface-alt)] text-[var(--foreground-muted)]"
+                    }`}
+                  >
+                    <AlertTriangle className="w-4 h-4" />
                   </div>
-                  <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
-                    The shipment has not arrived yet, courier was unavailable, or delivery failed.
-                  </p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-[var(--foreground)]">
+                        Order Not Received
+                      </p>
+                      <input
+                        type="radio"
+                        name="orderResponse"
+                        checked={selectedResponse === "not_received"}
+                        onChange={() => setSelectedResponse("not_received")}
+                        className="accent-amber-600 cursor-pointer"
+                      />
+                    </div>
+                    <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
+                      The rider has not turned up, or left the parcel with someone
+                      who could not take it.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Option 3: Cancelled / Return */}
+              {/* Cancel. The answer the customer keeps for the whole window: while
+                  the order is still in the store it is a change of mind, and once
+                  it is out it also refuses the parcel at the door. */}
               <div
                 onClick={() => setSelectedResponse("cancelled")}
                 className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
@@ -1635,7 +1656,9 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-bold text-[var(--foreground)]">
-                      Cancel Order / Reject Delivery
+                      {isOnTheRoad(responseModalOrder)
+                        ? "Cancel Order / Reject Delivery"
+                        : "Cancel This Order"}
                     </p>
                     <input
                       type="radio"
@@ -1646,7 +1669,9 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                     />
                   </div>
                   <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
-                    I want to reject the parcel, request return, or cancel this shipment.
+                    {isOnTheRoad(responseModalOrder)
+                      ? "Call the delivery off and refund the order. The rider will be stood down."
+                      : "Nothing has shipped yet, so the store can stop it and refund the order."}
                   </p>
                 </div>
               </div>
@@ -1663,11 +1688,9 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                 onChange={(e) => setResponseNote(e.target.value)}
                 rows={3}
                 placeholder={
-                  selectedResponse === "received"
-                    ? "e.g., Everything arrived in perfect condition, thank you!"
-                    : selectedResponse === "not_received"
-                    ? "e.g., Courier contacted me earlier but didn't show up today..."
-                    : "e.g., Need to cancel due to damaged box or wrong timing..."
+                  selectedResponse === "not_received"
+                    ? "e.g., The rider called but never reached my address..."
+                    : "e.g., I ordered the wrong item, please cancel and refund me..."
                 }
                 className="w-full p-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)] text-xs text-[var(--foreground)] focus:outline-hidden focus:border-primary resize-none shadow-xs"
               />
@@ -1690,7 +1713,11 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                 isDisabled={isSubmittingResponse}
                 className="px-5 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-md shadow-primary/25 cursor-pointer h-9"
               >
-                {isSubmittingResponse ? "Submitting..." : "Submit Response"}
+                {isSubmittingResponse
+                  ? "Submitting..."
+                  : selectedResponse === "cancelled"
+                    ? "Request Cancellation"
+                    : "Submit Response"}
               </Button>
             </div>
           </Card>

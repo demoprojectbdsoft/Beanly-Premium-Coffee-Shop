@@ -18,7 +18,6 @@ import {
   Package,
   Search,
   CheckCircle2,
-  Clock,
   XCircle,
   Eye,
   User as UserIcon,
@@ -33,6 +32,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { Order } from "@/types";
+import type { DeliveryRecord } from "@/types/delivery";
 import { updateOrderStatus } from "@/lib/action/orders";
 import { getOrderStatusStyle } from "@/lib/orderStatusStyles";
 import OrderStatusBadge from "@/components/shared/OrderStatusBadge";
@@ -51,12 +51,16 @@ const STATUS_OPTIONS = [
 /**
  * The stages an order is allowed to move to next.
  * The backend enforces the same rules, this map only hides illegal choices.
+ *
+ * Both ends of the story are closed. A cancelled order has been refunded, and a
+ * delivered one changed hands — what happens after that is a refund or a
+ * warranty claim, not a status that rewrites the sale.
  */
 const ORDER_FLOW: Record<string, string[]> = {
   confirmed:  ["processing", "cancelled"],
   processing: ["shipped", "cancelled"],
   shipped:    ["delivered", "cancelled"],
-  delivered:  ["cancelled"],
+  delivered:  [],
   cancelled:  [],
 };
 
@@ -159,17 +163,28 @@ export default function OrdersClient({
     setIsAssignOpen(true);
   };
 
-  const handleAssigned = (orderId: string) => {
+  const handleAssigned = (orderId: string, job?: DeliveryRecord | null) => {
+    // The rider now answers for the parcel, so the row needs its claim straight
+    // away: the backend sends it with the next page load, and until then the
+    // local copy keeps the status dropdown locked in this open modal.
+    const claim: Order["delivery"] = {
+      _id: job ? String(job._id) : "",
+      status: job?.status || "assigned",
+      fee: job?.fee ?? 0,
+      expiresAt: job?.expiresAt ?? null,
+      holds: true,
+      rider: job?.rider ? { name: job.rider.name } : null,
+    };
     setOrders((prev) =>
       prev.map((o) =>
         (o._id || o.id) === orderId
-          ? { ...o, orderStatus: "shipped" as Order["orderStatus"], status: "shipped" as Order["status"] }
+          ? { ...o, orderStatus: "shipped" as Order["orderStatus"], status: "shipped" as Order["status"], delivery: claim }
           : o
       )
     );
     setSelectedOrder((prev) =>
       prev && (prev._id || prev.id) === orderId
-        ? { ...prev, orderStatus: "shipped" as Order["orderStatus"], status: "shipped" as Order["status"] }
+        ? { ...prev, orderStatus: "shipped" as Order["orderStatus"], status: "shipped" as Order["status"], delivery: claim }
         : prev
     );
     router.refresh();
@@ -480,25 +495,32 @@ export default function OrdersClient({
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
                         <div className="flex flex-col items-center gap-1">
                           {getStatusBadge(order.orderStatus || order.status)}
-                          {((order.orderStatus || order.status || "").toLowerCase() === "shipped" || order.customerResponse) && (
-                            order.customerResponse ? (
-                              <span
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  order.customerResponse === "received"
-                                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40"
-                                    : order.customerResponse === "not_received"
-                                    ? "bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/40"
-                                    : "bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200/50 dark:border-rose-800/40"
-                                }`}
-                              >
-                                {order.customerResponse === "received" && "✓ Received"}
-                                {order.customerResponse === "not_received" && "⚠ Not Received"}
-                                {order.customerResponse === "cancelled" && "✕ Cancelled"}
-                              </span>
-                            ) : (
+                          {order.customerResponse ? (
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                order.customerResponse === "received"
+                                  ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40"
+                                  : order.customerResponse === "not_received"
+                                  ? "bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/40"
+                                  : "bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200/50 dark:border-rose-800/40"
+                              }`}
+                            >
+                              {order.customerResponse === "received" && "✓ Received"}
+                              {order.customerResponse === "not_received" && "⚠ Not Received"}
+                              {order.customerResponse === "cancelled" && "✕ Cancelled"}
+                            </span>
+                          ) : (
+                            /*
+                              Nothing is awaited from the customer any more, so an
+                              unreported order says who is carrying it instead —
+                              that is what limits what the store can still do.
+                            */
+                            order.delivery?.holds && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--surface-alt)] text-[var(--foreground-muted)] dark:bg-[var(--surface)] dark:text-[var(--foreground-muted)] border border-[var(--border-color)]/60 dark:border-[var(--border-color)]">
-                                <Clock className="w-2.5 h-2.5" />
-                                Awaiting Response
+                                <Truck className="w-2.5 h-2.5" />
+                                {order.delivery.rider?.name
+                                  ? `With ${order.delivery.rider.name}`
+                                  : "With a rider"}
                               </span>
                             )
                           )}
@@ -629,18 +651,33 @@ export default function OrdersClient({
                       const allowedNext = ORDER_FLOW[currentStatus] ?? [];
 
                       // A cancelled order is closed: there is nothing to move to.
+                      // So is a delivered one — the parcel changed hands and the
+                      // sale is finished, whatever the customer reports after it.
                       if (allowedNext.length === 0) {
+                        const delivered = currentStatus === "delivered";
                         return (
                           <div className="p-4 bg-[var(--surface-alt)] rounded-2xl border border-[var(--border-color)] flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
-                              <XCircle className="w-4 h-4" />
+                            <div
+                              className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                                delivered
+                                  ? "bg-emerald-500/10 text-emerald-500"
+                                  : "bg-rose-500/10 text-rose-500"
+                              }`}
+                            >
+                              {delivered ? (
+                                <CheckCircle2 className="w-4 h-4" />
+                              ) : (
+                                <XCircle className="w-4 h-4" />
+                              )}
                             </div>
                             <div>
                               <p className="text-xs font-bold text-[var(--foreground)]">
                                 This order is closed
                               </p>
                               <p className="text-[11px] text-[var(--foreground-muted)]">
-                                A cancelled order keeps its final status.
+                                {delivered
+                                  ? "The rider handed the parcel over, so the sale is finished. Refund the order or handle a warranty claim instead of rewriting the delivery."
+                                  : "A cancelled order keeps its final status."}
                               </p>
                             </div>
                           </div>
@@ -648,16 +685,35 @@ export default function OrdersClient({
                       }
 
                       const isShipped = currentStatus === "shipped";
-                      // Once shipped, the customer must report back before the
-                      // order can be delivered or cancelled.
-                      const isResponseLocked = isShipped && !selectedOrder.customerResponse;
-                      // The customer said it never arrived / they cancelled it.
+                      /*
+                        A rider holding the job owns the parcel, so the store can
+                        neither mark it delivered (it is not carrying it) nor cancel
+                        it under the rider. An offer that expired unanswered is not
+                        a hold: the backend already counts that one dead.
+                      */
+                      const riderHolds = Boolean(selectedOrder.delivery?.holds);
+                      // "assigned" is the offer, not the job: the rider has still
+                      // to say whether they are taking it.
+                      const claimOffered =
+                        (selectedOrder.delivery?.status || "").toLowerCase() ===
+                        "assigned";
+                      // The customer asked for this to be called off. Honouring it
+                      // stands the rider down, so it stays the store's decision.
+                      const cancelRequested =
+                        selectedOrder.customerResponse === "cancelled";
+                      // The customer says the parcel never reached them, which
+                      // rules out closing the order as delivered from here. The
+                      // rider can still deliver it with the code at the door.
                       const customerDisagrees =
                         selectedOrder.customerResponse === "not_received" ||
-                        selectedOrder.customerResponse === "cancelled";
-                      // The customer confirmed the parcel arrived, so the order can
-                      // only be closed as delivered.
-                      const customerConfirmed = selectedOrder.customerResponse === "received";
+                        cancelRequested;
+                      // A legacy "received" answer: the customer said it arrived,
+                      // so the only honest closing stage is delivered.
+                      const customerConfirmed =
+                        selectedOrder.customerResponse === "received";
+
+                      const canDeliver = !riderHolds && !customerDisagrees;
+                      const canCancel = (!riderHolds || cancelRequested) && !customerConfirmed;
 
                       // The current stage plus the stages it may move to.
                       const visibleOptions = STATUS_OPTIONS.filter(
@@ -665,17 +721,32 @@ export default function OrdersClient({
                       );
 
                       const disabledKeys: string[] = [currentStatus];
-                      if (isResponseLocked) disabledKeys.push("delivered", "cancelled");
-                      if (customerDisagrees) disabledKeys.push("delivered");
-                      if (customerConfirmed) disabledKeys.push("cancelled");
+                      if (!canDeliver) disabledKeys.push("delivered");
+                      if (!canCancel) disabledKeys.push("cancelled");
 
                       const lockReason = (id: string) => {
                         if (id === currentStatus) return "(Current)";
-                        if (isResponseLocked) return "(Awaiting customer)";
+                        if (id === "delivered" && riderHolds) return "(Rider carries it)";
                         if (id === "delivered" && customerDisagrees) return "(Customer disagreed)";
+                        if (id === "cancelled" && riderHolds) return "(Rider assigned)";
                         if (id === "cancelled" && customerConfirmed) return "(Customer confirmed)";
                         return null;
                       };
+
+                      /*
+                        The one line the rider panel needs. It answers "why can't I
+                        pick this stage?" in the order the store actually asks it,
+                        so a panel never tells somebody to stand down a rider who
+                        was never on the job.
+                      */
+                      const riderNote =
+                        riderHolds && cancelRequested
+                          ? "The customer asked to cancel. Cancelling it here refunds them and stands the rider down."
+                          : claimOffered
+                            ? "The offer is with the rider until they answer or it lapses. Cancel the delivery from the deliveries page to take the order back."
+                            : riderHolds
+                              ? "The rider closes this order with the customer's delivery code, so Delivered stays with them. The store cannot cancel the order over a rider who holds the job — close it on the deliveries page first."
+                              : "Nobody is carrying it yet. Assign a rider, and only they can close it with the customer's code at the door.";
 
                       return (
                         <div className="space-y-3">
@@ -740,22 +811,42 @@ export default function OrdersClient({
                             </div>
                           </div>
 
-                          {/* The rider owns the last mile, so the store can hand
-                              the job over without touching the order status. */}
-                          {isShipped && (
+                          {/* One rider panel tells the whole last-mile story: who
+                              is carrying the parcel, and therefore which stages
+                              are still the store's to decide. */}
+                          {(isShipped || riderHolds) && (
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--surface-elevated)] border border-[var(--border-color)]">
                               <div className="flex items-start gap-2.5">
-                                <div className="w-7 h-7 rounded-lg bg-[var(--brand-flat)]/10 text-[var(--brand-flat)] flex items-center justify-center shrink-0">
+                                <div
+                                  className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                                    riderHolds
+                                      ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                      : "bg-[var(--brand-flat)]/10 text-[var(--brand-flat)]"
+                                  }`}
+                                >
                                   <Truck className="w-4 h-4" />
                                 </div>
-                                <div>
+                                <div className="space-y-0.5">
                                   <p className="text-[11px] font-bold text-[var(--foreground)]">
-                                    Rider on the last mile
+                                    {riderHolds
+                                      ? claimOffered
+                                        ? "Waiting on the rider's answer"
+                                        : selectedOrder.delivery?.rider?.name
+                                          ? `${selectedOrder.delivery.rider.name} is carrying this delivery`
+                                          : "A rider is carrying this delivery"
+                                      : "No rider on this job yet"}
                                   </p>
                                   <p className="text-[11px] text-[var(--foreground-muted)]">
-                                    The rider closes this order with the customer&apos;s delivery code.
-                                    Hand it to somebody else if they cannot make it.
+                                    {riderNote}
                                   </p>
+                                  {riderHolds && (
+                                    <Link
+                                      href="/dashboard/admin/deliveries"
+                                      className="inline-block text-[11px] font-bold text-primary hover:underline"
+                                    >
+                                      Open deliveries
+                                    </Link>
+                                  )}
                                 </div>
                               </div>
                               <Button
@@ -765,21 +856,6 @@ export default function OrdersClient({
                               >
                                 Assign or hand over
                               </Button>
-                            </div>
-                          )}
-
-                          {/* Customer Response Status Banner */}
-                          {isResponseLocked && (
-                            <div className="p-3.5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-3 shadow-xs">
-                              <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5">
-                                <Clock className="w-4 h-4" />
-                              </div>
-                              <div className="flex-1">
-                                <p className="font-bold">Awaiting Customer Response</p>
-                                <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 mt-0.5 leading-relaxed">
-                                  This order is marked as <strong>Shipped</strong>. The <strong>Delivered</strong> and <strong>Cancelled</strong> options will become available once the customer confirms or reports their order status on their dashboard.
-                                </p>
-                              </div>
                             </div>
                           )}
 
@@ -824,7 +900,11 @@ export default function OrdersClient({
                                         : "Order Cancelled / Rejected"}
                                     </span>
                                     <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[var(--surface-elevated)]/70 dark:bg-[var(--surface)]/70 border border-current">
-                                      Delivered &amp; Cancelled Unlocked
+                                      {selectedOrder.customerResponse === "received"
+                                        ? "Close it as delivered"
+                                        : selectedOrder.customerResponse === "not_received"
+                                          ? "Delivered is blocked"
+                                          : "Cancellation requested"}
                                     </span>
                                   </div>
                                   {selectedOrder.customerResponseNote && (
@@ -1093,9 +1173,9 @@ export default function OrdersClient({
               }
             : null
         }
-        onAssigned={() => {
+        onAssigned={(job) => {
           const id = assignOrder?._id || assignOrder?.id;
-          if (id) handleAssigned(id);
+          if (id) handleAssigned(id, job);
           setAssignOrder(null);
         }}
       />

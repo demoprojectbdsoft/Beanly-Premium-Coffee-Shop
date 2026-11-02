@@ -28,6 +28,7 @@ import {
   formatDistance,
   formatEta,
   formatMoment,
+  vehicleMarker,
 } from "@/lib/rider";
 import { fetchTrackingAction, regenerateDeliveryCodeAction } from "@/lib/action/deliveries";
 import DeliveryMap from "@/components/tracking/DeliveryMap";
@@ -145,6 +146,10 @@ export default function TrackingView({ initial, destination }: TrackingViewProps
     : null;
   const isStale = lastSeenMs !== null && lastSeenMs > STALE_MS;
 
+  // The vehicle the marker shows, named once so the words under the map match
+  // the glyph on it.
+  const vehicle = vehicleMarker(delivery?.rider?.vehicleType);
+
   const handleCopyCode = async () => {
     if (!data.otp) return;
     try {
@@ -250,6 +255,7 @@ export default function TrackingView({ initial, destination }: TrackingViewProps
             rider={data.location}
             trail={data.location?.trail ?? []}
             destination={destination}
+            vehicleType={delivery?.rider?.vehicleType}
             destinationUnavailable={Boolean(data.order.address) && !destination}
           />
 
@@ -257,7 +263,8 @@ export default function TrackingView({ initial, destination }: TrackingViewProps
             <div className="flex flex-wrap items-center justify-between gap-2 px-1">
               <p className="text-[11px] font-semibold text-[var(--foreground)] flex items-center gap-1.5">
                 <Navigation className="w-3.5 h-3.5 text-emerald-500" />
-                Last position {formatMoment(data.location.updatedAt)}
+                {vehicle ? `${vehicle.label} last seen` : "Last position"}{" "}
+                {formatMoment(data.location.updatedAt)}
                 {data.location.accuracy !== null && (
                   <span className="font-medium text-[var(--foreground-muted)]">
                     · ±{Math.round(data.location.accuracy)} m
