@@ -5,6 +5,17 @@ import type { Map as LeafletMap, Marker, Polyline } from "leaflet";
 import type { DeliveryDestination } from "@/types/delivery";
 import { vehicleMarker } from "@/lib/rider";
 
+/*
+ * Leaflet's own stylesheet, and it is not optional. Leaflet builds the map out
+ * of absolutely positioned panes — tiles, overlays, markers, shadows, controls —
+ * and every one of those positions comes from this file, not from inline styles.
+ * Without it the panes fall back to normal flow, so the tiles that did load are
+ * scattered across the container as loose images, the markers land somewhere in
+ * the stack, and the grey of the box behind them shows through. The map looks
+ * broken while the network is fine.
+ */
+import "leaflet/dist/leaflet.css";
+
 /**
  * The customer's map.
  *

@@ -3,6 +3,10 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import type { Map as LeafletMap, Marker } from "leaflet";
 
+/* Leaflet's panes are positioned by this file, not by inline styles. See the
+ * note in DeliveryMap: without it the tiles scatter and the map looks dead. */
+import "leaflet/dist/leaflet.css";
+
 /**
  * The store-locator map.
  *
