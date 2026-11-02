@@ -25,21 +25,29 @@ import UserAvatar from "./UserAvatar";
 import { setActiveRole } from "@/lib/action/user";
 
 /**
- * The profile dropdown, shared by the storefront header and the dashboard
- * shell - but the two are not the same job.
+ * The profile menu, shared by the storefront header, the dashboard shell and
+ * the storefront's mobile drawers - but the three are not the same job.
  *
  * `variant="storefront"` (the public site) also carries the Profile /
  * Dashboard / Orders / Settings links, because there is no sidebar out there
- * and this dropdown is the only door into a workspace.
+ * and this menu is the only door into a workspace.
  *
  * `variant="dashboard"` drops those links on purpose. Inside a dashboard the
  * sidebar already lists every screen, and each role's profile, orders and
  * settings are different screens under that role's own workspace - so the
- * honest way to reach them is to switch into that dashboard. The dropdown
- * here keeps just three things: who you are, which workspace to open, and how
- * to sign out.
+ * honest way to reach them is to switch into that dashboard. The menu here
+ * keeps just three things: who you are, which workspace to open, and how to
+ * sign out.
+ *
+ * `layout` is how the same rows are hung: `dropdown` is the header popover
+ * under the avatar, `panel` lays them out flat inside a drawer, where a
+ * popover anchored to nothing would have nowhere to sit. Small screens used to
+ * have no switcher at all because only the desktop row mounted this menu, so
+ * the drawers now carry the same rows instead of a second, simpler account
+ * card that could drift from them.
  */
 export type UserAccountMenuVariant = "storefront" | "dashboard";
+export type UserAccountMenuLayout = "dropdown" | "panel";
 
 type SessionUser = {
   id?: string;
@@ -107,8 +115,13 @@ const iconFor = (role: string) => {
 
 export default function UserAccountMenu({
   variant = "storefront",
+  layout = "dropdown",
+  onNavigate,
 }: {
   variant?: UserAccountMenuVariant;
+  layout?: UserAccountMenuLayout;
+  /** Lets the drawer that hosts the panel close itself once a row is followed. */
+  onNavigate?: () => void;
 }) {
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -116,7 +129,7 @@ export default function UserAccountMenu({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [switching, setSwitching] = useState<string | null>(null);
 
-  const { data: session, isPending } = authClient.useSession();
+  const { data: session, isPending, refetch } = authClient.useSession();
   const user = session?.user as SessionUser | undefined;
 
   const allRoles = normaliseRoles(user);
@@ -162,13 +175,21 @@ export default function UserAccountMenu({
     };
   }, [isOpen]);
 
+  // Folding the menu away is one action, but in a drawer it also has to fold
+  // the drawer away: a row that navigates behind an open panel leaves the user
+  // staring at a menu they already used.
+  const closeMenu = () => {
+    setIsOpen(false);
+    onNavigate?.();
+  };
+
   const handleLogout = async () => {
     if (isLoggingOut) return;
 
     try {
       setIsLoggingOut(true);
       await authClient.signOut();
-      setIsOpen(false);
+      closeMenu();
       toast.success("Logged out successfully");
       router.push("/");
     } catch (err) {
@@ -188,6 +209,19 @@ export default function UserAccountMenu({
         toast.error(result.message || "Could not switch dashboard");
       } else {
         toast.success(`Switched to ${labelFor(role)}`);
+        closeMenu();
+        // The switch is written by the store API, which better-auth knows
+        // nothing about, so the cached session still describes the old
+        // workspace — and the sidebar, the header and every guard were rendered
+        // from it. Reading the session again with the cookie cache bypassed,
+        // and re-rendering the route, is what makes the move real; a bare
+        // `router.push` leaves the page looking like the dashboard it came from.
+        // A failed re-read is not a failed switch, so it is swallowed here.
+        try {
+          await refetch({ query: { disableCookieCache: true } });
+        } catch {
+          // The navigation below re-reads the session on its own.
+        }
         router.push(homeFor(role));
         router.refresh();
       }
@@ -196,19 +230,40 @@ export default function UserAccountMenu({
       toast.error("Could not switch dashboard");
     } finally {
       setSwitching(null);
-      setIsOpen(false);
     }
   };
 
   // Loading state placeholder
   if (isPending) {
-    return (
+    return layout === "panel" ? (
+      <div className="h-16 rounded-2xl bg-[var(--surface-alt)] animate-pulse" />
+    ) : (
       <div className="w-8 h-8 rounded-full bg-[var(--surface-alt)] dark:bg-[var(--surface)] animate-pulse shrink-0" />
     );
   }
 
   // Not logged in -> Clean Sign In Button
   if (!user) {
+    if (layout === "panel") {
+      return (
+        <Link
+          href="/auth/login"
+          onClick={closeMenu}
+          className="flex items-center gap-3 p-3.5 rounded-2xl bg-[var(--surface-elevated)] border border-[var(--border-color)] text-xs font-bold text-[var(--foreground)] hover:border-primary/40 transition-colors"
+        >
+          <span className="w-9 h-9 rounded-full bg-[var(--surface-alt)] flex items-center justify-center text-[var(--foreground-muted)] shrink-0">
+            <User className="w-4 h-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate">Sign in</span>
+            <span className="block text-[10px] font-semibold text-[var(--foreground-muted)]">
+              Orders, wishlist and your dashboards
+            </span>
+          </span>
+        </Link>
+      );
+    }
+
     return (
       <div className="flex items-center gap-2 shrink-0">
         <Link
@@ -259,10 +314,10 @@ export default function UserAccountMenu({
         ? "Store orders"
         : "Orders";
 
-  return (
-    <div className="relative shrink-0" ref={dropdownRef}>
-      {/* Dropdown Toggle Trigger Button */}
-      <button
+  // The avatar button that opens the popover. The drawers do not need it: they
+  // lay the same rows out flat, with nothing to anchor a popover to.
+  const trigger = (
+    <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
@@ -297,14 +352,13 @@ export default function UserAccountMenu({
             isOpen ? "rotate-180 text-primary" : ""
           }`}
         />
-      </button>
+    </button>
+  );
 
-      {/* Dropdown Menu Panel */}
-      {isOpen && (
-        <div
-          className="absolute right-0 top-full mt-2 w-72 bg-[var(--surface-elevated)] rounded-2xl shadow-xl border border-[var(--border-color)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right overflow-hidden"
-          role="menu"
-        >
+  // Every row of the menu in one place, so the desktop popover and the mobile
+  // drawers can never disagree about what this account is allowed to do.
+  const menuRows = (
+    <>
           {/* Header section with User info */}
           <div className="px-4 py-3 border-b border-[var(--border-color)] bg-[var(--surface-alt)]">
             <div className="flex items-center gap-3">
@@ -361,7 +415,7 @@ export default function UserAccountMenu({
               {/* Profile */}
               <Link
                 href={profileHref}
-                onClick={() => setIsOpen(false)}
+                onClick={closeMenu}
                 className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[var(--surface-alt)] hover:text-primary transition-colors"
               >
                 <User className="w-4 h-4 text-[var(--foreground-muted)]" />
@@ -371,7 +425,7 @@ export default function UserAccountMenu({
               {/* Dashboard */}
               <Link
                 href={dashboardHref}
-                onClick={() => setIsOpen(false)}
+                onClick={closeMenu}
                 className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[var(--surface-alt)] hover:text-primary transition-colors"
               >
                 <LayoutDashboard className="w-4 h-4 text-[var(--foreground-muted)]" />
@@ -382,7 +436,7 @@ export default function UserAccountMenu({
               {ordersHref !== "#" && (
                 <Link
                   href={ordersHref}
-                  onClick={() => setIsOpen(false)}
+                  onClick={closeMenu}
                   className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[var(--surface-alt)] hover:text-primary transition-colors"
                 >
                   <ShoppingBag className="w-4 h-4 text-[var(--foreground-muted)]" />
@@ -393,7 +447,7 @@ export default function UserAccountMenu({
               {/* Settings */}
               <Link
                 href={settingsHref}
-                onClick={() => setIsOpen(false)}
+                onClick={closeMenu}
                 className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[var(--surface-alt)] hover:text-primary transition-colors"
               >
                 <Settings className="w-4 h-4 text-[var(--foreground-muted)]" />
@@ -477,7 +531,7 @@ export default function UserAccountMenu({
               {canShop && (
                 <Link
                   href="/"
-                  onClick={() => setIsOpen(false)}
+                  onClick={closeMenu}
                   className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface-alt)] hover:text-primary transition-colors"
                 >
                   <Home className="w-4 h-4 text-[var(--foreground-muted)]" />
@@ -503,6 +557,30 @@ export default function UserAccountMenu({
               <span>{isLoggingOut ? "Signing out..." : "Log Out"}</span>
             </button>
           </div>
+    </>
+  );
+
+  // The drawer's flat form: the same rows, no popover, inside the card the
+  // host already frames.
+  if (layout === "panel") {
+    return (
+      <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] shadow-xs overflow-hidden">
+        {menuRows}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative shrink-0" ref={dropdownRef}>
+      {trigger}
+
+      {/* Dropdown Menu Panel */}
+      {isOpen && (
+        <div
+          className="absolute right-0 top-full mt-2 w-72 bg-[var(--surface-elevated)] rounded-2xl shadow-xl border border-[var(--border-color)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right overflow-hidden"
+          role="menu"
+        >
+          {menuRows}
         </div>
       )}
     </div>

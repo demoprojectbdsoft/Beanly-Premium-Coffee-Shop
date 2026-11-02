@@ -412,6 +412,17 @@ stateDiagram-v2
 
 </details>
 
+### 🧭 Account Menu & Workspace Switching
+
+<details>
+<summary><b>One menu, on every screen size</b></summary>
+
+- **Same rows, three doors** — `UserAccountMenu` is the only account menu in the app. On the desktop storefront it hangs off the avatar as a popover; inside a dashboard it is the same menu with the shortcut rows dropped, because the sidebar already owns those screens. Both cases share one row set: who you are, which approved roles you hold, where each dashboard opens, and how to sign out.
+- **The storefront's mobile doors carry it too** — on a small screen the header has no avatar dropdown, so the left drawer, the hamburger overlay and the right drawer (all three render `MobileMenuContent`) now open the very same menu laid out flat as a card: `layout="panel"`. Before this, a phone showed a single "Go to Dashboard" button and nothing else — no way to switch workspace, no profile, orders or settings links, and the button followed the account's role mirror instead of its approved roles. Following a row closes the drawer that held it.
+- **Switching a workspace refreshes the page** — the switch is written by the store API, which better-auth knows nothing about, so the cached session still describes the dashboard you came from and every role-dependent screen was rendered from that. A switch therefore re-reads the session with the cookie cache bypassed, then navigates and re-renders the route, instead of pushing the URL and leaving the old workspace on screen. Suspended dashboards stay greyed out with the reason, and only entries the account actually holds are offered.
+
+</details>
+
 ### 📅 Date & Time Fields
 
 <details>
