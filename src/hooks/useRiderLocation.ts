@@ -11,9 +11,10 @@ import { shareLocationAction } from "@/lib/action/deliveries";
  * map service anywhere in the path.
  *
  * Three rules keep it honest and cheap: a fix is only sent every 15 seconds,
- * the watch stops the moment the rider switches it off or the screen unmounts,
- * and a manual stop is remembered for that job — auto-start must not press the
- * rider's own button back on.
+ * the watch ends with the job it was pointed at — a finished job, or a switch to
+ * another one, must not leave a second watch reporting from the same phone —
+ * and a manual stop is remembered for that job, because auto-start must not
+ * press the rider's own button back on.
  */
 
 const MIN_INTERVAL_MS = 15_000;
@@ -47,13 +48,24 @@ export function useRiderLocation(
   /** The job auto-start has already been asked to report for. */
   const startedRef = useRef<string | null>(null);
 
-  const stop = useCallback(() => {
+  /**
+   * Ends the browser watch on its own, without touching React state.
+   *
+   * The cleanup below only has to stop the phone asking for a fix. Going
+   * through stop() here would also flip the sharing flag while an effect is
+   * running, which is exactly the cascading render this hook is meant to avoid.
+   */
+  const clearWatch = useCallback(() => {
     if (watchRef.current !== null && typeof navigator !== "undefined") {
       navigator.geolocation.clearWatch(watchRef.current);
     }
     watchRef.current = null;
-    setIsSharing(false);
   }, []);
+
+  const stop = useCallback(() => {
+    clearWatch();
+    setIsSharing(false);
+  }, [clearWatch]);
 
   const start = useCallback(() => {
     if (!deliveryId) return;
@@ -119,13 +131,19 @@ export function useRiderLocation(
 
   /*
    * A new job is a fresh start: whatever the rider stopped belongs to the one
-   * before it. The reset runs before the auto-start below because effects fire
-   * in the order they are declared.
+   * before it, and the watch pointed at the old job ends with it. Leaving it
+   * running would report two positions from one phone, keep posting a job that
+   * has finished (the API refuses it, so every one of those posts is a wasted
+   * function call), and drain a battery nobody is watching. The reset runs
+   * before the auto-start below because effects fire in the order they are
+   * declared, so a switch between two live jobs hands the phone over rather
+   * than running two watches at once.
    */
   useEffect(() => {
+    clearWatch();
     stoppedRef.current = false;
     startedRef.current = null;
-  }, [deliveryId]);
+  }, [deliveryId, clearWatch]);
 
   useEffect(() => {
     if (!deliveryId || !autoStart) return;
