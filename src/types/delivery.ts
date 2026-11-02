@@ -99,8 +99,27 @@ export interface AssignableRiderFeed {
   riders: AssignableRider[];
   /** The rider who already holds this order's live job, if any. */
   currentRiderId: string | null;
-  /** The live job itself, so the picker can offer a hand-over. */
-  currentDelivery: { _id: string; status: DeliveryStatus; riderId: string } | null;
+  /**
+   * The job currently claiming this order, so the picker can say whose hands
+   * the order is in instead of letting the store double-book a parcel. A request
+   * whose answer window ran out is still reported, but flagged `expired`: it no
+   * longer blocks a new rider.
+   */
+  currentDelivery: {
+    _id: string;
+    status: DeliveryStatus;
+    riderId: string;
+    /** Comes from the server, so the panel can name a rider even when the list is filtered. */
+    riderName: string;
+    fee: number;
+    /** End of the answer window; only an unanswered request has one. */
+    expiresAt: string | null;
+    /** When the request was sent. */
+    assignedAt: string;
+    /** Whole minutes left to answer, counted by the server. Zero once accepted. */
+    minutesLeft: number;
+    expired: boolean;
+  } | null;
 }
 
 /** The numbers at the top of the store's delivery board. */

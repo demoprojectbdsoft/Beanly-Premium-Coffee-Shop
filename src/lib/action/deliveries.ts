@@ -28,6 +28,14 @@ export const assignDelivery = async (data: AssignDeliveryInput) => {
   return serverMutation("/deliveries", data);
 };
 
+/**
+ * Hands a request nobody answered in time to another rider.
+ *
+ * The store's picker does not use this: while a rider still has an open request
+ * or is working an accepted job, the order is theirs, and the way to send
+ * somebody else is to cancel the delivery first. Kept for a lapsed request the
+ * sweep has not closed yet.
+ */
 export const reassignDelivery = async (
   id: string,
   data: { riderId: string; fee?: number; note?: string }
