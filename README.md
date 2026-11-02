@@ -264,6 +264,7 @@ stateDiagram-v2
   - Status management workflow
   - Multi-vendor order coordination
   - Delivery assignment to riders
+  - **The rider picker reads the approved role, not the open dashboard** — an account's `role` field only mirrors whichever dashboard the person is looking at, so a rider who is currently shopping as a customer used to vanish from the list and the assignment would then refuse them as "not a rider". The picker now queries the approved `roles` array, the same authority every route check uses, and the online/offline counter on the delivery board counts the same set. An offer is only refused for a suspended account or a rider access the store team has parked.
 
 </details>
 
@@ -371,6 +372,7 @@ stateDiagram-v2
 - **Active Deliveries**: Current jobs with tracking
 - **History**: Completed and cancelled jobs
 - **Earnings**: Total, monthly, and per-job averages
+- **Job detail shows the whole order** — the list row only carries the delivery's own copy of the drop-off, so opening a job now reads the order behind it and shows what the rider is actually carrying: every line with its quantity, price each and line total, the money the customer was charged (items, delivery charge, discount with its coupon code, points used, order total), the payment method with the exact cash amount to collect at the door — or "Paid in full" when nothing is owed — the complete address including the postcode, and the store's name, address and phone for the pickup. If that read fails, the sheet still works from the list row and offers a retry rather than showing an empty panel.
 
 </details>
 

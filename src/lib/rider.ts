@@ -152,6 +152,39 @@ export function formatDistance(km: number | null): string {
   return `${km.toFixed(1)} km`;
 }
 
+/**
+ * How the storefront spells a payment method.
+ *
+ * The rider screen has to say "Cash on Delivery" rather than "cod", because the
+ * line under it is the money they are meant to collect at the door.
+ */
+export function paymentMethodLabel(method?: string | null): string {
+  switch ((method || "").toLowerCase()) {
+    case "bkash":
+      return "bKash";
+    case "nagad":
+      return "Nagad";
+    case "rocket":
+      return "Rocket";
+    case "cod":
+      return "Cash on Delivery";
+    default:
+      return method || "—";
+  }
+}
+
+/** "free" / "standard" / "express" in the words the customer was shown. */
+export function shippingMethodLabel(method?: string | null): string {
+  switch ((method || "").toLowerCase()) {
+    case "free":
+      return "Free shipping";
+    case "express":
+      return "Express delivery";
+    default:
+      return "Standard delivery";
+  }
+}
+
 /** "2026-10-31" -> "Oct 31", read as a local date so the day never shifts. */
 export function formatDayLabel(dateKey: string): string {
   const date = new Date(`${dateKey}T00:00:00`);

@@ -27,6 +27,7 @@ import {
   type DeliveryPagination,
   type DeliveryRecord,
 } from "@/types/delivery";
+import { fetchMyDeliveryAction } from "@/lib/action/deliveries";
 import DeliveryActions from "./DeliveryActions";
 import AppSelect from "@/components/shared/AppSelect";
 import DeliveryDetailModal from "./DeliveryDetailModal";
@@ -68,16 +69,41 @@ export default function DeliveryListClient({
   // The row a rider opened, and whether its answer window had already closed.
   const [detail, setDetail] = useState<DeliveryRecord | null>(null);
   const [detailExpired, setDetailExpired] = useState(false);
+  // A list row carries the delivery's own copy of the customer and the money.
+  // The full order is read on the click and merged in, so the sheet can show the
+  // lines, the payment and the postcode without the rider leaving the table.
+  const [orderRead, setOrderRead] = useState<DeliveryRecord | null>(null);
+  const [orderLoading, setOrderLoading] = useState(false);
+  const [orderFailed, setOrderFailed] = useState(false);
+
+  const loadOrder = (id: string) => {
+    setOrderLoading(true);
+    setOrderFailed(false);
+    fetchMyDeliveryAction(id)
+      .then((full) => {
+        if (full) setOrderRead(full);
+        else setOrderFailed(true);
+      })
+      .catch(() => setOrderFailed(true))
+      .finally(() => setOrderLoading(false));
+  };
 
   const openDetail = (delivery: DeliveryRecord) => {
     setDetail(delivery);
     setDetailExpired(expiredIds.includes(delivery._id));
+    setOrderRead(null);
+    loadOrder(delivery._id);
+  };
+
+  const retryOrder = () => {
+    if (detail) loadOrder(detail._id);
   };
 
   // A change lands in the database, so the page is re-read rather than patched:
   // the row's next action is decided by the server, not by this component.
   const handleChanged = () => {
     setDetail(null);
+    setOrderRead(null);
     router.refresh();
   };
 
@@ -394,11 +420,14 @@ export default function DeliveryListClient({
       )}
 
       <DeliveryDetailModal
-        delivery={detail}
+        delivery={orderRead?._id === detail?._id ? orderRead : detail}
         isOpen={Boolean(detail)}
         onOpenChange={(open) => !open && setDetail(null)}
         expired={detailExpired}
         onChanged={handleChanged}
+        orderLoading={orderLoading}
+        orderFailed={orderFailed}
+        onRetryOrder={retryOrder}
       />
     </div>
   );

@@ -1,10 +1,10 @@
 "use server";
 
 import { serverMutation, serverFetch } from "../core/server";
-import type { DeliveryInvoice, DeliveryTracking } from "@/types/delivery";
+import type { DeliveryInvoice, DeliveryRecord, DeliveryTracking } from "@/types/delivery";
 
 /**
- * Every delivery write, and the two reads the tracking page polls.
+ * Every delivery write, plus the reads a screen asks for after it rendered.
  *
  * A `serverMutation` never throws: an API error comes back as
  * `{ success: false, message }`, which is what the screens show in a toast.
@@ -87,6 +87,19 @@ export const shareLocationAction = async (
   point: { lat: number; lng: number; accuracy?: number; heading?: number; speed?: number }
 ) => {
   return serverMutation(`/deliveries/${id}/location`, point);
+};
+
+/**
+ * One job, with the order behind it.
+ *
+ * A list row only carries the copy the delivery keeps for itself — name, phone,
+ * address, one total — so opening a job reads the whole order: the lines, what
+ * the customer was charged, whether the door expects cash, and the postcode. It
+ * is an action rather than a page read because the modal opens on a click.
+ */
+export const fetchMyDeliveryAction = async (id: string): Promise<DeliveryRecord | null> => {
+  const res = await serverFetch(`/deliveries/${id}`, true);
+  return res?.data ?? null;
 };
 
 /** The figures the rider's own invoice prints. Read on demand, never in a list. */

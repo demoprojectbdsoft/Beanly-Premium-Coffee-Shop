@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Button, Chip, Modal } from "@heroui/react";
 import {
+  Banknote,
   Building2,
   Clock,
   FileText,
@@ -13,6 +15,8 @@ import {
   Navigation,
   Package,
   Phone,
+  ReceiptText,
+  Store,
   User as UserIcon,
   X,
 } from "lucide-react";
@@ -24,6 +28,8 @@ import {
   formatDistance,
   formatMoment,
   isActiveDelivery,
+  paymentMethodLabel,
+  shippingMethodLabel,
 } from "@/lib/rider";
 import { fetchDeliveryInvoiceAction } from "@/lib/action/deliveries";
 import { downloadDeliveryInvoicePdf } from "@/lib/deliveryInvoicePdf";
@@ -37,14 +43,33 @@ import type { DeliveryRecord } from "@/types/delivery";
  * The rider sees everything needed at the door — who, where, what, and how much
  * — plus the only two things the app asks of them: move the job forward, and
  * share where they are while they carry it.
+ *
+ * The row a list hands over only carries the delivery's own copy of the order,
+ * so the list client reads the job properly the moment a row is clicked and
+ * merges that read into what it passes down: the lines in the bag, the money the
+ * customer was charged, the cash to collect at the door and the postcode.
+ * Nothing here is invented when that read is missing or slow — the shorter copy
+ * from the list is still enough to finish a delivery.
  */
 
 interface DeliveryDetailModalProps {
+  /**
+   * The job to show.
+   *
+   * The list row is already enough to render, so the caller merges the fuller
+   * read into it once it arrives and this sheet never has to fetch on its own.
+   */
   delivery: DeliveryRecord | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   expired?: boolean;
   onChanged?: () => void;
+  /** The order read is still running. */
+  orderLoading?: boolean;
+  /** The order read failed, so only the delivery's own copy is on show. */
+  orderFailed?: boolean;
+  /** Ask for the order read again. */
+  onRetryOrder?: () => void;
 }
 
 export default function DeliveryDetailModal({
@@ -53,8 +78,15 @@ export default function DeliveryDetailModal({
   onOpenChange,
   expired = false,
   onChanged,
+  orderLoading = false,
+  orderFailed = false,
+  onRetryOrder,
 }: DeliveryDetailModalProps) {
   const { formatPrice } = useSiteSettings();
+  // One record drives the whole sheet: whatever the caller last merged in.
+  const view = delivery;
+  const order = view?.order ?? null;
+  const pickup = view?.pickup ?? null;
   const active = delivery ? isActiveDelivery(delivery.status) : false;
   const { isSharing, error, lastSentAt, points, toggle } = useRiderLocation(
     active && delivery ? delivery._id : null
@@ -93,24 +125,29 @@ export default function DeliveryDetailModal({
       <Modal.Backdrop>
         <Modal.Container size="lg">
           <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto text-[var(--foreground)]">
-            {delivery && (
+            {view && (
               <>
                 <Modal.Header className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-[var(--border-color)] pb-4">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <Modal.Heading className="text-base font-extrabold text-[var(--foreground)]">
-                        {delivery.orderNumber}
+                        {view.orderNumber}
                       </Modal.Heading>
                       <Chip
                         size="sm"
-                        className={`border text-[10px] font-bold ${DELIVERY_STATUS_STYLES[delivery.status]}`}
+                        className={`border text-[10px] font-bold ${DELIVERY_STATUS_STYLES[view.status]}`}
                       >
-                        {DELIVERY_STATUS_LABELS[delivery.status]}
+                        {DELIVERY_STATUS_LABELS[view.status]}
                       </Chip>
                     </div>
                     <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
-                      Assigned {formatMoment(delivery.createdAt)}
-                      {delivery.distanceKm ? ` · ${formatDistance(delivery.distanceKm)}` : ""}
+                      Assigned {formatMoment(view.createdAt)}
+                      {view.distanceKm ? ` · ${formatDistance(view.distanceKm)}` : ""}
+                    </p>
+                    <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
+                      {order
+                        ? `Ordered ${formatMoment(order.placedAt)} · ${shippingMethodLabel(order.shippingMethod)}`
+                        : `Ordered ${view.items} item${view.items === 1 ? "" : "s"} · ${formatPrice(view.orderTotal)}`}
                     </p>
                   </div>
                   <Modal.CloseTrigger className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] cursor-pointer p-1 rounded-lg self-end sm:self-auto">
@@ -120,12 +157,12 @@ export default function DeliveryDetailModal({
 
                 <Modal.Body className="space-y-4">
                   {/* The answer window, while there is one. */}
-                  {delivery.status === "assigned" && delivery.expiresAt && (
+                  {view.status === "assigned" && view.expiresAt && (
                     <div className="flex items-center gap-2 p-3 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-[11px] font-semibold text-amber-900 dark:text-amber-200">
                       <Clock className="w-4 h-4 shrink-0" />
                       {expired
                         ? "This request expired before you answered it."
-                        : `Answer before ${formatMoment(delivery.expiresAt)}`}
+                        : `Answer before ${formatMoment(view.expiresAt)}`}
                     </div>
                   )}
 
@@ -135,12 +172,27 @@ export default function DeliveryDetailModal({
                         Collect from
                       </p>
                       <p className="text-xs font-bold text-[var(--foreground)] flex items-center gap-1.5">
-                        <Building2 className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                        Sparq store
+                        <Store className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
+                        {pickup?.name || "Sparq store"}
                       </p>
+                      {pickup?.address && (
+                        <p className="text-[11px] text-[var(--foreground-muted)] flex items-start gap-1">
+                          <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
+                          {pickup.address}
+                        </p>
+                      )}
+                      {pickup?.phone && (
+                        <a
+                          href={`tel:${pickup.phone}`}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary"
+                        >
+                          <Phone className="w-3 h-3" />
+                          {pickup.phone}
+                        </a>
+                      )}
                       <p className="text-[11px] text-[var(--foreground-muted)]">
-                        {delivery.items} item{delivery.items === 1 ? "" : "s"} ·{" "}
-                        {formatPrice(delivery.orderTotal)} order
+                        {view.items} item{view.items === 1 ? "" : "s"} ·{" "}
+                        {formatPrice(view.orderTotal)} order
                       </p>
                     </div>
 
@@ -150,21 +202,26 @@ export default function DeliveryDetailModal({
                       </p>
                       <p className="text-xs font-bold text-[var(--foreground)] flex items-center gap-1.5">
                         <UserIcon className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                        {delivery.customerName || "Customer"}
+                        {order?.address.fullName || view.customerName || "Customer"}
                       </p>
-                      {delivery.customerPhone && (
+                      {(order?.address.phone || view.customerPhone) && (
                         <a
-                          href={`tel:${delivery.customerPhone}`}
+                          href={`tel:${order?.address.phone || view.customerPhone}`}
                           className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary"
                         >
                           <Phone className="w-3 h-3" />
-                          {delivery.customerPhone}
+                          {order?.address.phone || view.customerPhone}
                         </a>
                       )}
                       <p className="text-[11px] text-[var(--foreground-muted)] flex items-start gap-1">
-                        <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
-                        {[delivery.address, delivery.city].filter(Boolean).join(", ") ||
-                          "No address recorded"}
+                        <Building2 className="w-3 h-3 mt-0.5 shrink-0" />
+                        {[
+                          order?.address.address || view.address,
+                          order?.address.city || view.city,
+                          order?.address.postalCode,
+                        ]
+                          .filter(Boolean)
+                          .join(", ") || "No address recorded"}
                       </p>
                     </div>
                   </div>
@@ -174,9 +231,157 @@ export default function DeliveryDetailModal({
                       Your fee
                     </span>
                     <span className="text-lg font-extrabold text-[var(--foreground)]">
-                      {formatPrice(delivery.fee)}
+                      {formatPrice(view.fee)}
                     </span>
                   </div>
+
+                  {/* ── The order itself ── */}
+                  {orderLoading && !order && (
+                    <div className="flex items-center gap-2 p-3 rounded-2xl bg-[var(--surface-alt)] border border-[var(--border-color)] text-[11px] font-semibold text-[var(--foreground-muted)]">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Reading the order…
+                    </div>
+                  )}
+
+                  {orderFailed && !order && !orderLoading && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-2xl bg-[var(--surface-alt)] border border-[var(--border-color)] text-[11px] text-[var(--foreground-muted)]">
+                      <span>The order lines could not be read right now.</span>
+                      <button
+                        type="button"
+                        onClick={() => onRetryOrder?.()}
+                        className="font-bold text-primary hover:underline cursor-pointer"
+                      >
+                        Try again
+                      </button>
+                    </div>
+                  )}
+
+                  {order && (
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)] flex items-center gap-1.5">
+                        <ReceiptText className="w-3.5 h-3.5" />
+                        In the bag
+                      </p>
+                      <ul className="space-y-2">
+                        {order.items.map((line, index) => (
+                          <li
+                            key={`${line.title}-${index}`}
+                            className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-[var(--surface)] border border-[var(--border-color)]"
+                          >
+                            <div className="relative w-9 h-9 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)] shrink-0 overflow-hidden">
+                              {line.image ? (
+                                <Image
+                                  src={line.image}
+                                  alt=""
+                                  fill
+                                  sizes="36px"
+                                  className="object-cover"
+                                  unoptimized
+                                />
+                              ) : (
+                                <Package className="w-4 h-4 text-[var(--foreground-muted)] absolute inset-0 m-auto" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[11px] font-bold text-[var(--foreground)] leading-snug">
+                                {line.title}
+                              </p>
+                              <p className="text-[10px] text-[var(--foreground-muted)]">
+                                {formatPrice(line.price)} each
+                              </p>
+                            </div>
+                            <p className="text-[11px] font-bold text-[var(--foreground)] whitespace-nowrap">
+                              ×{line.quantity}
+                              <span className="block text-[10px] font-medium text-[var(--foreground-muted)] text-right">
+                                {formatPrice(line.price * line.quantity)}
+                              </span>
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <div className="p-3.5 rounded-2xl bg-[var(--surface-alt)] border border-[var(--border-color)] space-y-1.5 text-[11px]">
+                        <div className="flex items-center justify-between text-[var(--foreground-muted)]">
+                          <span>Items</span>
+                          <span className="font-semibold text-[var(--foreground)]">
+                            {formatPrice(order.totals.subtotal)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[var(--foreground-muted)]">
+                          <span>Delivery charge</span>
+                          <span className="font-semibold text-[var(--foreground)]">
+                            {order.totals.shipping > 0
+                              ? formatPrice(order.totals.shipping)
+                              : "Free"}
+                          </span>
+                        </div>
+                        {order.totals.discount > 0 && (
+                          <div className="flex items-center justify-between text-[var(--foreground-muted)]">
+                            <span>
+                              Discount
+                              {order.totals.couponCode ? ` (${order.totals.couponCode})` : ""}
+                            </span>
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                              −{formatPrice(order.totals.discount)}
+                            </span>
+                          </div>
+                        )}
+                        {order.totals.pointsRedeemed > 0 && (
+                          <div className="flex items-center justify-between text-[var(--foreground-muted)]">
+                            <span>Points used</span>
+                            <span className="font-semibold text-[var(--foreground)]">
+                              {order.totals.pointsRedeemed}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-[var(--border-color)]">
+                          <span className="font-bold text-[var(--foreground)]">Order total</span>
+                          <span className="text-sm font-extrabold text-[var(--foreground)]">
+                            {formatPrice(order.totals.total)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 p-3.5 rounded-2xl bg-[var(--surface)] border border-[var(--border-color)]">
+                        <div className="flex items-center gap-2">
+                          <Banknote
+                            className={`w-4 h-4 shrink-0 ${
+                              order.amountToCollect > 0
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-[var(--foreground-muted)]"
+                            }`}
+                          />
+                          <div>
+                            <p className="text-[11px] font-bold text-[var(--foreground)]">
+                              {paymentMethodLabel(order.paymentMethod)}
+                            </p>
+                            <p className="text-[10px] text-[var(--foreground-muted)]">
+                              {order.amountToCollect > 0
+                                ? "Collect this at the door, hand over the parcel only after it"
+                                : "Already paid — collect nothing"}
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={`text-sm font-extrabold ${
+                            order.amountToCollect > 0
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-[var(--foreground-muted)]"
+                          }`}
+                        >
+                          {order.amountToCollect > 0
+                            ? formatPrice(order.amountToCollect)
+                            : "Paid in full"}
+                        </span>
+                      </div>
+
+                      {order.estimatedDelivery && (
+                        <p className="text-[10px] text-[var(--foreground-muted)]">
+                          The customer was told to expect it: {order.estimatedDelivery}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Position sharing, only while carrying. */}
                   {active && (
@@ -228,13 +433,13 @@ export default function DeliveryDetailModal({
                       <History className="w-3.5 h-3.5" />
                       History
                     </p>
-                    {delivery.history.length === 0 ? (
+                    {view.history.length === 0 ? (
                       <p className="text-[11px] text-[var(--foreground-muted)]">
                         Nothing has moved yet.
                       </p>
                     ) : (
                       <ol className="space-y-2">
-                        {delivery.history.map((event, index) => (
+                        {view.history.map((event, index) => (
                           <li key={`${event.status}-${index}`} className="flex items-start gap-2.5 text-[11px]">
                             <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-flat)] mt-1.5 shrink-0" />
                             <div>
@@ -255,10 +460,10 @@ export default function DeliveryDetailModal({
                     )}
                   </div>
 
-                  {delivery.declineReason && (
+                  {view.declineReason && (
                     <div className="p-3 rounded-2xl bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 text-[11px] text-rose-900 dark:text-rose-200">
                       <span className="font-bold">Reason on record: </span>
-                      {delivery.declineReason}
+                      {view.declineReason}
                     </div>
                   )}
                 </Modal.Body>
@@ -289,7 +494,7 @@ export default function DeliveryDetailModal({
                   </div>
 
                   <DeliveryActions
-                    delivery={delivery}
+                    delivery={view}
                     expired={expired}
                     onChanged={handleChanged}
                   />

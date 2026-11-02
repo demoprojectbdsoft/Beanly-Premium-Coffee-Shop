@@ -66,6 +66,15 @@ export interface DeliveryRecord {
   /** Null on the rider's own lists, filled in for the store and the buyer. */
   rider: DeliveryRider | null;
   history: DeliveryEvent[];
+  /**
+   * The order behind the job.
+   *
+   * Only the rider's detail read fills this in — the rows returned by a list
+   * carry the delivery's own copy, which is the shorter version of the truth.
+   */
+  order?: DeliveryOrderDetails | null;
+  /** The store the parcel comes from, on the same detail read. */
+  pickup?: DeliveryPickupPoint | null;
 }
 
 /** A rider the store can pick from when it hands out a job. */
@@ -150,6 +159,59 @@ export interface DeliveryInvoiceItem {
   title: string;
   quantity: number;
   price: number;
+}
+
+/** One line of the order behind a job, as the rider's detail view reads it. */
+export interface DeliveryOrderLine {
+  title: string;
+  quantity: number;
+  price: number;
+  /** Product image URL; empty when the line was never given one. */
+  image: string;
+}
+
+/**
+ * The order as the rider sees it.
+ *
+ * Only ever present on the detail read: the lists stay light because a rider
+ * scrolling their inbox needs the drop-off, not the money.
+ */
+export interface DeliveryOrderDetails {
+  _id: string;
+  orderNumber: string;
+  placedAt: string;
+  /** The sale's own stage, which the delivery can be behind or ahead of. */
+  status: string;
+  estimatedDelivery: string;
+  shippingMethod: string;
+  paymentMethod: string;
+  /** What the rider collects at the door on a cash order; 0 when prepaid. */
+  amountToCollect: number;
+  address: {
+    fullName: string;
+    phone: string;
+    address: string;
+    city: string;
+    postalCode: string;
+  };
+  items: DeliveryOrderLine[];
+  totals: {
+    subtotal: number;
+    shipping: number;
+    discount: number;
+    couponCode: string;
+    pointsRedeemed: number;
+    total: number;
+  };
+}
+
+/** Where the parcel is picked up, and who to call if it does not scan. */
+export interface DeliveryPickupPoint {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  currency: string;
 }
 
 /**
