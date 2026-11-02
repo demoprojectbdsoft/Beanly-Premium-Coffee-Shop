@@ -226,6 +226,7 @@ stateDiagram-v2
 
 - **Overview**: Spending analytics, recent orders, savings charts
 - **Orders**: Full history, tracking, invoices, warranty cards
+  - **The Track Shipment dialog tells two stories side by side** — Delivery progress (the stages a rider drives, their name, vehicle, the call button and the live ETA) sits beside Order progress (Placed → Processing → Shipped → Delivered) on a wide screen, and folds into one column under the other on a phone. Each list is framed so the two never read as one long stack, and when no rider has been assigned the second column simply isn't there — an empty frame beside a timeline is worse than no grid. The dialog also used to be centred inside a fixed overlay with no height limit and no scroll, so as soon as its content was taller than the screen the top was pushed above the scroll area and the Close and Track live buttons could not be reached at all; it now scrolls as a page and centres itself with auto margins, which behave when the content outgrows the viewport. The connector between two timeline steps is stretched to the next node instead of a fixed height, because a row is as tall as its description and a measured line left gaps in the middle of the spine.
 - **Transactions**: Payment records with PDF receipts
 - **Wishlist**: Saved products with quick add-to-cart
 - **Reviews**: Manage submitted reviews with edit support

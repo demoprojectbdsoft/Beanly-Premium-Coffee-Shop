@@ -1233,10 +1233,15 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
         </div>
       )}
 
-      {/* ── Order Tracking Modal ── */}
+      {/* ── Order Tracking Modal ──
+        The overlay itself scrolls, and the dialog is centred with auto margins
+        rather than `items-center`. Centring a box taller than the viewport
+        pushes its top above the scroll area, where no amount of scrolling
+        reaches it — on a phone this dialog is routinely taller than the screen,
+        and the Close and Track live buttons simply were not there. */}
       {trackingModalOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--surface)]/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <Card className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-6 text-[var(--foreground)]">
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-start justify-center p-3 sm:p-4 bg-[var(--surface)]/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <Card className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl w-full max-w-lg md:max-w-3xl my-auto p-5 sm:p-6 shadow-2xl space-y-5 sm:space-y-6 text-[var(--foreground)]">
             <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -1306,46 +1311,60 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
               )}
             </div>
 
-            {/* Rider & live delivery status */}
-            {tracking?.delivery && (
-              <div className="space-y-3 -mt-1">
-                {tracking.delivery.rider && (
-                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--surface-alt)] border border-[var(--border-color)]">
-                    <UserAvatar
-                      src={tracking.delivery.rider.image}
-                      name={tracking.delivery.rider.name}
-                      size={40}
-                      alt={tracking.delivery.rider.name}
-                      className="rounded-xl bg-brand-gradient text-[var(--on-grad-text)] text-xs font-extrabold border border-[var(--border-color)]"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-[var(--foreground)] truncate">
-                        {tracking.delivery.rider.name}
-                      </p>
-                      <p className="text-[11px] text-[var(--foreground-muted)] flex items-center gap-1 truncate">
-                        <Bike className="w-3 h-3 shrink-0" />
-                        {[
-                          tracking.delivery.rider.vehicleType,
-                          tracking.delivery.rider.vehicleNumber,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ") || "Your rider"}
-                      </p>
-                    </div>
-                    {tracking.delivery.rider.phone && (
-                      <a
-                        href={`tel:${tracking.delivery.rider.phone}`}
-                        className="inline-flex items-center gap-1.5 px-3 h-9 rounded-xl bg-primary hover:bg-primary-hover text-white text-[11px] font-bold shrink-0"
-                      >
-                        <Phone className="w-3.5 h-3.5" />
-                        Call
-                      </a>
-                    )}
-                  </div>
+            {/* The rider, full width: the Call button needs the room, and the two
+                progress lists below are the parcel's story, not the person's. */}
+            {tracking?.delivery?.rider && (
+              <div className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--surface-alt)] border border-[var(--border-color)] -mt-1">
+                <UserAvatar
+                  src={tracking.delivery.rider.image}
+                  name={tracking.delivery.rider.name}
+                  size={40}
+                  alt={tracking.delivery.rider.name}
+                  className="rounded-xl bg-brand-gradient text-[var(--on-grad-text)] text-xs font-extrabold border border-[var(--border-color)]"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-[var(--foreground)] truncate">
+                    {tracking.delivery.rider.name}
+                  </p>
+                  <p className="text-[11px] text-[var(--foreground-muted)] flex items-center gap-1 truncate">
+                    <Bike className="w-3 h-3 shrink-0" />
+                    {[
+                      tracking.delivery.rider.vehicleType,
+                      tracking.delivery.rider.vehicleNumber,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "Your rider"}
+                  </p>
+                </div>
+                {tracking.delivery.rider.phone && (
+                  <a
+                    href={`tel:${tracking.delivery.rider.phone}`}
+                    className="inline-flex items-center gap-1.5 px-3 h-9 rounded-xl bg-primary hover:bg-primary-hover text-white text-[11px] font-bold shrink-0"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    Call
+                  </a>
                 )}
+              </div>
+            )}
 
-                {/* Delivery progress — every status the rider drives */}
-                <div className="space-y-2.5">
+            {/*
+              The two progress lists: what the rider is driving now, and how the
+              order got here. Side by side when there is room for two columns,
+              one under the other on a phone. Each gets its own frame so the two
+              lists never read as one long list, and when no rider has been
+              assigned the grid folds away instead of leaving a blank column
+              beside the order's own timeline.
+            */}
+            <div
+              className={
+                tracking?.delivery
+                  ? "grid grid-cols-1 md:grid-cols-2 gap-4 items-start"
+                  : undefined
+              }
+            >
+              {tracking?.delivery && (
+                <div className="rounded-2xl border border-[var(--border-color)] p-3.5 sm:p-4 space-y-2.5">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
                     Delivery progress
                   </p>
@@ -1366,9 +1385,9 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                             <Clock className="w-3 h-3" />
                           )}
                         </div>
-                        <div className="flex-1 flex items-center justify-between">
+                        <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
                           <span
-                            className={`text-[11px] font-semibold ${
+                            className={`text-[11px] font-semibold truncate ${
                               done
                                 ? "text-[var(--foreground)]"
                                 : "text-[var(--foreground-muted)]"
@@ -1377,7 +1396,7 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                             {step.label}
                           </span>
                           {step.at && (
-                            <span className="text-[10px] text-[var(--foreground-muted)]">
+                            <span className="text-[10px] text-[var(--foreground-muted)] shrink-0">
                               {formatMoment(step.at)}
                             </span>
                           )}
@@ -1385,61 +1404,65 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                       </div>
                     );
                   })}
-                </div>
 
-                {tracking.eta && isDeliveryLive && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                    <Navigation className="w-3.5 h-3.5" />
-                    Arriving in about {formatEta(tracking.eta.minutes)}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Timeline */}
-            <div className="space-y-4 py-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
-                Order progress
-              </p>
-              {trackingModalOrder.timeline.map((step, idx) => (
-                <div key={idx} className="flex gap-4 items-start relative">
-                  {idx !== trackingModalOrder.timeline.length - 1 && (
-                    <div
-                      className={`absolute left-3.5 top-7 w-0.5 h-10 ${
-                        step.completed ? "bg-primary" : "bg-[var(--border-color)]"
-                      }`}
-                    />
-                  )}
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 ${
-                      step.completed
-                        ? "bg-primary text-white shadow-xs"
-                        : step.current
-                          ? "bg-amber-400 text-amber-950 ring-4 ring-amber-100 dark:ring-amber-950/60 animate-pulse"
-                          : "bg-[var(--surface-alt)] text-[var(--foreground-muted)] border border-[var(--border-color)]"
-                    }`}
-                  >
-                    {step.completed ? (
-                      <CheckCircle2 className="w-4 h-4" />
-                    ) : (
-                      <Clock className="w-4 h-4" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-bold text-[var(--foreground)]">
-                        {step.title}
-                      </p>
-                      <span className="text-[10px] text-[var(--foreground-muted)] font-medium">
-                        {step.date}
-                      </span>
+                  {tracking.eta && isDeliveryLive && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                      <Navigation className="w-3.5 h-3.5 shrink-0" />
+                      Arriving in about {formatEta(tracking.eta.minutes)}
                     </div>
-                    <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
-                      {step.description}
-                    </p>
-                  </div>
+                  )}
                 </div>
-              ))}
+              )}
+
+              <div className="rounded-2xl border border-[var(--border-color)] p-3.5 sm:p-4 space-y-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+                  Order progress
+                </p>
+                {trackingModalOrder.timeline.map((step, idx) => (
+                  <div key={idx} className="flex gap-3 sm:gap-4 items-start relative">
+                    {idx !== trackingModalOrder.timeline.length - 1 && (
+                      /*
+                        Stretched between this node and the next one instead of a
+                        fixed height: a row is as tall as its description, so a
+                        40px segment left a visible gap in the line.
+                      */
+                      <div
+                        className={`absolute left-3.5 top-7 -bottom-4 w-0.5 ${
+                          step.completed ? "bg-primary" : "bg-[var(--border-color)]"
+                        }`}
+                      />
+                    )}
+                    <div
+                      className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 ${
+                        step.completed
+                          ? "bg-primary text-white shadow-xs"
+                          : step.current
+                            ? "bg-amber-400 text-amber-950 ring-4 ring-amber-100 dark:ring-amber-950/60 animate-pulse"
+                            : "bg-[var(--surface-alt)] text-[var(--foreground-muted)] border border-[var(--border-color)]"
+                      }`}
+                    >
+                      {step.completed ? (
+                        <CheckCircle2 className="w-4 h-4" />
+                      ) : (
+                        <Clock className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-bold text-[var(--foreground)]">
+                          {step.title}
+                        </p>
+                        <span className="text-[10px] text-[var(--foreground-muted)] font-medium shrink-0 text-right">
+                          {step.date}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
+                        {step.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="pt-4 border-t border-[var(--border-color)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
@@ -1449,7 +1472,7 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                   {trackingModalOrder.shippingAddress}
                 </span>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
                 {tracking?.delivery && (
                   <Button
                     onClick={refreshTracking}
