@@ -17,6 +17,11 @@ export type NotificationType =
   | "message"
   | "review"
   | "delivery"
+  // Addressed to the store team, about a marketplace account. The review desk
+  // writes these, so they must never be confused with an applicant's own
+  // `rider_application` / `vendor_application` line.
+  | "rider"
+  | "vendor"
   // Addressed to one account.
   | "order_placed"
   | "order_confirmed"

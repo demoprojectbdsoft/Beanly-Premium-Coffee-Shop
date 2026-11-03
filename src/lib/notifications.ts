@@ -47,6 +47,8 @@ export const NOTIFICATION_ICONS: Record<NotificationType, LucideIcon> = {
   message: Mail,
   review: Star,
   delivery: Truck,
+  rider: Bike,
+  vendor: Store,
   // Addressed to one account.
   order_placed: ShoppingBag,
   order_confirmed: CircleCheck,
@@ -85,6 +87,8 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   message: "Messages",
   review: "Reviews",
   delivery: "Deliveries",
+  rider: "Rider news",
+  vendor: "Seller news",
   order_placed: "Placed",
   order_confirmed: "Confirmed",
   order_processing: "Processing",
@@ -123,14 +127,18 @@ export const NOTIFICATION_TYPE_ORDER = Object.keys(
  * per kind of work: a request is answered, a delivery is opened. A customer's
  * delivery update carries the order id, so it opens the live tracking page —
  * the only screen with the rider's position and the code to read at the door.
- * Vendor types route to their relevant page; since the vendor dashboard is
- * still under construction, application events go to the public status page
- * and operational events go to the notifications list as a safe fallback.
+ *
+ * A `ref` is only used when the receiving screen can actually search for it.
+ * The review desk writes an application id, a subscription id or an account id
+ * into `ref` depending on which desk ran, and no board searches by those, so
+ * those lines open their board unfiltered rather than filter it down to an
+ * empty table — a filter nobody can read is worse than no filter.
  *
  * An empty string means "there is no screen for this activity" — the bell and
  * the list then draw the line without a link instead of sending the reader to
  * a page that has nothing to do with what happened. A false redirect is worse
- * than none: it drops a line on a screen that cannot show the thing it names.
+ * than none: it drops a line on a screen that cannot show the thing it names,
+ * which is why no feed ever falls back to a dashboard overview.
  */
 export function notificationHref(
   notification: Pick<NotificationItem, "type" | "ref">,
@@ -156,12 +164,18 @@ export function notificationHref(
         return `/dashboard/admin/messages${ref ? `?search=${ref}` : ""}`;
       case "review":
         return `/dashboard/admin/reviews${ref ? `?search=${ref}` : ""}`;
+      // The rider review desk is the applications table, newest first, so an
+      // application line opens the desk that can decide it.
+      case "rider":
       case "rider_application":
-        return `/dashboard/admin/riders${ref ? `?search=${ref}` : ""}`;
+        return "/dashboard/admin/riders";
+      case "vendor":
       case "vendor_application":
-        return `/dashboard/admin/vendors${ref ? `?search=${ref}` : ""}`;
+        return "/dashboard/admin/vendors";
+      // Everything else is somebody else's personal news; the shared board has
+      // no screen for it, so it stays where it is.
       default:
-        return "/dashboard/admin";
+        return "";
     }
   }
 
@@ -172,6 +186,10 @@ export function notificationHref(
     // application id that no order can ever match, i.e. an empty orders page.
     if (notification.type === "rider_application") return "/become-a-rider/status";
     if (notification.type === "vendor_application") return "/become-a-vendor/status";
+    // The desk's own lines never belong in a shopper's feed, but an account
+    // that holds two roles reads one collection, so refuse politely instead of
+    // sending the line to the order search below.
+    if (notification.type === "rider" || notification.type === "vendor") return "";
     // Delivery updates and the shipped line both carry the order id, and a
     // shipped order always has a rider on it, so either opens the live tracking
     // page rather than the orders list.
@@ -186,29 +204,52 @@ export function notificationHref(
   }
 
   if (view === "rider") {
-    // A rider already holds the workspace, so the applicant status page would
-    // only bounce them back to the dashboard. An application or account-status
-    // line has no rider-facing screen of its own, so it links nowhere — better
-    // to leave it where it is than to open an unrelated deliveries page.
-    if (notification.type === "rider_application") return "";
     // New delivery requests have their own screen.
     if (notification.type === "delivery_assigned") return "/dashboard/rider/requests";
     // Declined: send them back to requests so they can pick another.
     if (notification.type === "delivery_declined") return "/dashboard/rider/requests";
-    // A live delivery update is about one job the rider owns, so it opens the
-    // deliveries list filtered to it.
+    // A live delivery update is about one job the rider owns, and the rider's
+    // own list searches a job by its id, so the line opens that row.
     if (notification.type === "delivery_update") {
       return `/dashboard/rider/deliveries${ref ? `?search=${ref}` : ""}`;
     }
-    // Anything else has no screen we can honestly point a rider at.
+    // An application or an access decision has no rider-facing screen of its
+    // own: the applicant's status page bounces an approved rider straight back
+    // to this dashboard, so the line stays where it is rather than pretending.
+    if (notification.type === "rider_application" || notification.type === "rider") return "";
+    // A rider who also buys reads their order lines in the customer dashboard,
+    // not here. Anything else has no screen we can honestly point a rider at.
     return "";
   }
 
-  // Vendor: route to the relevant public page since the vendor dashboard is
-  // still under construction.
-  if (notification.type === "vendor_application") return "/become-a-vendor/status";
-  // Operational vendor notifications go to the notifications list as fallback.
-  return `/dashboard/vendor/notifications${ref ? `?search=${ref}` : ""}`;
+  // Vendor: the seller's own screens. Every operational type has a page, so a
+  // line lands on the desk that handles it instead of back on the notification
+  // list it came from — searching a list by an id no list stores would only
+  // blank the page the reader is standing on.
+  switch (notification.type) {
+    case "vendor_application":
+      return "/become-a-vendor/status";
+    case "vendor_order":
+    case "vendor_review":
+      return "/dashboard/vendor/orders";
+    case "vendor_product":
+    case "vendor_stock":
+      return "/dashboard/vendor/products";
+    case "vendor_promotion":
+      return "/dashboard/vendor/promotions";
+    case "vendor_coupon":
+      return "/dashboard/vendor/coupons";
+    case "vendor_subscription":
+    case "vendor_payment":
+    case "vendor_limit":
+      return "/dashboard/vendor/subscription";
+    case "vendor":
+      return "/dashboard/vendor";
+    // Order and delivery news belongs to the buyer and the courier, not the
+    // seller, so it is drawn here as text with no link.
+    default:
+      return "";
+  }
 }
 
 /** What an empty feed says, which depends on what the account can be told. */
