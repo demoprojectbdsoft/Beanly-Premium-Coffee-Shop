@@ -76,6 +76,14 @@ export interface AdminKPIs {
   deliverySuccessRate: number;
   totalProducts: number;
   totalTransactions: number;
+  /** What selling paid after the goods cost, before the riders are paid. */
+  grossProfit: number;
+  /**
+   * Fees the store has handed to riders for delivered jobs. Read from the
+   * payout ledger, because the fee belongs to the delivery, not to the order.
+   */
+  riderFeesPaid: number;
+  /** grossProfit minus riderFeesPaid — the number the store actually keeps. */
   totalProfit: number;
   totalCost: number;
   profitMargin: number;

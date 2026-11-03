@@ -196,7 +196,13 @@ export function aggregateAdminDashboard(
   rawUsers: RawUser[] = [],
   rawTransactions: RawTransaction[] = [],
   rawCategories: any[] = [],
-  currencySymbol: string = "$"
+  currencySymbol: string = "$",
+  /*
+   * What the store has paid riders for delivered jobs, read from the payout
+   * record rather than guessed from the orders: the fee lives on the delivery,
+   * and only the ledger knows which jobs actually closed.
+   */
+  riderFeesPaid: number = 0
 ) {
   const orders = Array.isArray(rawOrders) ? rawOrders : [];
   const products = Array.isArray(rawProducts) ? rawProducts : [];
@@ -657,11 +663,21 @@ export function aggregateAdminDashboard(
   }));
 
   // Overall profit / cost totals
-  const totalProfit = topProducts.reduce((s, p) => s + (p.profit || 0), 0) +
+  const grossProfit = topProducts.reduce((s, p) => s + (p.profit || 0), 0) +
     Object.values(productSalesMap)
       .filter((_, i) => i >= 5)
       .reduce((s, p) => s + (p.profit || 0), 0);
   const totalCost = Object.values(productSalesMap).reduce((s, p) => s + (p.cost || 0), 0);
+
+  /*
+   * Carrying a parcel is not free: the fee the store set on a job leaves the
+   * profit the moment the hand-over is confirmed, by the rider's code or by the
+   * customer's own answer. It is subtracted once, here, from the totals rather
+   * than from every product's margin, because the fee belongs to the delivery
+   * and not to any one line in the box.
+   */
+  const feesPaid = Math.max(0, Math.round((riderFeesPaid || 0) * 100) / 100);
+  const totalProfit = grossProfit - feesPaid;
   const profitMargin = totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 100 * 10) / 10 : 0;
 
   // Key Performance Indicators (KPIs)
@@ -675,6 +691,8 @@ export function aggregateAdminDashboard(
     totalTransactions: transactions.length || orders.length,
     totalProfit: Math.round(totalProfit * 100) / 100,
     totalCost: Math.round(totalCost * 100) / 100,
+    grossProfit: Math.round(grossProfit * 100) / 100,
+    riderFeesPaid: feesPaid,
     profitMargin,
   };
 
@@ -690,7 +708,12 @@ export function aggregateAdminDashboard(
     {
       title: "Net Profit",
       value: `${currencySymbol}${Math.max(0, totalProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      change: totalProfit >= 0 ? `${profitMargin}% profit margin` : `Loss: ${currencySymbol}${Math.abs(totalProfit).toFixed(2)}`,
+      change:
+        feesPaid > 0
+          ? `After ${currencySymbol}${feesPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} paid to riders`
+          : totalProfit >= 0
+          ? `${profitMargin}% profit margin`
+          : `Loss: ${currencySymbol}${Math.abs(totalProfit).toFixed(2)}`,
       isPositive: totalProfit >= 0,
       iconName: "TrendingUp",
     },

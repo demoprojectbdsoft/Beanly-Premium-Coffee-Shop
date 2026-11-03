@@ -312,6 +312,15 @@ export default function OverviewClient({
             </div>
             <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
               Revenue vs. cost vs. net profit breakdown by period
+              {/*
+                The per-period lines are product margins, so they cannot see the
+                riders: a delivery fee belongs to the job, not to any line in the
+                box. It is counted once, in the total, and the payout record
+                behind it is its own page.
+              */}
+              {kpis.riderFeesPaid > 0 && (
+                <>· rider fees come off the total, <Link href="/dashboard/admin/payouts" className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">see the payout record</Link></>
+              )}
             </p>
           </div>
 
@@ -334,7 +343,7 @@ export default function OverviewClient({
         </div>
 
         {/* KPI Row */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="p-3 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20">
             <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Total Revenue</p>
             <p className="text-lg font-black text-[var(--foreground)] mt-0.5">
@@ -347,6 +356,25 @@ export default function OverviewClient({
             <p className="text-[10px] font-bold uppercase tracking-wider text-rose-500">Total Cost</p>
             <p className="text-lg font-black text-[var(--foreground)] mt-0.5">
               ${(profitChartData?.reduce((s, d) => s + d.cost, 0) ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </div>
+          {/*
+            What the parcels cost to move. The number arrives from the payout
+            ledger rather than from these tiles, so it is the one line here a
+            store cannot re-derive from the chart above it.
+          */}
+          <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+              Rider Fees Paid
+            </p>
+            <p className="text-lg font-black text-[var(--foreground)] mt-0.5">
+              {currencySymbol}
+              {kpis.riderFeesPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <p className="text-[10px] text-[var(--foreground-muted)] mt-0.5">
+              {kpis.riderFeesPaid > 0
+                ? `${currencySymbol}${kpis.grossProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} before it was taken off`
+                : "No delivered job has paid a rider yet"}
             </p>
           </div>
           <div className={`p-3 rounded-xl border ${
