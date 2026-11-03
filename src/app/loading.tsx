@@ -57,8 +57,11 @@ export default function Loading() {
   // First letter of site name as monogram
   const monogram = siteName.charAt(0).toUpperCase();
 
+  /* `fixed inset-0` already is the viewport; the old `h-screen w-screen`
+     measured 100vw/100vh on top of it, which is wider and taller than the
+     visible area on a phone and made the loading screen itself scrollable. */
   return (
-    <div className="fixed inset-0 z-50 h-screen w-screen overflow-hidden bg-[var(--background)] flex flex-col items-center justify-center select-none">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-[var(--background)] flex flex-col items-center justify-center select-none">
 
       {/* ── Diagonal Grid Pattern Background ── */}
       <div

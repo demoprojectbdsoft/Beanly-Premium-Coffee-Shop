@@ -543,7 +543,7 @@ export default function AdminMessagesClient({
           }}
         >
           <Modal.Container size="lg">
-            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto text-[var(--foreground)]">
+            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 shadow-2xl space-y-5 max-h-[90dvh] overflow-y-auto text-[var(--foreground)]">
               {selected && (
                 <>
                   <Modal.Header className="border-b border-[var(--border-color)] pb-4">
@@ -702,7 +702,7 @@ export default function AdminMessagesClient({
       >
         <Modal.Backdrop isDismissable={!isSendingReply}>
           <Modal.Container size="lg">
-            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto text-[var(--foreground)]">
+            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 shadow-2xl max-h-[90dvh] overflow-y-auto text-[var(--foreground)]">
               {selected && (
                 <div className="space-y-5">
                   <div className="flex items-center gap-3 border-b border-[var(--border-color)] pb-4">

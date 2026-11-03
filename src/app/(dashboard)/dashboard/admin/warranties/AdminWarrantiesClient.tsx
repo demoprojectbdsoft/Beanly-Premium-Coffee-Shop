@@ -716,7 +716,7 @@ export default function AdminWarrantiesClient({
         */}
         <Modal.Backdrop isDismissable={!isSubmitting}>
           <Modal.Container size="lg">
-            <Modal.Dialog className="bg-[var(--surface-elevated)] rounded-3xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <Modal.Dialog className="bg-[var(--surface-elevated)] rounded-3xl p-6 shadow-2xl max-h-[90dvh] overflow-y-auto">
               {selectedWarranty && (
                 <div className="space-y-6">
                   <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
@@ -1060,7 +1060,7 @@ export default function AdminWarrantiesClient({
       >
         <Modal.Backdrop isDismissable={!isSendingEmail}>
           <Modal.Container size="lg">
-            <Modal.Dialog className="bg-[var(--surface-elevated)] rounded-3xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <Modal.Dialog className="bg-[var(--surface-elevated)] rounded-3xl p-6 shadow-2xl max-h-[90dvh] overflow-y-auto">
               {selectedWarranty && (
                 <div className="space-y-5">
                   <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">

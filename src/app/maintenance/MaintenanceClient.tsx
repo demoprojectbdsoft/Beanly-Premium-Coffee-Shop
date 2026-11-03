@@ -193,6 +193,10 @@ export default function MaintenancePage({ settings: serverSettings }: Props) {
 
     .maint-page {
       min-height: 100vh;
+      /* The dynamic height, so a phone's address bar does not leave a strip of
+         empty page under the fold; the vh line above is the fallback for older
+         browsers that have no unit for the visible box. */
+      min-height: 100dvh;
       background: var(--background);
       color: var(--foreground);
       position: relative;

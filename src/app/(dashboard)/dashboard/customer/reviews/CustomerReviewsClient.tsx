@@ -675,7 +675,7 @@ export default function CustomerReviewsClient({
           }}
         >
           <Modal.Container size="md">
-            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] dark:border-[var(--border-color)] rounded-3xl p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] dark:border-[var(--border-color)] rounded-3xl p-6 shadow-2xl space-y-6 max-h-[90dvh] overflow-y-auto">
               {selectedReview && (
                 <>
                   {/* Modal Header */}

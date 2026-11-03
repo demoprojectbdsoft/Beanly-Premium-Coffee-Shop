@@ -112,6 +112,11 @@ function CompleteForm({
 
       <Modal.Body className="space-y-3">
         <form onSubmit={handleSubmit} className="space-y-3">
+          {/* The code is six digits read out loud in a doorway, usually on a
+              phone. Wide letter-spacing is what makes the groups countable, but
+              at full size it is also what pushes the last digit past the edge of
+              a small dialog — so the size and the spacing both step down on a
+              phone and come back up from `sm`. */}
           <input
             autoFocus
             inputMode="numeric"
@@ -123,7 +128,8 @@ function CompleteForm({
               setError("");
             }}
             placeholder="••••••"
-            className="w-full text-center tracking-[0.6em] text-2xl font-extrabold py-3 bg-[var(--surface-alt)] border border-[var(--border-color)] rounded-2xl text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-flat)]/30 focus:border-[var(--brand-flat)]"
+            aria-label="Delivery verification code"
+            className="w-full min-w-0 text-center tracking-[0.3em] sm:tracking-[0.6em] text-xl sm:text-2xl font-extrabold py-3 bg-[var(--surface-alt)] border border-[var(--border-color)] rounded-2xl text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-flat)]/30 focus:border-[var(--brand-flat)]"
           />
 
           {error && (

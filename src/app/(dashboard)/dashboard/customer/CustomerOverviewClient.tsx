@@ -965,8 +965,10 @@ export default function CustomerOverviewClient({
 
       {/* ── Interactive Order Tracking Modal ── */}
       {selectedOrderForTracking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-[var(--surface)] border border-[var(--border-color)] rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-6">
+        /* Scrolls, and sits at the top of a short screen: a centred timeline
+           longer than the viewport loses its first steps behind the top edge. */
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-start justify-center p-4 sm:items-center bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-[var(--surface)] border border-[var(--border-color)] rounded-3xl p-4 sm:p-6 max-w-lg w-full min-w-0 my-auto shadow-2xl space-y-4 sm:space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-[var(--border-color)]">
               <div>
                 <div className="flex items-center gap-2">

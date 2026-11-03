@@ -578,7 +578,7 @@ export default function AdminDeliveriesClient({
       <Modal isOpen={Boolean(detail)} onOpenChange={(open) => !open && setDetail(null)}>
         <Modal.Backdrop>
           <Modal.Container size="lg">
-            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto text-[var(--foreground)]">
+            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 shadow-2xl space-y-5 max-h-[90dvh] overflow-y-auto text-[var(--foreground)]">
               {detail && (
                 <>
                   <Modal.Header className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-[var(--border-color)] pb-4">

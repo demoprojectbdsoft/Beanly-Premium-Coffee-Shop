@@ -1603,7 +1603,7 @@ export default function ProductDetailsPage({
         }}
       >
         <Modal.Container>
-          <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-2xl shadow-2xl overflow-hidden p-6 space-y-5 max-h-[90vh] overflow-y-auto w-full max-w-lg">
+          <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-2xl shadow-2xl overflow-hidden p-6 space-y-5 max-h-[90dvh] overflow-y-auto w-full max-w-lg">
           <Modal.Header className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
             <Modal.Heading className="text-base font-bold text-[var(--foreground)]">
               Edit Review

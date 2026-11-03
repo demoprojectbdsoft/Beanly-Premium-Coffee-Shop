@@ -426,8 +426,10 @@ export default function HomeSliderClient({
       {/* ── Toolbar: Search & Filter ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          {/* Search bar */}
-          <div className="relative min-w-[260px] sm:w-80">
+          {/* Search bar — full line on a phone, fixed desk width from `sm`. A
+              `min-w` floor cannot be shrunk away and used to push this row past
+              the edge of a small screen. */}
+          <div className="relative w-full sm:w-80">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--foreground-muted)] z-10" />
             <Input
               type="text"
@@ -673,7 +675,7 @@ export default function HomeSliderClient({
       <Modal isOpen={isFormModalOpen} onOpenChange={setIsFormModalOpen}>
         <Modal.Backdrop>
           <Modal.Container size="lg">
-            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto text-[var(--foreground)]">
+            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 shadow-2xl space-y-6 max-h-[90dvh] overflow-y-auto text-[var(--foreground)]">
               <Modal.Header className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
                 <Modal.Heading className="text-base font-bold text-[var(--foreground)] flex items-center gap-2">
                   <SlidersHorizontal className="w-4 h-4 text-primary" />

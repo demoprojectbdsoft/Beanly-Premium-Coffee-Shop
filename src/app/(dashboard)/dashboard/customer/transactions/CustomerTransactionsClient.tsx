@@ -578,8 +578,11 @@ export default function CustomerTransactionsClient({
 
       {/* ── Add Card Modal ── */}
       {isAddCardOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--surface)]/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-[var(--surface-elevated)] border border-[var(--border-color)] dark:border-[var(--border-color)] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5">
+        /* The overlay scrolls, and the card starts at the top while the screen
+           is shorter than the form: centred content that overflows a fixed
+           layer loses its header, and there is no way to scroll back to it. */
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-start justify-center p-4 sm:items-center bg-[var(--surface)]/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-[var(--surface-elevated)] border border-[var(--border-color)] dark:border-[var(--border-color)] rounded-3xl max-w-md w-full min-w-0 p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 my-auto">
             <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
               <h3 className="text-base font-bold text-[var(--foreground)]">
                 Add Payment Method

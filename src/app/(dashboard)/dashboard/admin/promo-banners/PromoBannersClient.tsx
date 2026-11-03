@@ -362,7 +362,7 @@ export default function PromoBannersClient({
       >
         <Modal.Backdrop>
           <Modal.Container size="lg">
-            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto text-[var(--foreground)]">
+            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 shadow-2xl space-y-6 max-h-[90dvh] overflow-y-auto text-[var(--foreground)]">
               <Modal.Header className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
                 <Modal.Heading className="text-base font-bold text-[var(--foreground)] flex items-center gap-2">
                   <Megaphone className="w-4 h-4 text-primary" />

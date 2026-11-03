@@ -646,8 +646,11 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
       {/* Checkout */}
       {checkoutPlan && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 backdrop-blur-xs sm:items-center">
-          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] shadow-xl">
-            <div className="flex items-start justify-between gap-3 border-b border-[var(--border-color)] px-4 py-3">
+          {/* The sheet is capped to the visible screen and scrolls its own body,
+              so a tall checkout on a short phone never runs off the top: an
+              anchored bottom sheet has no scroll of its own to rescue it. */}
+          <div className="flex w-full max-w-md min-w-0 max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] shadow-xl">
+            <div className="shrink-0 flex items-start justify-between gap-3 border-b border-[var(--border-color)] px-4 py-3">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
                   {checkoutPlan.id === plan.id ? "Renew" : actionFor(checkoutPlan).label} ·{" "}
@@ -666,7 +669,7 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
               </button>
             </div>
 
-            <div className="space-y-4 px-4 py-4">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-4 px-4 py-4">
               <div className="flex items-center justify-between rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)]/60 px-3 py-2.5">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--foreground-muted)]">
                   Total
@@ -727,7 +730,7 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-[var(--border-color)] px-4 py-3">
+            <div className="shrink-0 flex items-center justify-end gap-2 border-t border-[var(--border-color)] px-4 py-3">
               <button
                 type="button"
                 onClick={closeCheckout}

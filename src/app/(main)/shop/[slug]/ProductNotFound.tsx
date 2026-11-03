@@ -25,7 +25,7 @@ export default function ProductNotFound({ slug }: ProductNotFoundProps) {
   ];
 
   return (
-    <div className="relative min-h-[70vh] flex items-center justify-center py-12 px-4">
+    <div className="relative min-h-[70dvh] flex items-center justify-center py-12 px-4">
       {/* Ambient background glow effects */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-primary/10 dark:bg-primary/15 rounded-full blur-3xl pointer-events-none -z-10" />
       <div className="absolute bottom-10 right-1/4 w-80 h-80 bg-secondary/10 dark:bg-secondary/15 rounded-full blur-3xl pointer-events-none -z-10" />

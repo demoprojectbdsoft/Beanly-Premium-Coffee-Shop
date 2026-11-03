@@ -85,8 +85,8 @@ export default function WalletPaymentModal({
   }, [onSuccess]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--surface)]/75 animate-in fade-in duration-150">
-      <div className="relative w-full max-w-sm bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 overflow-y-auto flex items-start justify-center p-4 sm:items-center bg-[var(--surface)]/75 animate-in fade-in duration-150">
+      <div className="relative w-full max-w-sm min-w-0 my-auto bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
         {/* ── Gateway brand header ── */}
         <div
           className={`px-4 py-3 bg-gradient-to-r ${headerGradient} text-white flex items-center justify-between`}

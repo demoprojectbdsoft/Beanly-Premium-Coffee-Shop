@@ -1811,7 +1811,7 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
         */}
         <Modal.Backdrop isDismissable={!isSubmittingClaim && !isUploading}>
           <Modal.Container size="lg">
-            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 shadow-2xl space-y-5 max-h-[85vh] overflow-y-auto">
+            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 shadow-2xl space-y-5 max-h-[85dvh] overflow-y-auto">
               <div className="flex items-start justify-between gap-3 border-b border-[var(--border-color)] pb-4">
                 <div className="flex items-start gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">

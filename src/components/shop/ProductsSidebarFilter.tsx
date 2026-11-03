@@ -319,7 +319,7 @@ export default function ProductsSidebarFilter({}: ProductsSidebarFilterProps) {
       </div>
 
       {/* Desktop Sticky Sidebar (>= lg screens) */}
-      <aside className="hidden lg:block w-64 xl:w-72 shrink-0 sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto">
+      <aside className="hidden lg:block w-64 xl:w-72 shrink-0 sticky top-24 max-h-[calc(100dvh-120px)] overflow-y-auto">
         <div className="bg-[var(--surface-elevated)] rounded-2xl border border-[var(--border-color)] shadow-xs p-5">
           {filterContent}
         </div>

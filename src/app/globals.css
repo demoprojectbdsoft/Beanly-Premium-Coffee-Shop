@@ -470,6 +470,110 @@ dialog,
   backdrop-filter: blur(4px);
 }
 
+/* ─── Small-Device Overflow Guards ─────────────────────────────────────────── */
+
+/*
+  Nothing may be wider than the screen it is on.
+
+  On a phone a single fixed-size child — an image, a map tile, a long order id
+  with no space in it, a code field typed with wide letter-spacing — is enough to
+  push the whole document sideways. The page then has a horizontal scroll nobody
+  knows about, and the first thing that disappears off the edge is the thing the
+  reader needed: the modal's confirm button, the sidebar's footer, the last
+  column of a table. Tables are already wrapped in their own scroll boxes, so
+  these rules are about everything else.
+*/
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+body {
+  /* Inherited by everything, including a dialog's text. A breakable word is a
+     line break, not an overflow. */
+  overflow-wrap: break-word;
+}
+
+/*
+  A screen measured in `vh` is taller than the glass.
+
+  While a phone's address bar is up, `100vh` counts the strip the browser is
+  sitting on: a full-height page then ends with a gap nobody can reach, and a
+  card centred inside it sits low, with its confirm button under the bar. `dvh`
+  is the part of the page the reader can actually see.
+
+  This overrides Tailwind's own utility rather than being re-typed at every call
+  site, because the same mistake would otherwise appear on the next page too. On
+  a desktop browser the two units are identical, so nothing changes there.
+*/
+.min-h-screen {
+  min-height: 100dvh;
+}
+
+.h-screen {
+  height: 100dvh;
+}
+
+/*
+  Every HeroUI modal, alert and drawer, sized to the device.
+
+  On a phone the desktop frame is what breaks: a 40px gutter plus 24px of panel
+  padding eats a fifth of the width before any content is drawn, and a dialog
+  that cannot shrink hands its overflow to the page. So the gutter and the panel
+  come down, the dialog is allowed to shrink to what is left, and on the narrow
+  phones the footer stacks into full-width buttons — two labels squeezed into one
+  row is how a "Cancel" ends up reading as "Confirm".
+
+  Vertical scrolling is already the component's own job (`scroll="inside"` gives
+  the body its own bar), which is why nothing here touches height.
+
+  These rules sit outside Tailwind's layers on purpose: they have to hold across
+  all twenty-odd dialogs in the app rather than be re-typed at every call site.
+*/
+.modal__dialog {
+  /* A flex child that is not allowed to shrink lets one long word set its
+     width, and the dialog then hangs past the screen. */
+  min-width: 0;
+}
+
+@media (max-width: 639px) {
+  .modal__container {
+    padding: 0.75rem;
+  }
+
+  .modal__dialog {
+    /* The size variants (`sm`, `md`, `lg`) are desktop widths. On a phone the
+       screen is the width, and the dialog keeps its own max-width above this
+       breakpoint. */
+    max-width: 100%;
+    padding: 1.25rem;
+  }
+
+  .modal__header {
+    gap: 0.625rem;
+  }
+
+  .modal__body + .modal__footer,
+  .modal__header + .modal__footer {
+    margin-top: 1rem;
+  }
+}
+
+@media (max-width: 479px) {
+  .modal__footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.5rem;
+  }
+
+  .modal__footer > * {
+    width: 100%;
+  }
+}
+
 /* ─── Selection Styling (selected text for copy) ────────────────────────────── */
 ::selection {
   background-color: var(--brand-flat);

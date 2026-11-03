@@ -78,9 +78,14 @@ export default function CartButton({
         )}
       </div>
 
-      {/* Optional subtotal price display */}
+      {/* Optional subtotal price display
+
+          The subtotal is a nowrap string that starts pushing the whole bar past
+          the screen as soon as a phone holds a hamburger, a bell, a basket and
+          an avatar. It appears from `sm` up; the icon and its count badge stay
+          on every screen, because the count is the thing a shopper checks. */}
       {Boolean(user) && showTotal && (
-        <span className="text-xs sm:text-sm font-bold text-[var(--foreground)] group-hover:text-primary transition-colors whitespace-nowrap">
+        <span className="hidden sm:inline text-xs sm:text-sm font-bold text-[var(--foreground)] group-hover:text-primary transition-colors whitespace-nowrap">
           {total}
         </span>
       )}

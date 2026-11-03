@@ -945,7 +945,7 @@ export default function ProductsClient({
       <Modal isOpen={isEditOpen} onOpenChange={setIsEditOpen}>
         <Modal.Backdrop>
           <Modal.Container size="lg">
-            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto text-[var(--foreground)]">
+            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90dvh] overflow-y-auto text-[var(--foreground)]">
               <Modal.Header className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
                 <div>
                   <Modal.Heading className="text-lg font-extrabold text-[var(--foreground)]">

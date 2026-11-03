@@ -5,8 +5,11 @@ import Link from "next/link";
 import { Home, Search, ShoppingBag, Sparkles } from "lucide-react";
 
 export default function NotFound() {
+  /* `min-h-[100dvh]` for the same reason as the forbidden screen: a locked
+     `h-screen` is taller than the visible phone screen and clipped its own
+     copy under `overflow-hidden` on a short one. */
   return (
-    <main className="h-screen max-h-screen w-full flex flex-col items-center justify-center px-4 py-4 sm:py-6 relative overflow-hidden bg-[var(--background)]">
+    <main className="min-h-[100dvh] w-full flex flex-col items-center justify-center px-4 py-4 sm:py-6 relative overflow-hidden bg-[var(--background)]">
       {/* ── Seamless Ambient Radial Glow Backdrop ── */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,var(--primary),transparent)] opacity-15 pointer-events-none" />
 

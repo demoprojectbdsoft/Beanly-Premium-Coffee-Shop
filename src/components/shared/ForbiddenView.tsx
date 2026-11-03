@@ -16,8 +16,12 @@ import {
 export default function ForbiddenView() {
   const router = useRouter();
 
+  /* `min-h-[100dvh]` rather than `h-screen max-h-screen`: a locked height of
+     100vh is taller than the visible screen while a phone's address bar is up,
+     and a fixed height plus `overflow-hidden` silently clipped the copy on a
+     short landscape screen. The box now fills the view and grows instead. */
   return (
-    <main className="h-screen max-h-screen w-full flex flex-col items-center justify-center px-4 py-4 sm:py-6 relative overflow-hidden bg-[var(--background)]">
+    <main className="min-h-[100dvh] w-full flex flex-col items-center justify-center px-4 py-4 sm:py-6 relative overflow-hidden bg-[var(--background)]">
       {/* ── Seamless Ambient Radial Glow Backdrop ── */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,var(--primary),transparent)] opacity-15 pointer-events-none" />
 

@@ -192,7 +192,7 @@ export default function ImageGalleryModal({
         {/* Active Image */}
         <div
           onClick={() => setIsZoomed((prev) => !prev)}
-          className={`relative max-w-full max-h-[72vh] flex items-center justify-center transition-all duration-300 cursor-pointer touch-manipulation ${
+          className={`relative max-w-full max-h-[72dvh] flex items-center justify-center transition-all duration-300 cursor-pointer touch-manipulation ${
             isZoomed ? "scale-125 cursor-zoom-out" : "cursor-zoom-in"
           }`}
         >
@@ -201,7 +201,7 @@ export default function ImageGalleryModal({
             key={currentImage}
             src={currentImage}
             alt={`${productTitle} - Image ${currentIndex + 1}`}
-            className="max-h-[70vh] max-w-[88vw] object-contain rounded-2xl shadow-2xl transition-all duration-300 pointer-events-auto border border-[var(--border-color)]/50"
+            className="max-h-[70dvh] max-w-[88vw] object-contain rounded-2xl shadow-2xl transition-all duration-300 pointer-events-auto border border-[var(--border-color)]/50"
           />
         </div>
 
@@ -223,7 +223,13 @@ export default function ImageGalleryModal({
 
       {/* ── Bottom Thumbnails Strip ── */}
       <div className="px-4 py-3 border-t border-[var(--border-color)] bg-[var(--surface-elevated)]/90 backdrop-blur-md z-20">
-        <div className="flex items-center justify-center gap-2.5 overflow-x-auto max-w-4xl mx-auto py-1 scrollbar-thin">
+        {/* `w-max max-w-full` rather than `justify-center`: a centred flex row
+            inside a scroll container hides its first and last thumbnail as soon
+            as the row is wider than the screen, because the overflow runs off
+            both ends and only one of them can be scrolled to. Sized to its own
+            content and capped by the screen, the strip still sits in the middle
+            when it fits and scrolls normally when it does not. */}
+        <div className="flex items-center gap-2.5 w-max max-w-[min(100%,56rem)] mx-auto overflow-x-auto py-1 scrollbar-thin">
           {images.map((img, idx) => {
             const isActive = idx === currentIndex;
             return (
