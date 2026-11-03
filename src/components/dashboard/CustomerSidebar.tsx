@@ -25,6 +25,7 @@ import { authClient } from "@/lib/auth-client";
 import { toast } from "react-toastify";
 import SparqLogo from "@/components/shared/SparqLogo";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
+import { rolesOf } from "@/lib/core/roles";
 
 const CUSTOMER_NAV_ITEMS = [
   { name: "Overview", href: "/dashboard/customer", icon: LayoutDashboard },
@@ -38,11 +39,23 @@ const CUSTOMER_NAV_ITEMS = [
 const CUSTOMER_ACCOUNT_ITEMS = [
   { name: "My Profile", href: "/dashboard/customer/profile", icon: User },
   { name: "Settings", href: "/dashboard/customer/settings", icon: Settings },
-  // The conversion entries: an existing customer opens either marketplace
-  // application from the account they already have, never a second signup.
-  { name: "Become a Vendor", href: "/become-a-vendor", icon: Store },
-  { name: "Become a Rider", href: "/become-a-rider", icon: Bike },
 ];
+
+/**
+ * The two marketplace applications, offered only while the account has not been
+ * approved for them.
+ *
+ * They are listed here and not as dashboard links on purpose: an application
+ * page belongs to the storefront, while another role's dashboard belongs to that
+ * role's own workspace, reachable from the account menu. A customer who became a
+ * seller and still sees "Seller Dashboard" in the buyer sidebar has two buttons
+ * that look like they belong to the same shop and are not, which is exactly how
+ * people end up unsure which dashboard they are typing in.
+ */
+const CUSTOMER_APPLICATION_ITEMS = [
+  { name: "Become a Vendor", href: "/become-a-vendor", icon: Store, role: "vendor" },
+  { name: "Become a Rider", href: "/become-a-rider", icon: Bike, role: "rider" },
+] as const;
 
 /** Maps raw member string to a proper display label */
 function formatMemberTier(member?: string | null): string {
@@ -86,27 +99,18 @@ export default function CustomerSidebar({ isOpen, onClose }: CustomerSidebarProp
   } | undefined;
 
   // Multi-role design: the approved array is the truth, `role` is only the
-  // dashboard alias. A customer who later becomes a vendor or a rider keeps
-  // the same buyer account, so the sidebar entries flip to their respective
-  // workspaces without losing the buyer pages.
-  const approved = ((): string[] => {
-    const raw = sessionUser?.roles;
-    if (Array.isArray(raw)) return raw.map((r) => String(r).toLowerCase());
-    if (typeof raw === "string" && raw) return raw.split(",").map((r) => r.trim().toLowerCase());
-    const single = String(sessionUser?.role || "").toLowerCase();
-    return single ? [single] : [];
-  })();
-  const isVendor = approved.includes("vendor");
-  const isRider = approved.includes("rider");
-  const accountItems = CUSTOMER_ACCOUNT_ITEMS.map((item) => {
-    if (item.href === "/become-a-vendor" && isVendor) {
-      return { name: "Seller Dashboard", href: "/dashboard/vendor", icon: Store };
-    }
-    if (item.href === "/become-a-rider" && isRider) {
-      return { name: "Rider Dashboard", href: "/dashboard/rider", icon: Bike };
-    }
-    return item;
-  });
+  // dashboard alias. Becoming a vendor or a rider changes what else the account
+  // can open, not what this buyer sidebar lists — so the array is only consulted
+  // to hide an application the account has already won.
+  const approved = rolesOf(sessionUser);
+  const accountItems = [
+    ...CUSTOMER_ACCOUNT_ITEMS,
+    ...CUSTOMER_APPLICATION_ITEMS.filter((item) => !approved.includes(item.role)).map((item) => ({
+      name: item.name,
+      href: item.href,
+      icon: item.icon,
+    })),
+  ];
 
   // Live member/points fetched from DB
   const [liveData, setLiveData] = useState<{
@@ -164,19 +168,25 @@ export default function CustomerSidebar({ isOpen, onClose }: CustomerSidebarProp
         />
       )}
 
-      {/* Off-canvas Sidebar Panel */}
+      {/* Off-canvas Sidebar Panel
+         
+         `h-[100dvh]` instead of `h-screen`: on a phone the address bar is part
+         of the viewport, so a 100vh column is taller than the screen and its
+         footer (tier card, back to store, sign out) sits below the fold with no
+         way to reach it. The nav area then takes whatever height is left and
+         scrolls on its own, so the column never grows past the device. */}
       <aside
-        className={`fixed lg:sticky top-0 left-0 z-40 w-64 h-screen bg-[var(--surface-elevated)] border-r border-[var(--border-color)] flex flex-col justify-between shrink-0 transition-transform duration-300 ease-in-out shadow-xs ${
+        className={`fixed lg:sticky top-0 left-0 z-40 w-64 max-w-[85vw] h-[100dvh] bg-[var(--surface-elevated)] border-r border-[var(--border-color)] flex flex-col shrink-0 transition-transform duration-300 ease-in-out shadow-xs ${
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         {/* Scrollable Navigation Area */}
-        <div className="p-6 space-y-6 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 space-y-6">
           {/* Header & Close Button */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <SparqLogo size="sm" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--brand-flat)] bg-[var(--brand-flat)]/10 border border-[var(--brand-flat)]/25 px-2 py-0.5 rounded-md shadow-2xs">
+              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--brand-flat)] bg-[var(--brand-flat)]/10 border border-[var(--brand-flat)]/25 px-2 py-0.5 rounded-md shadow-2xs">
                 Customer
               </span>
             </div>
@@ -252,7 +262,7 @@ export default function CustomerSidebar({ isOpen, onClose }: CustomerSidebarProp
         </div>
 
         {/* Sidebar Footer with Loyalty Tier & Back to Store */}
-        <div className="p-4 border-t border-[var(--border-color)] space-y-3 bg-[var(--surface-alt)]">
+        <div className="shrink-0 p-4 border-t border-[var(--border-color)] space-y-3 bg-[var(--surface-alt)]">
           {/* Rewards Card — live data */}
           <div className="p-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-color)] shadow-2xs flex items-center justify-between">
             <div className="flex items-center gap-2.5">

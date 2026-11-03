@@ -83,16 +83,20 @@ export default function RiderSidebar({ isOpen, onClose }: RiderSidebarProps) {
         />
       )}
 
+      {/* `h-[100dvh]` and a scroll area that takes the height left over: on a
+          phone a 100vh column is taller than the visible screen, so the rider's
+          own footer (online status, back to store, sign out) fell below the
+          fold and could not be reached. */}
       <aside
-        className={`fixed lg:sticky top-0 left-0 z-40 w-64 h-screen bg-[var(--surface-elevated)] border-r border-[var(--border-color)] flex flex-col justify-between shrink-0 transition-transform duration-300 ease-in-out shadow-xs ${
+        className={`fixed lg:sticky top-0 left-0 z-40 w-64 max-w-[85vw] h-[100dvh] bg-[var(--surface-elevated)] border-r border-[var(--border-color)] flex flex-col shrink-0 transition-transform duration-300 ease-in-out shadow-xs ${
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        <div className="p-5 space-y-5 overflow-y-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 space-y-5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <SparqLogo size="sm" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--brand-flat)] bg-[var(--brand-flat)]/10 border border-[var(--brand-flat)]/25 px-2 py-0.5 rounded-md shadow-2xs">
+              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--brand-flat)] bg-[var(--brand-flat)]/10 border border-[var(--brand-flat)]/25 px-2 py-0.5 rounded-md shadow-2xs">
                 Rider
               </span>
             </div>
@@ -139,7 +143,7 @@ export default function RiderSidebar({ isOpen, onClose }: RiderSidebarProps) {
           ))}
         </div>
 
-        <div className="p-4 border-t border-[var(--border-color)] space-y-3 bg-[var(--surface-alt)]">
+        <div className="shrink-0 p-4 border-t border-[var(--border-color)] space-y-3 bg-[var(--surface-alt)]">
           <div className="p-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-color)] shadow-2xs flex items-center justify-between">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-brand-gradient flex items-center justify-center text-[var(--on-grad-text)] shadow-xs shrink-0">

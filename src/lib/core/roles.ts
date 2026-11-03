@@ -175,3 +175,134 @@ export function resolveActiveRole(user: RoleCarrier): string {
   }
   return pool.find((role) => role === "customer" || !suspended.includes(role)) || pool[0] || "customer";
 }
+
+/**
+ * The dashboards the shell can draw.
+ *
+ * One entry per sidebar, so `demoadmin` is its own value even though it shares
+ * every admin route — the label has to keep saying "Demo admin".
+ */
+export type WorkspaceRole = "admin" | "demoadmin" | "rider" | "vendor" | "customer";
+
+/** The workspace a path belongs to, read from the URL alone. */
+export function workspaceOfPath(pathname: string | null | undefined): WorkspaceRole | null {
+  const [, segment] = (pathname || "").split("/").filter(Boolean);
+  if (segment === "admin") return "admin";
+  if (segment === "rider") return "rider";
+  if (segment === "vendor") return "vendor";
+  if (segment === "customer") return "customer";
+  return null;
+}
+
+/** The words each workspace prints in the shell. */
+export const WORKSPACE_LABELS: Record<WorkspaceRole, string> = {
+  admin: "Admin",
+  demoadmin: "Demo admin",
+  rider: "Rider",
+  vendor: "Seller",
+  customer: "Customer",
+};
+
+/** The dashboard each workspace's switch lands on. */
+export const WORKSPACE_HREFS: Record<WorkspaceRole, string> = {
+  admin: "/dashboard/admin",
+  demoadmin: "/dashboard/admin",
+  rider: "/dashboard/rider",
+  vendor: "/dashboard/vendor",
+  customer: "/dashboard/customer",
+};
+
+/**
+ * The account screens each workspace owns.
+ *
+ * Every dashboard keeps its own profile, settings and order list under its own
+ * path, because they are different screens with different answers: a rider's
+ * settings are availability and vehicle, a seller's are the shop, a buyer's are
+ * addresses and payment. Pointing every role at one shared page is how people
+ * end up editing the wrong account, and `/dashboard/profile` and
+ * `/dashboard/settings` only exist as redirects for links written before the
+ * workspaces split — nothing in the shell should land on them.
+ */
+export const WORKSPACE_PROFILES: Record<WorkspaceRole, string> = {
+  admin: "/dashboard/admin/profile",
+  demoadmin: "/dashboard/admin/profile",
+  rider: "/dashboard/rider/profile",
+  vendor: "/dashboard/vendor/profile",
+  customer: "/dashboard/customer/profile",
+};
+
+export const WORKSPACE_SETTINGS: Record<WorkspaceRole, string> = {
+  admin: "/dashboard/admin/settings",
+  demoadmin: "/dashboard/admin/settings",
+  rider: "/dashboard/rider/settings",
+  vendor: "/dashboard/vendor/settings",
+  customer: "/dashboard/customer/settings",
+};
+
+export const WORKSPACE_ORDERS: Record<WorkspaceRole, string> = {
+  admin: "/dashboard/admin/orders",
+  demoadmin: "/dashboard/admin/orders",
+  rider: "/dashboard/rider/deliveries",
+  vendor: "/dashboard/vendor/orders",
+  customer: "/dashboard/customer/orders",
+};
+
+/** What each workspace calls its own list of orders. */
+export const WORKSPACE_ORDER_LABELS: Record<WorkspaceRole, string> = {
+  admin: "Orders",
+  demoadmin: "Orders",
+  rider: "Deliveries",
+  vendor: "Store orders",
+  customer: "Orders",
+};
+
+/** The store's own board — staff, not a shopper and not a marketplace account. */
+export function isStoreWorkspace(role: WorkspaceRole): boolean {
+  return role === "admin" || role === "demoadmin";
+}
+
+/**
+ * Which dashboard the screen is showing.
+ *
+ * The URL decides, and the session is only a fallback for the routes that are
+ * not inside a workspace at all (the storefront, and the dashboard's own
+ * redirect pages). This is deliberate: a session hint trails a switch by one
+ * request, a stale `activeRole` can describe a dashboard nobody is looking at,
+ * and a header that labels the rider workspace "Customer" is a bug the reader
+ * cannot work around. The URL cannot drift, because it is the page.
+ *
+ * A path the app does not recognise as a workspace keeps the session's answer,
+ * normalised to a workspace this shell knows how to draw.
+ */
+export function resolveWorkspace(
+  pathname: string | null | undefined,
+  user: RoleCarrier
+): WorkspaceRole {
+  const fromPath = workspaceOfPath(pathname);
+  if (fromPath) return fromPath;
+
+  const fromSession = resolveActiveRole(user);
+  if (fromSession === "demoadmin") return "demoadmin";
+  if (fromSession === "admin") return "admin";
+  if (fromSession === "rider") return "rider";
+  if (fromSession === "vendor") return "vendor";
+  return "customer";
+}
+
+/**
+ * Whether the account may be pointed at that dashboard by the shell.
+ *
+ * Held and not parked. The server still checks this again — a client cannot
+ * grant itself a workspace — but the switcher and the session repair need the
+ * same answer so they never offer or write a door that closes on the reader.
+ */
+export function canEnterWorkspace(user: RoleCarrier, role: WorkspaceRole): boolean {
+  const pool = rolesOf(user);
+  const suspended = suspendedRolesOf(user);
+  const wanted = isStoreWorkspace(role) ? "admin" : role;
+  if (!pool.includes(wanted) && !(isStoreWorkspace(role) && pool.includes("demoadmin"))) {
+    return false;
+  }
+  return wanted === "customer" || !suspended.includes(wanted);
+}
+

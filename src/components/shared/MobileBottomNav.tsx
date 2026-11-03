@@ -5,6 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, ShoppingBag, UserCircle, Settings, LayoutDashboard } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { useDashboardRole } from "@/hooks/useDashboardRole";
+import {
+  WORKSPACE_HREFS,
+  WORKSPACE_PROFILES,
+  WORKSPACE_SETTINGS,
+} from "@/lib/core/roles";
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
@@ -12,20 +18,15 @@ export default function MobileBottomNav() {
 
   const { data: session } = authClient.useSession();
   const user = session?.user;
-  const userRole = ((user as { role?: string })?.role || "customer").toLowerCase();
-  // demoadmin shares the admin dashboard routes
-  const dashboardRole = userRole === "demoadmin" ? "admin" : userRole;
+  // The same URL-first answer the header and the sidebars use, so the three
+  // shortcuts at the bottom of a phone cannot point at a different dashboard
+  // than the page the reader is actually on.
+  const { workspace } = useDashboardRole();
 
   // Auth-aware hrefs
-  const profileHref = user
-    ? `/dashboard/${dashboardRole}/profile`
-    : "/auth/login";
-  const settingsHref = user
-    ? `/dashboard/${dashboardRole}/settings`
-    : "/auth/login";
-  const dashboardHref = user
-    ? `/dashboard/${dashboardRole}`
-    : "/auth/login";
+  const profileHref = user ? WORKSPACE_PROFILES[workspace] : "/auth/login";
+  const settingsHref = user ? WORKSPACE_SETTINGS[workspace] : "/auth/login";
+  const dashboardHref = user ? WORKSPACE_HREFS[workspace] : "/auth/login";
 
   const NAV_ITEMS = [
     { label: "Home", href: "/", icon: Home },

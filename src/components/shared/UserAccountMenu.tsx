@@ -22,7 +22,17 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { toast } from "react-toastify";
 import UserAvatar from "./UserAvatar";
-import { setActiveRole } from "@/lib/action/user";
+import { useDashboardRole } from "@/hooks/useDashboardRole";
+import {
+  WORKSPACE_HREFS,
+  WORKSPACE_LABELS,
+  WORKSPACE_ORDER_LABELS,
+  WORKSPACE_ORDERS,
+  WORKSPACE_PROFILES,
+  WORKSPACE_SETTINGS,
+  isStoreWorkspace,
+  type WorkspaceRole,
+} from "@/lib/core/roles";
 
 /**
  * The profile menu, shared by the storefront header, the dashboard shell and
@@ -49,67 +59,35 @@ import { setActiveRole } from "@/lib/action/user";
 export type UserAccountMenuVariant = "storefront" | "dashboard";
 export type UserAccountMenuLayout = "dropdown" | "panel";
 
-type SessionUser = {
-  id?: string;
-  name?: string | null;
-  email?: string | null;
-  image?: string | null;
-  role?: string | null;
-  activeRole?: string | null;
-  roles?: string[] | string | null;
-  roleSuspensions?: { role?: string }[] | null;
-  vendorStatus?: string | null;
-  riderStatus?: string | null;
-};
-
-const normaliseRoles = (user: SessionUser | undefined): string[] => {
-  if (!user) return [];
-  const raw = user.roles;
-  const list: unknown[] = Array.isArray(raw)
-    ? raw
-    : typeof raw === "string" && raw.length > 0
-      ? raw.split(",")
-      : [user.activeRole, user.role];
-  const seen = new Set<string>();
-  for (const entry of list) {
-    const value = typeof entry === "string" ? entry.toLowerCase().trim() : "";
-    if (value) seen.add(value);
-  }
-  return Array.from(seen);
-};
-
-const labelFor = (role: string) =>
-  role === "demoadmin"
-    ? "Demo admin"
-    : role.charAt(0).toUpperCase() + role.slice(1);
+/**
+ * The words each dashboard is called, straight from the workspace table so the
+ * menu, the header chip and the sidebar chip can never drift apart.
+ */
+const labelFor = (role: WorkspaceRole) => WORKSPACE_LABELS[role];
 
 /**
- * The parked dashboards, read from the session's suspension rows.
+ * The menu's own row order: buy, sell, deliver, run the store.
  *
- * A suspended role stays in `roles` — the door is only closed for now — so
- * the switcher shows it greyed out instead of hiding it, and the account
- * never lands on it through a stale `activeRole` claim.
+ * Only the entries the account actually holds are offered further down, so this
+ * is the shape of the list, not a promise about any one account.
  */
-const suspendedFor = (user: SessionUser | undefined): string[] => {
-  const rows = Array.isArray(user?.roleSuspensions) ? user!.roleSuspensions : [];
-  return rows
-    .map((row) => (typeof row?.role === "string" ? row.role.toLowerCase() : ""))
-    .filter(Boolean);
-};
+const WORKSPACE_ORDER: WorkspaceRole[] = ["customer", "vendor", "rider", "admin"];
 
-const homeFor = (role: string) => {
-  if (role === "rider") return "/dashboard/rider";
-  if (role === "vendor") return "/dashboard/vendor";
-  if (role === "admin" || role === "demoadmin") return "/dashboard/admin";
-  // A customer's workspace is the buyer dashboard — orders, wishlist, profile.
-  // Buying happens on the storefront, which the switcher links separately.
-  return "/dashboard/customer";
-};
+/**
+ * The chip words for an approved entry.
+ *
+ * The seller entry is called "Seller" everywhere the account can read it, and
+ * the sandbox admin says so, because "vendor" and "demoadmin" are database
+ * values, not UI copy.
+ */
+const chipLabel = (role: string) =>
+  (WORKSPACE_LABELS as Record<string, string | undefined>)[role] ??
+  role.charAt(0).toUpperCase() + role.slice(1);
 
-const iconFor = (role: string) => {
+const iconFor = (role: WorkspaceRole) => {
   if (role === "rider") return <Bike className="w-4 h-4" />;
   if (role === "vendor") return <Store className="w-4 h-4" />;
-  if (role === "admin" || role === "demoadmin") return <ShieldCheck className="w-4 h-4" />;
+  if (role === "admin") return <ShieldCheck className="w-4 h-4" />;
   return <ShoppingBag className="w-4 h-4" />;
 };
 
@@ -127,22 +105,24 @@ export default function UserAccountMenu({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [switching, setSwitching] = useState<string | null>(null);
 
-  const { data: session, isPending, refetch } = authClient.useSession();
-  const user = session?.user as SessionUser | undefined;
+  const { isPending } = authClient.useSession();
+  // The workspace comes from the URL, with the session only filling in on
+  // screens that are not inside a dashboard at all. That is what lets this menu
+  // say "Rider dashboard" while the reader is looking at the rider dashboard,
+  // instead of repeating a session hint that has not caught up yet.
+  const { user, workspace, label, heldRoles, suspendedRoles, canEnter } = useDashboardRole();
 
-  const allRoles = normaliseRoles(user);
-  const suspended = suspendedFor(user);
-  const activeRole =
-    String(user?.activeRole || user?.role || "").toLowerCase() ||
-    allRoles[0] ||
-    "customer";
-  // The customer entry is a profile like any other: switching to it lands on
-  // the buyer dashboard, where orders, wishlist and shopping live. The
-  // storefront itself gets its own link row below the switcher.
-  const dashboards = allRoles.filter((role) => role !== "customer");
-  const canShop = allRoles.includes("customer");
+  // The rows to offer: every dashboard the account was approved for, in a fixed
+  // order. An entry the account does not hold is not listed at all, and one the
+  // store team parked stays in the list but greyed out, so it is obvious the
+  // door is closed rather than missing.
+  const targets = WORKSPACE_ORDER.filter((role) =>
+    role === "admin"
+      ? heldRoles.includes("admin") || heldRoles.includes("demoadmin")
+      : heldRoles.includes(role)
+  );
+  const canShop = heldRoles.includes("customer");
 
   const userImage = user?.image || (user as { avatar?: string })?.avatar;
   const firstName = user?.name ? user.name.split(" ")[0] : "Account";
@@ -200,37 +180,32 @@ export default function UserAccountMenu({
     }
   };
 
-  const handleSwitch = async (role: string) => {
-    if (switching || role === activeRole) return;
-    setSwitching(role);
-    try {
-      const result = await setActiveRole(role);
-      if (result?.success === false) {
-        toast.error(result.message || "Could not switch dashboard");
-      } else {
-        toast.success(`Switched to ${labelFor(role)}`);
-        closeMenu();
-        // The switch is written by the store API, which better-auth knows
-        // nothing about, so the cached session still describes the old
-        // workspace — and the sidebar, the header and every guard were rendered
-        // from it. Reading the session again with the cookie cache bypassed,
-        // and re-rendering the route, is what makes the move real; a bare
-        // `router.push` leaves the page looking like the dashboard it came from.
-        // A failed re-read is not a failed switch, so it is swallowed here.
-        try {
-          await refetch({ query: { disableCookieCache: true } });
-        } catch {
-          // The navigation below re-reads the session on its own.
-        }
-        router.push(homeFor(role));
-        router.refresh();
-      }
-    } catch (err) {
-      console.error("Role switch failed:", err);
-      toast.error("Could not switch dashboard");
-    } finally {
-      setSwitching(null);
+  /**
+   * Changing dashboard is a navigation, not a transaction.
+   *
+   * It used to be a two-step call: write the account's active-role hint through
+   * the store API, then move. When the API refused — a suspended entry, a role
+   * an admin had just revoked, a session that had not refreshed — the refusal
+   * came back as an error toast and the reader stayed where they were, with no
+   * way to reach a dashboard they genuinely hold. The URL is the dashboard now,
+   * so the menu only has to point at it. The hint is re-written afterwards by
+   * the shell's own sync, which cannot block the move.
+   */
+  const goToWorkspace = (role: WorkspaceRole) => {
+    if (role === workspace) {
+      closeMenu();
+      return;
     }
+    if (!canEnter(role)) {
+      toast.error(
+        suspendedRoles.includes(role)
+          ? `Your ${labelFor(role)} dashboard is suspended by the store team`
+          : `This account has no ${labelFor(role)} dashboard`
+      );
+      return;
+    }
+    closeMenu();
+    router.push(WORKSPACE_HREFS[role]);
   };
 
   // Loading state placeholder
@@ -278,41 +253,16 @@ export default function UserAccountMenu({
   }
 
   // Where the storefront dropdown's shortcut rows land. Each one follows the
-  // active role, so an approved rider clicking Profile gets the rider profile
-  // rather than the buyer one. The dashboard variant renders none of these.
-  const profileHref =
-    activeRole === "rider"
-      ? "/dashboard/rider/profile"
-      : activeRole === "vendor"
-        ? "/dashboard/vendor/profile"
-        : "/dashboard/profile";
-  // The dropdown's own "Dashboard" row must land on the workspace for the
-  // active role. A customer's workspace is the buyer dashboard, the same place
-  // the switcher's "Customer profile" row points to.
-  const dashboardHref =
-    activeRole === "customer" ? "/dashboard/customer" : homeFor(activeRole);
-  const settingsHref =
-    activeRole === "rider"
-      ? "/dashboard/rider/settings"
-      : activeRole === "vendor"
-        ? "/dashboard/vendor/settings"
-        : "/dashboard/settings";
-  const ordersHref =
-    activeRole === "admin" || activeRole === "demoadmin"
-      ? "/dashboard/admin/orders"
-      : activeRole === "rider"
-        ? "/dashboard/rider/deliveries"
-        : activeRole === "vendor"
-          ? "/dashboard/vendor/orders"
-          : canShop
-            ? "/dashboard/customer/orders"
-            : "#";
-  const ordersLabel =
-    activeRole === "rider"
-      ? "Deliveries"
-      : activeRole === "vendor"
-        ? "Store orders"
-        : "Orders";
+  // workspace on screen, so an approved rider clicking Profile gets the rider
+  // profile rather than the buyer one. The dashboard variant renders none of
+  // these. `/dashboard/profile` and `/dashboard/settings` are only redirect
+  // pages for old links, so they are named directly here instead.
+  const profileHref = WORKSPACE_PROFILES[workspace];
+  // The dropdown's own "Dashboard" row lands on the workspace being read.
+  const dashboardHref = WORKSPACE_HREFS[workspace];
+  const settingsHref = WORKSPACE_SETTINGS[workspace];
+  const ordersHref = WORKSPACE_ORDERS[workspace];
+  const ordersLabel = WORKSPACE_ORDER_LABELS[workspace];
 
   // The avatar button that opens the popover. The drawers do not need it: they
   // lay the same rows out flat, with nothing to anchor a popover to.
@@ -342,7 +292,7 @@ export default function UserAccountMenu({
             {firstName}
           </p>
           <p className="text-[10px] text-[var(--foreground-muted)] capitalize">
-            {labelFor(activeRole)}
+            {label}
           </p>
         </div>
 
@@ -378,30 +328,39 @@ export default function UserAccountMenu({
               </div>
             </div>
 
+            {/* The account's approved entries, with the dashboard currently on
+                screen filled in. The highlight follows the URL, because that is
+                the dashboard the reader is standing in — not whichever hint the
+                session happens to be carrying. */}
             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-              {allRoles.length === 0 ? (
+              {heldRoles.length === 0 ? (
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
                   <ShieldCheck className="w-3 h-3 text-primary" />
                   Customer
                 </span>
               ) : (
-                allRoles.map((role) => (
-                  <span
-                    key={role}
-                    className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border ${
-                      role === activeRole
-                        ? "bg-primary text-white border-primary"
-                        : "bg-primary/10 text-primary border-primary/20"
-                    }`}
-                  >
-                    {role === activeRole ? (
-                      <Check className="w-3 h-3" />
-                    ) : (
-                      <ShieldCheck className="w-3 h-3 text-primary" />
-                    )}
-                    {labelFor(role)}
-                  </span>
-                ))
+                heldRoles.map((role) => {
+                  const here =
+                    role === workspace ||
+                    (isStoreWorkspace(workspace) && (role === "admin" || role === "demoadmin"));
+                  return (
+                    <span
+                      key={role}
+                      className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border ${
+                        here
+                          ? "bg-primary text-white border-primary"
+                          : "bg-primary/10 text-primary border-primary/20"
+                      }`}
+                    >
+                      {here ? (
+                        <Check className="w-3 h-3" />
+                      ) : (
+                        <ShieldCheck className="w-3 h-3 text-primary" />
+                      )}
+                      {chipLabel(role)}
+                    </span>
+                  );
+                })
               )}
             </div>
           </div>
@@ -433,16 +392,14 @@ export default function UserAccountMenu({
               </Link>
 
               {/* Orders / Deliveries */}
-              {ordersHref !== "#" && (
-                <Link
-                  href={ordersHref}
-                  onClick={closeMenu}
-                  className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[var(--surface-alt)] hover:text-primary transition-colors"
-                >
-                  <ShoppingBag className="w-4 h-4 text-[var(--foreground-muted)]" />
-                  <span>{ordersLabel}</span>
-                </Link>
-              )}
+              <Link
+                href={ordersHref}
+                onClick={closeMenu}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[var(--surface-alt)] hover:text-primary transition-colors"
+              >
+                <ShoppingBag className="w-4 h-4 text-[var(--foreground-muted)]" />
+                <span>{ordersLabel}</span>
+              </Link>
 
               {/* Settings */}
               <Link
@@ -456,73 +413,54 @@ export default function UserAccountMenu({
             </div>
           )}
 
-          {/* Dashboard switcher — only surfaces when the account has more than
-              one approved authority. */}
-          {dashboards.length > 0 && (
+          {/* Dashboard switcher — only surfaces when the account holds more than
+              one dashboard, so a plain customer is never offered doors that go
+              to an application form. */}
+          {targets.length > 1 && (
             <div className="py-1.5 px-1.5 border-t border-[var(--border-color)]/80 space-y-0.5">
               <p className="flex items-center gap-1.5 px-3 pt-1 pb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
                 <Repeat className="w-3 h-3" />
                 Switch dashboard
               </p>
 
-              {canShop && (
-                <button
-                  type="button"
-                  onClick={() => handleSwitch("customer")}
-                  disabled={switching !== null || activeRole === "customer"}
-                  className={`flex items-center gap-3 w-full px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer disabled:cursor-not-allowed ${
-                    activeRole === "customer"
-                      ? "bg-primary/10 text-primary"
-                      : "hover:bg-[var(--surface-alt)] hover:text-primary"
-                  }`}
-                >
-                  {switching === "customer" ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-[var(--foreground-muted)]" />
-                  ) : (
-                    <ShoppingBag className="w-4 h-4 text-[var(--foreground-muted)]" />
-                  )}
-                  <span className="flex-1 text-left">Customer profile</span>
-                  {activeRole === "customer" && (
-                    <Check className="w-3.5 h-3.5 text-primary" />
-                  )}
-                </button>
-              )}
-
-              {dashboards.map((role) => {
-                const parked = suspended.includes(role);
+              {targets.map((role) => {
+                const here = role === workspace;
+                const parked = !canEnter(role);
                 return (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => handleSwitch(role)}
-                  disabled={switching !== null || role === activeRole || parked}
-                  title={parked ? "This dashboard is suspended by the store team" : undefined}
-                  className={`flex items-center gap-3 w-full px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer disabled:cursor-not-allowed ${
-                    parked
-                      ? "text-[var(--foreground-muted)]/60"
-                      : role === activeRole
-                        ? "bg-primary/10 text-primary"
-                        : "hover:bg-[var(--surface-alt)] hover:text-primary"
-                  }`}
-                >
-                  {switching === role ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-[var(--foreground-muted)]" />
-                  ) : parked ? (
-                    <Ban className="w-4 h-4 text-rose-500/70" />
-                  ) : (
-                    <span className="text-[var(--foreground-muted)]">{iconFor(role)}</span>
-                  )}
-                  <span className="flex-1 text-left capitalize">
-                    {labelFor(role)} dashboard
-                  </span>
-                  {parked ? (
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
-                      Suspended
-                    </span>
-                  ) : (
-                    role === activeRole && <Check className="w-3.5 h-3.5 text-primary" />
-                  )}
-                </button>
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => goToWorkspace(role)}
+                    disabled={parked}
+                    title={
+                      parked
+                        ? "This dashboard is suspended by the store team"
+                        : here
+                          ? "This is the dashboard you are using"
+                          : undefined
+                    }
+                    className={`flex items-center gap-3 w-full px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer disabled:cursor-not-allowed ${
+                      parked
+                        ? "text-[var(--foreground-muted)]/60"
+                        : here
+                          ? "bg-primary/10 text-primary font-bold"
+                          : "hover:bg-[var(--surface-alt)] hover:text-primary"
+                    }`}
+                  >
+                    {parked ? (
+                      <Ban className="w-4 h-4 text-rose-500/70" />
+                    ) : (
+                      <span className="text-[var(--foreground-muted)]">{iconFor(role)}</span>
+                    )}
+                    <span className="flex-1 text-left">{labelFor(role)} dashboard</span>
+                    {parked ? (
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                        Suspended
+                      </span>
+                    ) : (
+                      here && <Check className="w-3.5 h-3.5 text-primary" />
+                    )}
+                  </button>
                 );
               })}
 
@@ -574,10 +512,15 @@ export default function UserAccountMenu({
     <div className="relative shrink-0" ref={dropdownRef}>
       {trigger}
 
-      {/* Dropdown Menu Panel */}
+      {/* Dropdown Menu Panel
+
+          `w-72` with the panel hung off the right edge: on a narrow phone the
+          box would run past the left edge of the screen and get clipped there,
+          which is where the role switcher lives. The cap keeps the whole panel
+          inside the viewport without moving its right edge. */}
       {isOpen && (
         <div
-          className="absolute right-0 top-full mt-2 w-72 bg-[var(--surface-elevated)] rounded-2xl shadow-xl border border-[var(--border-color)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right overflow-hidden"
+          className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-[var(--surface-elevated)] rounded-2xl shadow-xl border border-[var(--border-color)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right overflow-hidden"
           role="menu"
         >
           {menuRows}

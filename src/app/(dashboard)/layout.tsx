@@ -9,6 +9,7 @@ import CustomerSidebar from "@/components/dashboard/CustomerSidebar";
 import RiderSidebar from "@/components/dashboard/RiderSidebar";
 import VendorSidebar from "@/components/dashboard/VendorSidebar";
 import MobileBottomNav from "@/components/shared/MobileBottomNav";
+import DashboardWorkspaceSync from "@/components/dashboard/DashboardWorkspaceSync";
 
 export default function DashboardLayout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -22,6 +23,10 @@ export default function DashboardLayout({ children }: LayoutProps) {
 
   return (
     <div className="flex min-h-screen bg-[var(--surface-alt)] text-[var(--foreground)] transition-colors duration-200">
+      {/* Says which dashboard the URL opened, and keeps the session hint in
+          step with it. Draws nothing. */}
+      <DashboardWorkspaceSync />
+
       {/* Responsive Collapsible Sidebar */}
       {isAdmin ? (
         <AdminSidebar

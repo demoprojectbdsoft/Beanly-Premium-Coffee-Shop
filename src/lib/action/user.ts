@@ -17,9 +17,16 @@ export const deleteUser = async (id: string) => {
  * approved array, so a hacked request cannot escalate a plain customer into an
  * admin. The session cookie refreshes on the next request, and the layout
  * guards read the array from the database, so the switch is instant.
+ *
+ * A refusal is an answer, not a break-in, so it comes back as a failed result
+ * instead of the forbidden page: which dashboard a reader is looking at is the
+ * URL's decision, and the hint written here only has to agree with it. Nothing
+ * may navigate away from a dashboard because a bookkeeping write was refused.
  */
 export const setActiveRole = async (role: string) => {
-  return serverMutation("/users/me/active-role", { role }, "PATCH");
+  return serverMutation("/users/me/active-role", { role }, "PATCH", {
+    explainForbidden: true,
+  });
 };
 
 /** Admin-only: revoke one approved role from an account. */

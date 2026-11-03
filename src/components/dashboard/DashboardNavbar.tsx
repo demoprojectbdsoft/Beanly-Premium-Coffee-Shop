@@ -1,14 +1,11 @@
 "use client";
 
 import React from "react";
-import { usePathname } from "next/navigation";
 import { Search, Menu, Sun, Moon } from "lucide-react";
-import { authClient } from "@/lib/auth-client";
 import CartButton from "@/components/shared/CartButton";
 import UserAccountMenu from "@/components/shared/UserAccountMenu";
 import NotificationBell from "@/components/dashboard/NotificationBell";
-import type { NotificationView } from "@/lib/notifications";
-import { canShop, roleOf, resolveActiveRole } from "@/lib/core/roles";
+import { useDashboardRole } from "@/hooks/useDashboardRole";
 
 import { useTheme } from "next-themes";
 
@@ -21,38 +18,11 @@ export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProp
   // next-themes leaves resolvedTheme undefined until the browser has read the
   // saved theme, so this doubles as the "mounted" flag without an effect.
   const isThemeKnown = resolvedTheme !== undefined;
-  const pathname = usePathname();
 
-  const { data: session } = authClient.useSession();
-  const user = session?.user;
-  const isRiderRoute = pathname.startsWith("/dashboard/rider");
-  const isVendorRoute = pathname.startsWith("/dashboard/vendor");
-  // The session's role hint can trail a just-switched dashboard, so the route
-  // itself is the fallback: the header can never say "Customer" over the rider
-  // workspace it is rendering. Better-auth types the user without the role
-  // fields the API writes onto the same row, so they are read through a cast.
-  const roleUser = user as
-    | { role?: string | null; activeRole?: string | null; roles?: string[] | string | null }
-    | undefined;
-  const sessionRole = resolveActiveRole(roleUser);
-  const routeRole = isRiderRoute ? "rider" : isVendorRoute ? "vendor" : "";
-  const userRole =
-    routeRole && (routeRole === sessionRole || !sessionRole) ? routeRole : sessionRole || routeRole;
-  // The store's feed names other people's orders and accounts, which is why it
-  // is the store's own board and not something a customer could ever read.
-  const isAdminView = userRole === "admin" || userRole === "demoadmin";
-  // One bell for every role: the view only decides the copy and the links, the
-  // API decides whose lines come back. A seller workspace reuses it as is.
-  const notificationView: NotificationView = isAdminView
-    ? "store"
-    : userRole === "rider"
-      ? "rider"
-      : userRole === "vendor"
-        ? "vendor"
-        : "customer";
-  // The switcher menu wants the dashboard the header is actually showing, so a
-  // stale session hint is corrected with the route before it reaches canShop.
-  const canUserShop = canShop({ activeRole: userRole, role: roleOf(roleUser) || null, roles: roleUser?.roles ?? null });
+  // One reader of the workspace for the whole header: the label, the bell's
+  // copy and links, and whether the basket belongs here all come from the same
+  // URL-first answer, so nothing in this bar can disagree with the page.
+  const { label, notificationView, showsCart } = useDashboardRole();
 
   const isDark = (resolvedTheme || theme) === "dark";
 
@@ -72,7 +42,11 @@ export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProp
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="relative w-48 sm:w-64 md:w-80">
+        {/* Search lives on every desk that has room for it. On phones the bar is
+            already carrying the hamburger, the bell, the basket and the avatar,
+            and a dead-wide input is what pushes the page into a sideways
+            scroll — so it is hidden below the small breakpoint, not shrunk. */}
+        <div className="relative hidden sm:block w-48 md:w-64 lg:w-80 min-w-0 max-w-full">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--foreground-muted)]" />
           <input
             type="text"
@@ -80,6 +54,13 @@ export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProp
             className="w-full pl-10 pr-4 py-2 bg-[var(--surface-alt)]/60 hover:bg-[var(--surface-alt)] border border-[var(--border-color)] focus:border-[var(--brand-flat)] focus:ring-2 focus:ring-[var(--brand-flat)]/35 rounded-xl text-xs focus:outline-none focus:bg-[var(--surface-elevated)] transition-all placeholder:text-[var(--foreground-muted)] text-[var(--foreground)]"
           />
         </div>
+
+        {/* Which dashboard this is, in words the reader can trust. The URL and
+            this chip are computed from the same path, so the rider workspace
+            can never be labelled "Customer" again. */}
+        <span className="hidden lg:inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--brand-flat)] bg-[var(--brand-flat)]/10 border border-[var(--brand-flat)]/25 px-2.5 py-1 rounded-full shadow-2xs whitespace-nowrap">
+          {label} dashboard
+        </span>
       </div>
 
       {/* Controls & Profile */}
@@ -103,8 +84,10 @@ export default function DashboardNavbar({ onToggleSidebar }: DashboardNavbarProp
             and the links, the API decides whose lines are read. */}
         <NotificationBell view={notificationView} />
 
-        {/* Cart Item Count & Dollar Total — buyers only */}
-        {canUserShop && (
+        {/* Cart Item Count & Dollar Total — buyers only, and only on the buyer
+            dashboard. A vendor who also buys does not see their basket while
+            they are running their shop. */}
+        {showsCart && (
           <CartButton
             showTotal={true}
             className="px-2 py-1.5 rounded-xl hover:bg-[var(--surface-alt)] transition-colors"

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "../auth";
-import { canShop, hasRole, isAdminRole } from "./roles";
+import { hasRole, isAdminRole, rolesOf, suspendedRolesOf } from "./roles";
 
 type Role = "admin" | "customer" | "rider" | "vendor" | "user";
 
@@ -43,6 +43,10 @@ export const getToken = async (): Promise<string | null> => {
  * signing out. The check reads the array, not `activeRole`, because the
  * switcher only points the shell at a dashboard — it never grants access on
  * its own. Admin access also covers the demo admin account.
+ *
+ * A parked role is still approved but the door is closed, so a suspension the
+ * store team wrote is honoured here too — otherwise the workspace would keep
+ * rendering for someone the review desk just stopped.
  */
 export const getRequiredRole = async (role: Role) => {
   const user = await getUserSession();
@@ -51,12 +55,13 @@ export const getRequiredRole = async (role: Role) => {
     redirect("/auth/login");
   }
 
+  const parked = suspendedRolesOf(user);
   const hasAccess =
     role === "admin"
       ? isAdminRole(user)
       : role === "user"
         ? true
-        : hasRole(user, role);
+        : hasRole(user, role) && (role === "customer" || !parked.includes(role));
 
   if (!hasAccess) {
     redirect("/forbidden");
@@ -66,23 +71,30 @@ export const getRequiredRole = async (role: Role) => {
 };
 
 /**
- * Returns the current user when they are allowed to shop: an account whose
- * approved `roles` array contains `customer`.
+ * Returns the current user when their approved `roles` array contains
+ * `customer`, otherwise redirects.
  *
- * The strict multi-role rule means an approved rider or vendor who never had
- * the customer entry — a legacy row that skipped the migration, or an account
- * granted authority directly — is refused here as well as at the API boundary.
- * A customer who also sells or delivers still passes, because the customer
- * entry stays in their array the whole time.
+ * This is the door to the buyer workspace, and nothing more. The URL is what
+ * says which dashboard a person is reading, so reaching `/dashboard/customer`
+ * only has to prove they hold the buyer entry — a vendor or a rider who also
+ * buys has always been meant to keep their cart, wishlist and orders here, and
+ * making them write a session hint first just produced a forbidden page for
+ * somebody standing in the right place.
+ *
+ * The buying rules are a separate, stricter question (`canShop`: the buyer
+ * entry AND the customer dashboard actually active) and they are enforced where
+ * the money is — in the cart, wishlist and checkout actions, and again on the
+ * API. Opening this door never lets a rider or a seller place an order they
+ * could not place before.
  */
-export const getRequiredShopper = async () => {
+export const getRequiredCustomer = async () => {
   const user = await getUserSession();
 
   if (!user) {
     redirect("/auth/login");
   }
 
-  if (!canShop(user)) {
+  if (!rolesOf(user).includes("customer")) {
     redirect("/forbidden");
   }
 
