@@ -28,6 +28,7 @@ import {
   formatDistance,
   formatEta,
   formatMoment,
+  isCarriedDelivery,
   vehicleMarker,
 } from "@/lib/rider";
 import { fetchTrackingAction, regenerateDeliveryCodeAction } from "@/lib/action/deliveries";
@@ -78,6 +79,18 @@ export default function TrackingView({ initial, destination }: TrackingViewProps
   const isLive = delivery
     ? !["delivered", "cancelled", "declined"].includes(delivery.status)
     : false;
+
+  /*
+    The map exists only while somebody is actually carrying the parcel.
+
+    Before the pickup there is nothing to show: the rider has the job, not the
+    box, and a map that draws the destination pin over an empty city reads like a
+    live position when it is a guess. After the hand-over the position is history
+    — keeping the last dot on screen invites the customer to watch a rider who has
+    already gone. Both ends of the delivery get words instead of a picture, and
+    only the carried middle gets the road.
+  */
+  const isCarried = delivery ? isCarriedDelivery(delivery) : false;
 
   // ── Polling ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -214,7 +227,8 @@ export default function TrackingView({ initial, destination }: TrackingViewProps
             >
               {statusLabel}
             </Chip>
-            {isLive && (
+            {/* "Live" means a position is moving on the map — nothing else. */}
+            {isCarried && (
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Live
@@ -258,50 +272,99 @@ export default function TrackingView({ initial, destination }: TrackingViewProps
       {/* ── Map + rider ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 bg-[var(--surface)] border border-[var(--border-color)] rounded-2xl p-4 shadow-xs space-y-3">
-          <DeliveryMap
-            rider={data.location}
-            trail={data.location?.trail ?? []}
-            destination={destination}
-            vehicleType={delivery?.rider?.vehicleType}
-            destinationUnavailable={Boolean(data.order.address) && !destination}
-          />
+          {isCarried ? (
+            <>
+              <DeliveryMap
+                rider={data.location}
+                trail={data.location?.trail ?? []}
+                destination={destination}
+                vehicleType={delivery?.rider?.vehicleType}
+                destinationUnavailable={Boolean(data.order.address) && !destination}
+              />
 
-          {data.location ? (
-            <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-              <p className="text-[11px] font-semibold text-[var(--foreground)] flex items-center gap-1.5">
-                <Navigation className="w-3.5 h-3.5 text-emerald-500" />
-                {vehicle ? `${vehicle.label} last seen` : "Last position"}{" "}
-                {formatMoment(data.location.updatedAt)}
-                {data.location.accuracy !== null &&
-                  (data.location.accuracy > COARSE_ACCURACY_M ? (
-                    <span className="font-semibold text-amber-600 dark:text-amber-400">
-                      · approximate — the device is not reporting a precise
-                      position
+              {data.location ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                  <p className="text-[11px] font-semibold text-[var(--foreground)] flex items-center gap-1.5">
+                    <Navigation className="w-3.5 h-3.5 text-emerald-500" />
+                    {vehicle ? `${vehicle.label} last seen` : "Last position"}{" "}
+                    {formatMoment(data.location.updatedAt)}
+                    {data.location.accuracy !== null &&
+                      (data.location.accuracy > COARSE_ACCURACY_M ? (
+                        <span className="font-semibold text-amber-600 dark:text-amber-400">
+                          · approximate — the device is not reporting a precise
+                          position
+                        </span>
+                      ) : (
+                        <span className="font-medium text-[var(--foreground-muted)]">
+                          · ±{Math.round(data.location.accuracy)} m
+                        </span>
+                      ))}
+                  </p>
+                  {isStale ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                      <TriangleAlert className="w-3 h-3" />
+                      Not updated recently — showing the last known spot
                     </span>
                   ) : (
-                    <span className="font-medium text-[var(--foreground-muted)]">
-                      · ±{Math.round(data.location.accuracy)} m
+                    <span className="text-[10px] font-semibold text-[var(--foreground-muted)]">
+                      Updating every few seconds
                     </span>
-                  ))}
-              </p>
-              {isStale ? (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                  <TriangleAlert className="w-3 h-3" />
-                  Not updated recently — showing the last known spot
-                </span>
+                  )}
+                </div>
               ) : (
-                <span className="text-[10px] font-semibold text-[var(--foreground-muted)]">
-                  Updating every few seconds
-                </span>
+                <p className="text-[11px] text-[var(--foreground-muted)] px-1 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" />
+                  Your rider has not shared a position yet.
+                </p>
               )}
-            </div>
+            </>
+          ) : delivery?.status === "delivered" ? (
+            <PositionPlaceholder
+              tone="done"
+              icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+              title="Delivered"
+              text={`Handed over${
+                delivery.deliveredAt ? ` at ${formatMoment(delivery.deliveredAt)}` : ""
+              } and closed. The position feed stops here — nothing is being tracked any more.`}
+            >
+              {/* The order summary the customer came for: what arrived, what it
+                  cost, who brought it and when it was signed off. */}
+              <dl className="grid grid-cols-2 gap-2 w-full max-w-md text-[11px]">
+                <SummaryRow
+                  label="Parcel"
+                  value={`${delivery.items} item${delivery.items === 1 ? "" : "s"}`}
+                />
+                <SummaryRow label="Paid" value={formatPrice(delivery.orderTotal)} />
+                <SummaryRow label="Rider" value={delivery.rider?.name || "—"} />
+                <SummaryRow
+                  label="Closed"
+                  value={delivery.deliveredAt ? formatMoment(delivery.deliveredAt) : "—"}
+                />
+              </dl>
+            </PositionPlaceholder>
+          ) : delivery?.status === "cancelled" || delivery?.status === "declined" ? (
+            <PositionPlaceholder
+              tone="closed"
+              icon={<TriangleAlert className="w-5 h-5 text-rose-500" />}
+              title={delivery.status === "cancelled" ? "Delivery cancelled" : "Rider declined the job"}
+              text={
+                delivery.declineReason ||
+                "No rider is carrying this parcel, so there is no position to show."
+              }
+            />
           ) : (
-            <p className="text-[11px] text-[var(--foreground-muted)] px-1 flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5" />
-              {isLive
-                ? "Your rider has not shared a position yet."
-                : "No position was shared for this delivery."}
-            </p>
+            <PositionPlaceholder
+              tone="wait"
+              icon={<Clock className="w-5 h-5 text-[var(--brand-flat)]" />}
+              title={delivery ? "Awaiting pickup" : "Not with a rider yet"}
+              text={
+                delivery
+                  ? `The map opens the moment ${
+                      delivery.rider?.name ? delivery.rider.name : "your rider"
+                    } collects the parcel. Until then there is no position to draw.`
+                  : "The store hands your order to a rider, and the map opens when they pick it up."
+              }
+            />
           )}
         </Card>
 
@@ -551,7 +614,7 @@ export default function TrackingView({ initial, destination }: TrackingViewProps
       {delivery?.status === "cancelled" && (
         <div className="p-4 rounded-2xl bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 text-[11px] text-rose-900 dark:text-rose-200 space-y-1">
           <p className="font-bold flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5" />
+            <TriangleAlert className="w-3.5 h-3.5 shrink-0" />
             This delivery was cancelled
           </p>
           {delivery.declineReason && <p>{delivery.declineReason}</p>}
@@ -561,6 +624,61 @@ export default function TrackingView({ initial, destination }: TrackingViewProps
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+/*
+  Words in place of the map.
+
+  A map earns its space only while something is moving on it. Both ends of a
+  delivery get a panel that says where the parcel actually is, and the ring
+  keeps its own colour so a finished job cannot be read as an open one.
+*/
+const PLACEHOLDER_TONES = {
+  wait: "border-[var(--border-color)] bg-[var(--surface-alt)]/60",
+  done: "border-emerald-500/30 bg-emerald-500/5",
+  closed: "border-rose-500/30 bg-rose-500/5",
+} as const;
+
+type PlaceholderTone = keyof typeof PLACEHOLDER_TONES;
+
+function PositionPlaceholder({
+  tone,
+  icon,
+  title,
+  text,
+  children,
+}: {
+  tone: PlaceholderTone;
+  icon: React.ReactNode;
+  title: string;
+  text: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`w-full max-w-full rounded-2xl border border-dashed px-5 py-10 sm:py-14 text-center space-y-3 ${PLACEHOLDER_TONES[tone]}`}
+    >
+      <div className="mx-auto w-11 h-11 rounded-2xl bg-[var(--surface)] border border-[var(--border-color)] flex items-center justify-center">
+        {icon}
+      </div>
+      <p className="text-sm font-extrabold text-[var(--foreground)]">{title}</p>
+      <p className="text-[11px] text-[var(--foreground-muted)] max-w-sm mx-auto leading-relaxed">
+        {text}
+      </p>
+      {children && <div className="pt-2 flex justify-center min-w-0">{children}</div>}
+    </div>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 text-left p-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-color)]">
+      <dt className="text-[9px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+        {label}
+      </dt>
+      <dd className="text-[11px] font-bold text-[var(--foreground)] truncate">{value}</dd>
     </div>
   );
 }
