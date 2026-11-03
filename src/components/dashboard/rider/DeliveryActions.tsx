@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { Button, Modal } from "@heroui/react";
 import {
   ArrowRight,
-  Ban,
   Check,
   KeyRound,
   Loader2,
@@ -27,6 +26,11 @@ import type { DeliveryRecord } from "@/types/delivery";
  * The buttons only offer the move the lifecycle allows, and the server checks
  * the same rule again: a double tap, or a tap a second after the offer expired,
  * cannot skip a stage.
+ *
+ * Stopping a job is not one of the rider's moves. `Decline` answers an offer
+ * that is still nobody's work, and once a job is accepted it only goes forward,
+ * to the door and the customer's code. A delivery is called off by the customer
+ * or by the store, never by whoever is riding it.
  */
 
 interface DeliveryActionsProps {
@@ -46,7 +50,8 @@ export default function DeliveryActions({
   onChanged,
 }: DeliveryActionsProps) {
   const [busy, setBusy] = useState<string>("");
-  const [reasonFor, setReasonFor] = useState<"decline" | "cancel" | null>(null);
+  // The only reason a rider still types is a decline: refusing an offer.
+  const [isDeclineOpen, setIsDeclineOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [isCompleteOpen, setIsCompleteOpen] = useState(false);
 
@@ -85,25 +90,22 @@ export default function DeliveryActions({
       status === "picked_up" ? "Marked picked up" : "On the way to the customer"
     );
 
-  const handleReason = async () => {
-    if (!reasonFor) return;
+  const handleDecline = async () => {
     const text = reason.trim();
-    if (reasonFor === "decline" && text.length < 3) {
+    // A reason the store cannot act on is a reason not worth sending.
+    if (text.length < 3) {
       toast.error("Please tell the store why you cannot take this delivery");
       return;
     }
 
     const ok = await run(
-      reasonFor,
-      () =>
-        reasonFor === "decline"
-          ? declineDeliveryAction(delivery._id, text)
-          : advanceDeliveryAction(delivery._id, "cancelled", text || undefined),
-      reasonFor === "decline" ? "Declined. The store was told." : "Delivery cancelled"
+      "decline",
+      () => declineDeliveryAction(delivery._id, text),
+      "Declined. The store was told."
     );
 
     if (ok) {
-      setReasonFor(null);
+      setIsDeclineOpen(false);
       setReason("");
     }
   };
@@ -139,7 +141,7 @@ export default function DeliveryActions({
           size="sm"
           onPress={() => {
             setReason("");
-            setReasonFor("decline");
+            setIsDeclineOpen(true);
           }}
           isDisabled={busy !== ""}
           className={`${sizeClass} rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)] text-[var(--foreground)] font-bold`}
@@ -149,8 +151,8 @@ export default function DeliveryActions({
         </Button>
 
         <ReasonDialog
-          isOpen={reasonFor === "decline"}
-          onOpenChange={(open) => !open && setReasonFor(null)}
+          isOpen={isDeclineOpen}
+          onOpenChange={(open) => !open && setIsDeclineOpen(false)}
           title={`Decline ${delivery.orderNumber}?`}
           description="The store sees your reason and offers the job to another rider. Be specific: a vague reason cannot be fixed."
           placeholder="Too far, vehicle in service, already at capacity…"
@@ -158,7 +160,7 @@ export default function DeliveryActions({
           isBusy={busy === "decline"}
           value={reason}
           onChange={setReason}
-          onConfirm={handleReason}
+          onConfirm={handleDecline}
         />
       </div>
     );
@@ -170,70 +172,59 @@ export default function DeliveryActions({
     const canComplete = delivery.status === "out_for_delivery";
 
     return (
-      <div className={`flex items-center gap-1.5 ${compact ? "" : "w-full flex-wrap"}`}>
-        {step && (
-          <Button
-            size="sm"
-            onPress={() => handleAdvance(step.status as "picked_up" | "out_for_delivery")}
-            isDisabled={busy !== ""}
-            className={`${sizeClass} rounded-xl bg-brand-gradient text-[var(--on-grad-text)] font-bold shadow-xs disabled:opacity-50`}
-          >
-            {busy === step.status ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <>
-                <PackageCheck className="w-3.5 h-3.5" />
-                {step.label}
-                <ArrowRight className="w-3 h-3" />
-              </>
-            )}
-          </Button>
+      <>
+        <div className={`flex items-center gap-1.5 ${compact ? "" : "w-full flex-wrap"}`}>
+          {step && (
+            <Button
+              size="sm"
+              onPress={() => handleAdvance(step.status as "picked_up" | "out_for_delivery")}
+              isDisabled={busy !== ""}
+              className={`${sizeClass} rounded-xl bg-brand-gradient text-[var(--on-grad-text)] font-bold shadow-xs disabled:opacity-50`}
+            >
+              {busy === step.status ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <>
+                  <PackageCheck className="w-3.5 h-3.5" />
+                  {step.label}
+                  <ArrowRight className="w-3 h-3" />
+                </>
+              )}
+            </Button>
+          )}
+
+          {canComplete && (
+            <Button
+              size="sm"
+              onPress={() => setIsCompleteOpen(true)}
+              className={`${sizeClass} rounded-xl bg-emerald-600 text-white font-bold shadow-xs`}
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              Deliver with code
+            </Button>
+          )}
+
+          <CompleteDeliveryDialog
+            isOpen={isCompleteOpen}
+            onOpenChange={setIsCompleteOpen}
+            delivery={delivery}
+            onCompleted={onChanged}
+          />
+        </div>
+
+        {/*
+          Said because it is the question a stuck rider asks. There is no button
+          here to press, so the screen names who does have one instead of leaving
+          the rider to guess, and says what happens to the money either way.
+        */}
+        {!compact && (
+          <p className="mt-2 text-[10px] leading-relaxed text-[var(--foreground-muted)]">
+            An accepted delivery only moves forward, and your fee is booked when it
+            closes at the door. Only the customer can cancel the order, or the store
+            can stop this job — so call the store if the parcel cannot get through.
+          </p>
         )}
-
-        {canComplete && (
-          <Button
-            size="sm"
-            onPress={() => setIsCompleteOpen(true)}
-            className={`${sizeClass} rounded-xl bg-emerald-600 text-white font-bold shadow-xs`}
-          >
-            <KeyRound className="w-3.5 h-3.5" />
-            Deliver with code
-          </Button>
-        )}
-
-        <Button
-          size="sm"
-          onPress={() => {
-            setReason("");
-            setReasonFor("cancel");
-          }}
-          isDisabled={busy !== ""}
-          className={`${sizeClass} rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)] text-rose-600 dark:text-rose-400 font-bold`}
-        >
-          <Ban className="w-3.5 h-3.5" />
-          Cancel
-        </Button>
-
-        <ReasonDialog
-          isOpen={reasonFor === "cancel"}
-          onOpenChange={(open) => !open && setReasonFor(null)}
-          title={`Cancel ${delivery.orderNumber}?`}
-          description="The store and the customer are both told. The order itself stays as it is, so the store can send another rider."
-          placeholder="Customer unreachable, address wrong, parcel refused…"
-          confirmLabel="Cancel delivery"
-          isBusy={busy === "cancel"}
-          value={reason}
-          onChange={setReason}
-          onConfirm={handleReason}
-        />
-
-        <CompleteDeliveryDialog
-          isOpen={isCompleteOpen}
-          onOpenChange={setIsCompleteOpen}
-          delivery={delivery}
-          onCompleted={onChanged}
-        />
-      </div>
+      </>
     );
   }
 
@@ -253,7 +244,7 @@ interface ReasonDialogProps {
   onConfirm: () => void;
 }
 
-/** One dialog for both ways a rider can stop a job: decline and cancel. */
+/** The one dialog a rider fills in: the reason behind a decline. */
 function ReasonDialog({
   isOpen,
   onOpenChange,

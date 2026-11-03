@@ -15,13 +15,17 @@ export const updateOrderStatus = async (id: string, orderStatus: string) => {
 };
 
 /**
- * The two answers a customer can still give: the parcel has not arrived, or they
- * want it called off. "received" is gone — the rider's delivery code closes the
- * order, so the hand-over is confirmed without the customer pressing anything.
+ * What the customer says about an order. Three answers, and all three stay
+ * changeable: a parcel reported missing can still turn up, and a hand-over
+ * confirmed in the moment can be corrected the next day.
+ *
+ * "received" is the customer's own version of reading the code at the door: it
+ * settles the order as delivered and books the rider's fee, so it is only
+ * offered once the parcel has actually left the store.
  */
 export const submitCustomerOrderResponse = async (
   id: string,
-  response: "not_received" | "cancelled",
+  response: "received" | "not_received" | "cancelled",
   note?: string
 ) => {
   return serverMutation(`/orders/${id}/customer-response`, { response, note }, "PATCH");

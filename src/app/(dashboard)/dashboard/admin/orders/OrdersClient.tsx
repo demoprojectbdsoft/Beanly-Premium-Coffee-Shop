@@ -676,7 +676,7 @@ export default function OrdersClient({
                               </p>
                               <p className="text-[11px] text-[var(--foreground-muted)]">
                                 {delivered
-                                  ? "The rider handed the parcel over, so the sale is finished. Refund the order or handle a warranty claim instead of rewriting the delivery."
+                                  ? "The parcel was handed over and the sale is settled, so the rider's fee is booked. Refund the order or handle a warranty claim instead of rewriting the delivery."
                                   : "A cancelled order keeps its final status."}
                               </p>
                             </div>
@@ -707,8 +707,12 @@ export default function OrdersClient({
                       const customerDisagrees =
                         selectedOrder.customerResponse === "not_received" ||
                         cancelRequested;
-                      // A legacy "received" answer: the customer said it arrived,
-                      // so the only honest closing stage is delivered.
+                      /*
+                        The customer says it arrived. That answer now settles the
+                        sale on the server, so an order carrying it is delivered
+                        and the rider has been paid: cancelling it from here would
+                        undo money that has already moved.
+                      */
                       const customerConfirmed =
                         selectedOrder.customerResponse === "received";
 
@@ -901,7 +905,7 @@ export default function OrdersClient({
                                     </span>
                                     <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[var(--surface-elevated)]/70 dark:bg-[var(--surface)]/70 border border-current">
                                       {selectedOrder.customerResponse === "received"
-                                        ? "Close it as delivered"
+                                        ? "Delivered · rider paid"
                                         : selectedOrder.customerResponse === "not_received"
                                           ? "Delivered is blocked"
                                           : "Cancellation requested"}

@@ -76,9 +76,13 @@ export const declineDeliveryAction = async (id: string, reason: string) => {
   return serverMutation(`/deliveries/${id}/decline`, { reason });
 };
 
+/**
+ * The rider's forward step. There is no cancel here any more: an accepted job
+ * only moves on, and stopping one is the customer's answer or the store's call.
+ */
 export const advanceDeliveryAction = async (
   id: string,
-  status: "picked_up" | "out_for_delivery" | "cancelled",
+  status: "picked_up" | "out_for_delivery",
   note?: string
 ) => {
   return serverMutation(`/deliveries/${id}/status`, { status, note }, "PATCH");
