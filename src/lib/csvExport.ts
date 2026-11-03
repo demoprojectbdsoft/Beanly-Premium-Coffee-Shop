@@ -144,6 +144,8 @@ export interface AdminOverviewExportData {
     totalTransactions: number;
     totalProfit?: number;
     totalCost?: number;
+    grossProfit?: number;
+    riderFeesPaid?: number;
     profitMargin?: number;
   };
   dailyProfitData?: Array<{
@@ -244,10 +246,22 @@ export function exportAdminOverviewCsv(
     ["Transactions logged", data.kpis.totalTransactions, ""],
   ];
   if (data.kpis.totalProfit !== undefined) {
-    indicatorRows.push(["Total net profit", round2(data.kpis.totalProfit), "Revenue minus cost"]);
+    indicatorRows.push(["Total net profit", round2(data.kpis.totalProfit), "Revenue minus cost and rider fees"]);
   }
   if (data.kpis.totalCost !== undefined) {
     indicatorRows.push(["Total cost of goods", round2(data.kpis.totalCost), "Purchase cost"]);
+  }
+  // Rider fees are not a goods cost, so they get their own line: the store can
+  // see what the parcels cost to move and that it came off the profit it kept.
+  if (data.kpis.grossProfit !== undefined) {
+    indicatorRows.push(["Gross profit", round2(data.kpis.grossProfit), "Before rider fees"]);
+  }
+  if (data.kpis.riderFeesPaid !== undefined) {
+    indicatorRows.push([
+      "Rider fees paid",
+      round2(data.kpis.riderFeesPaid),
+      `Paid for delivered jobs, taken off net profit (${currency})`,
+    ]);
   }
   if (data.kpis.profitMargin !== undefined) {
     indicatorRows.push(["Overall profit margin", round2(data.kpis.profitMargin), "% of revenue"]);
@@ -997,4 +1011,144 @@ export function exportVendorAnalyticsCsv(
   );
 
   triggerCsvDownload(csv, downloadName(siteName, "vendor_sales_report"));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RIDER PAYOUTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface PayoutsExportData {
+  /** "Last 30 days", "All time" — the window the board was showing. */
+  rangeLabel: string;
+  /** Set when the store filtered the board down to one rider. */
+  riderName?: string;
+  totals: {
+    jobs: number;
+    paid: number;
+    sales: number;
+    feeSharePct: number;
+    avgPerJob: number;
+    paidThisMonth: number;
+    monthJobs: number;
+  };
+  outstanding: { jobs: number; amount: number };
+  series: Array<{ label: string; jobs: number; paid: number; sales: number }>;
+  byRider: Array<{ name: string; jobs: number; paid: number; lastAt?: string | null }>;
+  records: Array<{
+    orderNumber: string;
+    riderName: string;
+    city: string;
+    items: number;
+    orderTotal: number;
+    fee: number;
+    deliveredAt?: string | null;
+    paidVia: string;
+  }>;
+  /** Said out loud because a filtered export is not the whole ledger. */
+  recordNote?: string;
+}
+
+/**
+ * The store's payout record as a spreadsheet.
+ *
+ * The graph is exported as its own numbered block, the way every other report
+ * here does it, and the row list carries each fee against the sale it came out
+ * of, so an accountant can check the deduction without asking the store what a
+ * number means.
+ */
+export function exportPayoutsCsv(data: PayoutsExportData, options: ExportOptions = {}): void {
+  const siteName = options.siteName || "Sparq";
+  const currency = (options.currency || "USD").toUpperCase();
+
+  const totalRows: CsvValue[][] = [
+    ["Delivered jobs that paid a rider", round2(data.totals.jobs), ""],
+    ["Rider fees paid", round2(data.totals.paid), `Currency ${currency}`],
+    ["Delivered sales they came out of", round2(data.totals.sales), currency],
+    [
+      "Share of those sales paid to riders",
+      round2(data.totals.feeSharePct),
+      "% - this is the money off the profit",
+    ],
+    ["Average fee per job", round2(data.totals.avgPerJob), currency],
+    ["Paid this month", round2(data.totals.paidThisMonth), `${data.totals.monthJobs} jobs`],
+    [
+      "Still owed on jobs on the road",
+      round2(data.outstanding.amount),
+      `${data.outstanding.jobs} jobs - promised, not spent, not in the total above`,
+    ],
+  ];
+
+  const seriesRows: CsvValue[][] = data.series.map((point) => [
+    point.label,
+    point.jobs,
+    round2(point.paid),
+    round2(point.sales),
+    point.sales > 0 ? round2((point.paid / point.sales) * 100) : 0,
+  ]);
+
+  const riderRows: CsvValue[][] = data.byRider.map((rider) => [
+    rider.name,
+    rider.jobs,
+    round2(rider.paid),
+    data.totals.paid > 0 ? round2((rider.paid / data.totals.paid) * 100) : 0,
+    rider.lastAt ? String(rider.lastAt).slice(0, 10) : "",
+  ]);
+
+  const recordRows: CsvValue[][] = data.records.map((record) => [
+    record.orderNumber,
+    record.riderName,
+    record.city || "",
+    record.items,
+    round2(record.orderTotal),
+    round2(record.fee),
+    record.orderTotal > 0 ? round2((record.fee / record.orderTotal) * 100) : 0,
+    record.paidVia === "customer" ? "Customer confirmed" : "Delivery code",
+    record.deliveredAt ? String(record.deliveredAt).replace("T", " ").slice(0, 16) : "",
+  ]);
+
+  const headerExtra: CsvValue[][] = [["Window", data.rangeLabel], ["Currency", currency]];
+  if (data.riderName) headerExtra.push(["Rider", data.riderName]);
+  if (data.recordNote) headerExtra.push(["Record rows", data.recordNote]);
+
+  const sections: CsvSection[] = [
+    {
+      title: "Payout totals",
+      columns: ["Metric", "Value", "Note"],
+      rows: totalRows,
+    },
+    {
+      title: "Payout graph",
+      note: CHART_NOTE,
+      columns: ["Period", "Jobs", `Fees paid (${currency})`, `Sales (${currency})`, "Fees as % of sales"],
+      rows: seriesRows,
+    },
+    {
+      title: "Paid per rider",
+      columns: ["Rider", "Jobs", `Paid (${currency})`, "Share of all fees (%)", "Last paid"],
+      rows: riderRows,
+    },
+    {
+      title: "Payout record - one row per delivered job",
+      note: data.recordNote || "Every fee the store has paid, newest delivery first.",
+      columns: [
+        "Order",
+        "Rider",
+        "City",
+        "Items",
+        `Order total (${currency})`,
+        `Rider fee (${currency})`,
+        "Fee as % of order",
+        "Confirmed by",
+        "Delivered at",
+      ],
+      rows: recordRows,
+    },
+  ];
+
+  const csv = buildReportCsv(
+    reportHeader(`${siteName} - Rider Payout Record`, headerExtra),
+    sections
+  );
+
+  triggerCsvDownload(csv, downloadName(siteName, "rider_payouts"));
 }

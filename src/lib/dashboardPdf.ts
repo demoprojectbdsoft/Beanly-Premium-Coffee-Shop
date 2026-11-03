@@ -3,6 +3,7 @@ import { getCurrencySymbol } from "./currency";
 import type {
   AdminOverviewExportData,
   CustomerOverviewExportData,
+  PayoutsExportData,
   RiderOverviewExportData,
   VendorAnalyticsExportData,
 } from "./csvExport";
@@ -660,6 +661,14 @@ export async function downloadAdminOverviewPdf(
   if (data.kpis.totalCost !== undefined) {
     indicatorRows.push(["Total cost of goods", `${symbol}${round(data.kpis.totalCost, 2)}`]);
   }
+  // What carrying the parcels cost. Not a goods cost, so it is listed apart from
+  // one, right above the profit the store actually keeps.
+  if (data.kpis.grossProfit !== undefined) {
+    indicatorRows.push(["Gross profit", `${symbol}${round(data.kpis.grossProfit, 2)}`]);
+  }
+  if (data.kpis.riderFeesPaid !== undefined) {
+    indicatorRows.push(["Rider fees paid", `${symbol}${round(data.kpis.riderFeesPaid, 2)}`]);
+  }
   if (data.kpis.profitMargin !== undefined) {
     indicatorRows.push(["Overall profit margin", `${round(data.kpis.profitMargin, 1)}%`]);
   }
@@ -1224,5 +1233,141 @@ export async function downloadVendorAnalyticsPdf(
     `${safeFilePart(data.vendorName || siteName)}-vendor-sales-${
       new Date().toISOString().split("T")[0]
     }.pdf`
+  );
+}
+
+// ── Rider payout record report ──────────────────────────────────────────────
+
+/** A day, from the ISO string the payout ledger sends. */
+function payoutDay(value?: string | null): string {
+  return value ? String(value).slice(0, 10) : "-";
+}
+
+/** "2026-03" / "2026-03-14" shortened for a chart axis. */
+function payoutLabel(value: string): string {
+  return value.length > 7 ? value.slice(5) : value.slice(2);
+}
+
+/**
+ * The store's payout record on paper.
+ *
+ * A ledger only answers two questions: what left, and from what. So the graph
+ * puts the fees against the sales they were taken out of, and the table underneath
+ * keeps one line per job, which is what an accountant checks it against.
+ */
+export async function downloadPayoutsPdf(
+  data: PayoutsExportData,
+  options: PdfOptions = {}
+): Promise<void> {
+  const { jsPDF: JsPdf } = await import("jspdf");
+
+  const siteName = options.siteName || "Sparq";
+  const currency = (options.currency || "USD").toUpperCase();
+  const symbol = getCurrencySymbol(currency);
+  const money = (value: number) => `${symbol}${compact(value)}`;
+
+  const doc = new JsPdf({ unit: "pt", format: "a4" });
+  const report = new PdfReport(doc, {
+    reportTitle: `${siteName} - Rider Payout Record`,
+    footerText: `${siteName} · Rider payouts`,
+  });
+
+  report.title(
+    `${siteName} - Rider Payout Record`,
+    `${data.rangeLabel}${data.riderName ? ` · ${data.riderName}` : ""} · currency ${currency}`
+  );
+
+  report.heading("What was paid");
+  report.tiles([
+    { label: "Rider fees paid", value: `${symbol}${round(data.totals.paid, 2)}`, note: `${data.totals.jobs} delivered jobs` },
+    { label: "Sales they came out of", value: `${symbol}${round(data.totals.sales, 2)}`, note: "Delivered orders only" },
+    { label: "Off the profit", value: `${round(data.totals.feeSharePct, 1)}%`, note: "Of those sales" },
+    { label: "Average per job", value: `${symbol}${round(data.totals.avgPerJob, 2)}`, note: "Fee the store set" },
+    { label: "Paid this month", value: `${symbol}${round(data.totals.paidThisMonth, 2)}`, note: `${data.totals.monthJobs} jobs` },
+    {
+      label: "Still owed",
+      value: `${symbol}${round(data.outstanding.amount, 2)}`,
+      note: `${data.outstanding.jobs} jobs on the road`,
+    },
+  ]);
+
+  if (data.recordNote) report.caption(data.recordNote);
+
+  // ── Chart 1: the money, against the sales it came out of ──
+  if (data.series.length > 0) {
+    report.heading("Fees paid against delivered sales");
+    report.legend([
+      { label: "Rider fees", color: PALETTE[3] },
+      { label: "Delivered sales", color: PALETTE[0] },
+    ]);
+    report.barsWithLine({
+      labels: data.series.map((point) => payoutLabel(point.label)),
+      bar: { label: "Rider fees", color: PALETTE[3], values: data.series.map((p) => p.paid) },
+      line: { label: "Delivered sales", color: PALETTE[0], values: data.series.map((p) => p.sales) },
+      formatBar: money,
+    });
+
+    report.heading("Jobs that paid");
+    report.bars({
+      labels: data.series.map((point) => payoutLabel(point.label)),
+      series: [{ label: "Delivered jobs", color: PALETTE[1], values: data.series.map((p) => p.jobs) }],
+      format: (value) => String(round(value, 0)),
+    });
+  }
+
+  // ── Chart 2: who the money went to ──
+  const riderSlices = data.byRider.map((rider) => ({ label: rider.name, value: rider.paid }));
+  if (riderSlices.length > 0) {
+    report.heading("Share of all fees, by rider");
+    report.donut({ slices: limitedSlices(riderSlices), format: money });
+  }
+
+  if (data.byRider.length > 0) {
+    report.heading("Paid per rider");
+    report.table(
+      [
+        { label: "Rider", width: 170 },
+        { label: "Jobs", width: 50, align: "right" },
+        { label: `Paid (${currency})`, width: 90, align: "right" },
+        { label: "Share (%)", width: 70, align: "right" },
+        { label: "Last paid", width: 89 },
+      ],
+      data.byRider.map((rider) => [
+        rider.name || "A rider",
+        String(rider.jobs),
+        String(round(rider.paid, 2)),
+        String(data.totals.paid > 0 ? round((rider.paid / data.totals.paid) * 100, 1) : 0),
+        payoutDay(rider.lastAt),
+      ])
+    );
+  }
+
+  if (data.records.length > 0) {
+    report.heading("Payout record");
+    report.caption("One line per delivered job. The fee on the right is what came off the profit.");
+    report.table(
+      [
+        { label: "Order", width: 74 },
+        { label: "Rider", width: 96 },
+        { label: "City", width: 70 },
+        { label: `Sale (${currency})`, width: 66, align: "right" },
+        { label: `Fee (${currency})`, width: 60, align: "right" },
+        { label: "By", width: 58 },
+        { label: "Delivered", width: 45 },
+      ],
+      data.records.map((record) => [
+        record.orderNumber,
+        record.riderName || "A rider",
+        record.city || "-",
+        String(round(record.orderTotal, 2)),
+        String(round(record.fee, 2)),
+        record.paidVia === "customer" ? "Customer" : "Code",
+        payoutDay(record.deliveredAt),
+      ])
+    );
+  }
+
+  report.save(
+    `${safeFilePart(siteName)}-rider-payouts-${new Date().toISOString().split("T")[0]}.pdf`
   );
 }

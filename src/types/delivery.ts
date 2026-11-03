@@ -371,3 +371,66 @@ export interface RiderStatCardData {
   isPositive: boolean;
   iconName: RiderStatIcon;
 }
+
+// ─── Payouts (the store's record of what its riders were paid) ───────────────
+
+/** How far back the payout board looks, in the words the API takes. */
+export type PayoutRange = "30" | "90" | "365" | "all";
+
+/** One bucket of the payout graph: a day or a month of delivered work. */
+export interface PayoutPoint {
+  /** "2026-03" for a month, "2026-03-14" for a day. */
+  label: string;
+  jobs: number;
+  paid: number;
+  /** The delivered sales in this bucket, which the fees came out of. */
+  sales: number;
+}
+
+/** Everything one rider has been paid, and when the last of it happened. */
+export interface PayoutRiderRow {
+  riderId: string;
+  name: string;
+  jobs: number;
+  paid: number;
+  lastAt: string | null;
+}
+
+/** One job that paid a rider — the row the store exports and audits. */
+export interface PayoutRecord {
+  _id: string;
+  orderId: string;
+  orderNumber: string;
+  riderName: string;
+  city: string;
+  items: number;
+  orderTotal: number;
+  fee: number;
+  deliveredAt: string | null;
+  /** How the hand-over was confirmed: the rider's code, or the buyer's answer. */
+  paidVia: "code" | "customer";
+}
+
+export interface PayoutTotals {
+  jobs: number;
+  paid: number;
+  /** The value of the delivered sales these fees were taken out of. */
+  sales: number;
+  /** What share of those sales went to the riders, in percent. */
+  feeSharePct: number;
+  avgPerJob: number;
+  paidThisMonth: number;
+  monthJobs: number;
+}
+
+/** The whole payout board, in one read. */
+export interface PayoutsFeed {
+  range: PayoutRange;
+  totals: PayoutTotals;
+  /** Fees on jobs still on the road: promised, not spent, never added to paid. */
+  outstanding: { jobs: number; amount: number };
+  series: PayoutPoint[];
+  byRider: PayoutRiderRow[];
+  records: PayoutRecord[];
+  pagination: DeliveryPagination;
+}

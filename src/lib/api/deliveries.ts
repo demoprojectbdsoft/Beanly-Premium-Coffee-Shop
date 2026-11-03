@@ -43,6 +43,14 @@ export const getAssignableRiders = async (orderId?: string) => {
   return serverFetch(withQuery("/deliveries/admin/riders", { orderId }), true);
 };
 
+/**
+ * The payout record: every fee a delivered job paid to a rider, folded into a
+ * graph, listed row by row, and summed against what is still owed.
+ */
+export const getAdminPayouts = async (params?: Record<string, string | number | undefined>) => {
+  return serverFetch(withQuery("/deliveries/admin/payouts", params), true);
+};
+
 /** Every assignment an order has had, newest first. */
 export const getOrderDeliveries = async (orderId: string) => {
   return serverFetch(`/deliveries/admin/order/${orderId}`, true);

@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   ShoppingBag,
   Users,
+  Banknote,
   Package,
   FolderTree,
   SlidersHorizontal,
@@ -65,6 +66,7 @@ const NAV_GROUPS = [
     items: [
       { name: "Orders", href: "/dashboard/admin/orders", icon: ShoppingBag },
       { name: "Deliveries", href: "/dashboard/admin/deliveries", icon: Truck },
+      { name: "Rider payouts", href: "/dashboard/admin/payouts", icon: Banknote },
       { name: "Transactions", href: "/dashboard/admin/transactions", icon: CreditCard },
       { name: "Coupons", href: "/dashboard/admin/coupons", icon: Ticket },
     ],
