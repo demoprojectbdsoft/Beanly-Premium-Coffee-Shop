@@ -4,7 +4,6 @@ import React from "react";
 import Link from "next/link";
 import { Info, Briefcase, Mail } from "lucide-react";
 import { Category, SubCategory } from "@/types";
-import MobileCategories from "./MobileCategories";
 import UserAccountMenu from "./UserAccountMenu";
 import { ThemeSwitch } from "./Switcher";
 
@@ -31,8 +30,6 @@ interface MobileMenuContentProps {
  * mirror rather than its approved roles. Out of the box on every surface now.
  */
 export default function MobileMenuContent({
-  categories,
-  subCategories,
   onClose,
 }: MobileMenuContentProps) {
   return (
@@ -76,15 +73,6 @@ export default function MobileMenuContent({
               </Link>
             );
           })}
-        </div>
-
-        {/* 4. Categories and Subcategories Tree */}
-        <div className="pt-2 border-t border-[var(--border-color)]/80">
-          <MobileCategories
-            categories={categories}
-            subCategories={subCategories}
-            onClose={onClose}
-          />
         </div>
 
       </div>
