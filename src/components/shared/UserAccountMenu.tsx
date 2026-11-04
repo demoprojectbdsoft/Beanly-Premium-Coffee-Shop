@@ -55,6 +55,12 @@ import {
  * have no switcher at all because only the desktop row mounted this menu, so
  * the drawers now carry the same rows instead of a second, simpler account
  * card that could drift from them.
+ *
+ * The flat panel is the phone form, and it drops the shortcut rows: a phone
+ * already carries a fixed bottom bar with Profile, Settings and Dashboard, so
+ * listing them again inside the drawer is the same door twice in one screen.
+ * Identity, the workspace switcher and signing out stay, because nothing else
+ * on a small screen offers those.
  */
 export type UserAccountMenuVariant = "storefront" | "dashboard";
 export type UserAccountMenuLayout = "dropdown" | "panel";
@@ -368,8 +374,11 @@ export default function UserAccountMenu({
           {/* Storefront shortcuts. Out here there is no sidebar, so this
               dropdown is the only way into a workspace. Inside a dashboard the
               sidebar owns those screens and the block is skipped, leaving the
-              menu as identity + switcher + logout. */}
-          {variant === "storefront" && (
+              menu as identity + switcher + logout. The phone panel skips it too,
+              for a different piece of furniture: the fixed bottom bar already
+              lists those destinations, so a drawer repeating them is one more
+              thing to scroll past for nothing. */}
+          {variant === "storefront" && layout === "dropdown" && (
             <div className="py-1.5 px-1.5 space-y-0.5 text-xs font-medium text-[var(--foreground)]">
               {/* Profile */}
               <Link

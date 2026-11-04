@@ -40,7 +40,9 @@ export default function MobileMenuContent({
       {/* ── Scrollable Body Area ── */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
 
-        {/* 1. Account: identity, workspace switcher, shortcuts, sign out */}
+        {/* 1. Account: identity, workspace switcher, sign out. No shortcut
+            rows here - the fixed bottom bar under this drawer is the phone's
+            way to Profile, Settings and Dashboard. */}
         <UserAccountMenu variant="storefront" layout="panel" onNavigate={onClose} />
 
         {/* 2. Appearance / Dark Mode Switch */}
