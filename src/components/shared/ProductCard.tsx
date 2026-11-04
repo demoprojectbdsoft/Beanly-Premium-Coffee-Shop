@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { ShoppingBag, Heart, Repeat, Eye, Star, Sparkles } from "lucide-react";
+import { ShoppingBag, Heart, Repeat, Eye, Star, Sparkles, Share2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { Button } from "@heroui/react";
 import { authClient } from "@/lib/auth-client";
@@ -369,6 +369,49 @@ export default function ProductCard({
       icon: <span>🔁</span>,
     });
   };
+
+  // Share this product: native share sheet when available, otherwise copy the
+  // product link (the card URL, not the current page) to the clipboard.
+  const handleShare = async () => {
+    const productUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/shop/${product.slug || product.id}`
+        : "";
+    const shareData = {
+      title: product.title,
+      text: `Check out ${product.title} on Sparq!`,
+      url: productUrl,
+    };
+
+    if (
+      typeof navigator !== "undefined" &&
+      navigator.share &&
+      typeof navigator.canShare === "function" &&
+      navigator.canShare(shareData)
+    ) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
+      }
+    }
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(productUrl);
+        toast.success("Product link copied to clipboard!", {
+          icon: <span>🔗</span>,
+        });
+      } else {
+        toast.info("Share URL: " + productUrl);
+      }
+    } catch {
+      toast.error("Failed to copy link");
+    }
+  };
   // ────────────────────────────────────────────────────────────────────────────
 
   const categoryText = product.categories?.join(", ") || "Product";
@@ -458,48 +501,83 @@ export default function ProductCard({
           />
         </Link>
 
-        {/* Floating Actions (Glassmorphism Pill overlay) — reveals on hover */}
-        <div className="flex absolute bottom-2 left-1/2 -translate-x-1/2 items-center gap-1 p-1 bg-[var(--surface-elevated)]/95 backdrop-blur-md rounded-full border border-[var(--border-color)] shadow-md translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out z-10">
+        {/* Floating Actions (Glassmorphism Pill overlay) — reveals on hover.
+            Each action is a filled circular button so icons read clearly. */}
+        <div className="flex absolute bottom-2 left-1/2 -translate-x-1/2 items-center gap-1.5 p-1.5 bg-[var(--surface-elevated)]/95 backdrop-blur-md rounded-full border border-[var(--border-color)] shadow-lg shadow-black/10 dark:shadow-black/40 translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out z-10">
           <button
             type="button"
+            title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
             aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
             onClick={handleToggleWishlist}
             disabled={isWishlistLoading}
-            className={`p-1.5 rounded-full transition-all cursor-pointer group/btn ${
+            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all cursor-pointer disabled:cursor-wait ${
               isWishlisted
-                ? "text-red-500 bg-red-50 dark:bg-red-950/40"
-                : "text-[var(--foreground-muted)] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                ? "bg-red-500 text-white shadow-sm shadow-red-500/30"
+                : "bg-[var(--surface-alt)] text-[var(--foreground-muted)] hover:bg-red-500 hover:text-white shadow-sm"
             }`}
           >
             <Heart
-              className={`w-3.5 h-3.5 transition-all ${
-                isWishlisted
-                  ? "fill-red-500 text-red-500"
-                  : "group-hover/btn:fill-red-500"
-              }`}
+              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-all ${isWishlisted ? "fill-white" : ""}`}
             />
           </button>
-          <span className="w-[1px] h-3 bg-[var(--border-color)]" />
           <button
             type="button"
+            title={isCompared ? "Remove from compare" : "Add to compare"}
             aria-label={isCompared ? "Remove from compare" : "Add to compare"}
             onClick={handleAddToCompare}
-            className={`p-1.5 rounded-full transition-all cursor-pointer ${
+            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
               isCompared
-                ? "text-primary bg-primary/10"
-                : "text-[var(--foreground-muted)] hover:text-primary hover:bg-primary/10"
+                ? "bg-primary text-white shadow-sm shadow-primary/30"
+                : "bg-[var(--surface-alt)] text-[var(--foreground-muted)] hover:bg-primary hover:text-white shadow-sm"
             }`}
           >
-            <Repeat className="w-3.5 h-3.5" />
+            <Repeat className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
-          <span className="w-[1px] h-3 bg-[var(--border-color)]" />
           <Link
             href={`/shop/${product.slug}`}
+            title="Quick View"
             aria-label="Quick View"
-            className="p-1.5 rounded-full text-[var(--foreground-muted)] hover:text-primary hover:bg-primary/10 transition-all cursor-pointer"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center bg-[var(--surface-alt)] text-[var(--foreground-muted)] hover:bg-primary hover:text-white shadow-sm transition-all cursor-pointer"
           >
-            <Eye className="w-3.5 h-3.5" />
+            <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </Link>
+          <button
+            type="button"
+            title="Share"
+            aria-label="Share product"
+            onClick={handleShare}
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center bg-[var(--surface-alt)] text-[var(--foreground-muted)] hover:bg-primary hover:text-white shadow-sm transition-all cursor-pointer"
+          >
+            <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </button>
+          <button
+            type="button"
+            title={
+              isOutOfStock
+                ? "Out of stock"
+                : isInCart
+                ? "Already in cart"
+                : "Add to cart"
+            }
+            aria-label={
+              isOutOfStock
+                ? "Out of stock"
+                : isInCart
+                ? "Already in cart"
+                : "Add to cart"
+            }
+            onClick={handleAddToCart}
+            disabled={isOutOfStock || isInCart}
+            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all shadow-sm ${
+              isOutOfStock
+                ? "bg-[var(--surface-alt)] text-[var(--foreground-muted)] opacity-50 cursor-not-allowed"
+                : isInCart
+                ? "bg-brand-gradient text-[var(--on-grad-text)] cursor-default"
+                : "bg-brand-gradient text-[var(--on-grad-text)] hover:scale-105 active:scale-95 cursor-pointer shadow-brand"
+            }`}
+          >
+            <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </button>
         </div>
       </div>
 

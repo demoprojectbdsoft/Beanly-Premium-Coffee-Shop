@@ -306,7 +306,7 @@ export default function CompareClient() {
                             alt={item.title}
                             fill
                             sizes="200px"
-                            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                            className="object-contain transition-transform duration-300 group-hover:scale-105"
                           />
                         </div>
                         <p className="mt-2 text-xs font-bold text-[var(--foreground)] group-hover:text-primary transition-colors line-clamp-2 text-left">
