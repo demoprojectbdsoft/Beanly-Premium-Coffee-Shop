@@ -27,7 +27,7 @@ export default function TrendingProductsSection({
       : [];
 
   const [activePageIndex, setActivePageIndex] = useState(0);
-  const ITEMS_PER_PAGE = 7;
+  const ITEMS_PER_PAGE = 5;
   const totalPages = Math.max(1, Math.ceil(allProducts.length / ITEMS_PER_PAGE));
   const currentPage = Math.min(activePageIndex, totalPages - 1);
 
@@ -63,9 +63,9 @@ export default function TrendingProductsSection({
       {/* ── 2. Content Condition: Skeleton / Grid / Empty State ── */}
       {loading ? (
         /* Skeleton State */
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 border border-[var(--border-color)] rounded-xl overflow-hidden shadow-xs bg-[var(--surface-elevated)]">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <ProductCardSkeleton key={i} hasRightBorder={i < 6} />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 border border-[var(--border-color)] rounded-xl overflow-hidden shadow-xs bg-[var(--surface-elevated)]">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <ProductCardSkeleton key={i} hasRightBorder={i < 4} />
           ))}
         </div>
       ) : allProducts.length === 0 ? (
@@ -99,7 +99,7 @@ export default function TrendingProductsSection({
           )}
 
           {/* Product Grid Layout */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 border border-[var(--border-color)] rounded-xl overflow-hidden shadow-xs bg-[var(--surface-elevated)]">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 border border-[var(--border-color)] rounded-xl overflow-hidden shadow-xs bg-[var(--surface-elevated)]">
             {visibleProducts.map((product, index) => (
               <ProductCard
                 key={product.id || index}

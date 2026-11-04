@@ -51,7 +51,7 @@ function WarehouseDealsContent() {
     router.replace(`?${params.toString()}`, { scroll: false });
   };
 
-  const ITEMS_PER_PAGE = 6;
+  const ITEMS_PER_PAGE = 5;
   const totalPages = Math.max(1, Math.ceil(products.length / ITEMS_PER_PAGE));
   const visibleProducts = products.slice(
     pageIndex * ITEMS_PER_PAGE,
@@ -113,13 +113,13 @@ function WarehouseDealsContent() {
 
         <div className="border border-[var(--border-color)] rounded-lg overflow-hidden bg-[var(--surface-elevated)] dark:bg-[var(--surface-elevated)] shadow-xs">
           {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-[var(--border-color)]/80 dark:divide-[var(--border-color)]">
-              {Array.from({ length: 6 }).map((_, idx) => (
-                <ProductCardSkeleton key={idx} hasRightBorder={idx !== 5} />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-x divide-[var(--border-color)]/80 dark:divide-[var(--border-color)]">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <ProductCardSkeleton key={idx} hasRightBorder={idx !== 4} />
               ))}
             </div>
           ) : visibleProducts.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-[var(--border-color)]/80 dark:divide-[var(--border-color)]">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-x divide-[var(--border-color)]/80 dark:divide-[var(--border-color)]">
               {visibleProducts.map((product, idx) => (
                 <ProductCard
                   key={product.id || product.slug}
