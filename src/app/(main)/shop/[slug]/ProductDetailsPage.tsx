@@ -1096,7 +1096,7 @@ export default function ProductDetailsPage({
                         </span>
                       </div>
                     ))}
-                  {product.warrantyPeriodMonths && product.warrantyPeriodMonths > 0 && (
+                  {product.warrantyPeriodMonths != null && product.warrantyPeriodMonths > 0 && (
                     <>
                       <div className="py-2.5 grid grid-cols-3">
                         <span className="font-semibold text-slate-500">Warranty Period</span>
