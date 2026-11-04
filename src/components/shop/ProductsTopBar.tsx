@@ -127,14 +127,15 @@ export default function ProductsTopBar({ categories = [], subCategories = [], to
         {/* Category, Subcategory & Sort Selects in a Single Row
             Three selects with a 130px floor are 406px wide before the gaps, which
             is wider than a phone: the row used to push the whole page sideways.
-            On a small screen each takes half the row. Category and Sort share the
-            first row side by side (via flex order), and Subcategory — only present
-            once a category with subcategories is picked — wraps under them. On the
-            larger screens the selects keep their natural Category, Subcategory,
-            Sort order in one row. */}
+            On a small screen each takes half the row minus the gap, so Category
+            and Sort truly sit side by side (a plain 50% basis plus the gap
+            overflowed and stacked one per row). Subcategory — only present once a
+            category with subcategories is picked — wraps under them. On the larger
+            screens the selects keep their natural Category, Subcategory, Sort
+            order in one row. */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Category Dropdown — always visible */}
-          <div className="order-1 grow-0 basis-1/2 sm:flex-initial min-w-[130px] sm:min-w-[165px]">
+          <div className="order-1 grow-0 basis-[calc(50%-4px)] sm:flex-initial min-w-[130px] sm:min-w-[165px]">
             <Select
               aria-label="Filter by Category"
               selectedKey={currentCategory || "all"}
@@ -168,7 +169,7 @@ export default function ProductsTopBar({ categories = [], subCategories = [], to
 
           {/* Subcategory Dropdown — only shown when selected category has subcategories */}
           {filteredSubCategories.length > 0 && (
-          <div className="order-3 sm:order-2 grow-0 basis-1/2 sm:flex-initial min-w-[130px] sm:min-w-[165px]">
+          <div className="order-3 sm:order-2 grow-0 basis-[calc(50%-4px)] sm:flex-initial min-w-[130px] sm:min-w-[165px]">
             <Select
               aria-label="Filter by Subcategory"
               selectedKey={currentSubCategory}
@@ -202,7 +203,7 @@ export default function ProductsTopBar({ categories = [], subCategories = [], to
           )}
 
           {/* Sort Dropdown */}
-          <div className="order-2 sm:order-3 grow-0 basis-1/2 sm:flex-initial min-w-[130px] sm:min-w-[155px]">
+          <div className="order-2 sm:order-3 grow-0 basis-[calc(50%-4px)] sm:flex-initial min-w-[130px] sm:min-w-[155px]">
             <Select
               aria-label="Sort Products"
               selectedKey={currentSort}
