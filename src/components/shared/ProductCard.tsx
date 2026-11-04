@@ -550,34 +550,6 @@ export default function ProductCard({
           >
             <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
-          <button
-            type="button"
-            title={
-              isOutOfStock
-                ? "Out of stock"
-                : isInCart
-                ? "Already in cart"
-                : "Add to cart"
-            }
-            aria-label={
-              isOutOfStock
-                ? "Out of stock"
-                : isInCart
-                ? "Already in cart"
-                : "Add to cart"
-            }
-            onClick={handleAddToCart}
-            disabled={isOutOfStock || isInCart}
-            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all shadow-sm ${
-              isOutOfStock
-                ? "bg-[var(--surface-alt)] text-[var(--foreground-muted)] opacity-50 cursor-not-allowed"
-                : isInCart
-                ? "bg-brand-gradient text-[var(--on-grad-text)] cursor-default"
-                : "bg-brand-gradient text-[var(--on-grad-text)] hover:scale-105 active:scale-95 cursor-pointer shadow-brand"
-            }`}
-          >
-            <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </button>
         </div>
       </div>
 
