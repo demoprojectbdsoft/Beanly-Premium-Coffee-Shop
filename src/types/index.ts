@@ -278,6 +278,11 @@ export interface SiteSettingsData {
   topBarText: string;
   topBarEnabled: boolean;
   topBarItems: SiteTopBarItem[];
+  /**
+   * Which panel the single phone hamburger opens: a drawer from the left edge,
+   * a drawer from the right edge, or the full-screen panel from the middle.
+   */
+  mobileMenuPlacement?: "left" | "right" | "middle";
   logoType: "both" | "img" | "text";
   navbarLogo: SiteLogoSet;
   footerLogo: SiteLogoSet;

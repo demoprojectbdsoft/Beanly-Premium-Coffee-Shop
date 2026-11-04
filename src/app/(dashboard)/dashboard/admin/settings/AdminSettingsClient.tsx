@@ -44,6 +44,7 @@ import {
   Sprout,
   AlertCircle,
   FileText,
+  Menu,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import {
@@ -57,7 +58,37 @@ import { updateSiteSettings } from "@/lib/action/siteSettings";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { getCurrencySymbol } from "@/lib/currency";
 import ImageUploader from "@/components/shared/ImageUploader";
+import AppSelect from "@/components/shared/AppSelect";
 import { BrandLogoMark } from "@/components/homepage/Brand";
+
+// ── Phone Menu Placements ─────────────────────────────────────────────────────
+// The small-screen navbar carries a single hamburger, and this is the one panel
+// it opens. Same menu in all three, only the door differs - so the words below
+// are what the owner reads while choosing, and the middle one is the default
+// because that is the shape the bar had before it ever had a choice.
+type MobileMenuPlacement = "left" | "right" | "middle";
+
+const MOBILE_MENU_PLACEMENTS: {
+  value: MobileMenuPlacement;
+  label: string;
+  note: string;
+}[] = [
+  {
+    value: "left",
+    label: "Left drawer",
+    note: "The menu slides in from the left edge, like a classic side drawer.",
+  },
+  {
+    value: "right",
+    label: "Right drawer",
+    note: "The menu slides in from the right edge, under the thumb of whoever holds the phone.",
+  },
+  {
+    value: "middle",
+    label: "Middle - full screen",
+    note: "The menu unfolds from the bar and takes the whole screen.",
+  },
+];
 
 
 // ── Tabs Navigation ───────────────────────────────────────────────────────────
@@ -926,6 +957,12 @@ export default function AdminSettingsClient({
     ]
   );
 
+  // ── 5b. Phone Menu Placement ──
+  const [mobileMenuPlacement, setMobileMenuPlacement] =
+    useState<MobileMenuPlacement>(
+      (current.mobileMenuPlacement as MobileMenuPlacement) || "middle"
+    );
+
   // ── 6. Logos & Branding State ──
   const [logoType, setLogoType] = useState<"both" | "img" | "text">(
     current.logoType || "both"
@@ -1212,6 +1249,7 @@ export default function AdminSettingsClient({
           topBarEnabled,
           topBarText,
           topBarItems: topBarItems.filter((i) => i.label.trim()),
+          mobileMenuPlacement,
           logoType,
           navbarLogo: {
             light: navbarLogoLight,
@@ -2083,6 +2121,67 @@ export default function AdminSettingsClient({
                 <Plus className="w-4 h-4" />
                 Add Top Bar Link
               </Button>
+            </div>
+          </SettingCard>
+
+          <SettingCard
+            title="Phone Menu Button"
+            subtitle="Small screens carry one hamburger — pick the panel it opens"
+            icon={Menu}
+          >
+            <div className="space-y-4">
+              {/* Live preview: the bar with its single button, then the panel
+                  that choice unfolds under it. */}
+              <div className="flex flex-col rounded-xl overflow-hidden border border-[var(--border-color)] bg-[var(--surface-alt)]/40">
+                <div className="flex items-center gap-1.5 px-2.5 py-2 bg-[var(--surface-elevated)] border-b border-[var(--border-color)]/70">
+                  <span className="h-2 w-8 rounded-full bg-[var(--border-color)]" />
+                  <span className="h-4 flex-1 rounded-full border border-[var(--border-color)] bg-[var(--surface)]" />
+                  <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-primary text-white">
+                    <Menu className="w-3 h-3" />
+                  </span>
+                </div>
+                <div className="relative h-20 p-2">
+                  <div
+                    className={`absolute inset-y-2 flex items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-[10px] font-bold uppercase tracking-wide text-primary transition-all duration-200 ${
+                      mobileMenuPlacement === "middle"
+                        ? "inset-x-2"
+                        : mobileMenuPlacement === "right"
+                        ? "right-2 left-1/2"
+                        : "left-2 right-1/2"
+                    }`}
+                  >
+                    {mobileMenuPlacement === "middle"
+                      ? "Full screen"
+                      : `${mobileMenuPlacement === "right" ? "Right" : "Left"} drawer`}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-[var(--foreground-secondary)]">
+                  Hamburger Opens
+                </label>
+                <AppSelect
+                  ariaLabel="Phone menu placement"
+                  value={mobileMenuPlacement}
+                  onChange={(value) =>
+                    setMobileMenuPlacement(
+                      (value || "middle") as MobileMenuPlacement
+                    )
+                  }
+                  options={MOBILE_MENU_PLACEMENTS.map((p) => ({
+                    value: p.value,
+                    label: p.label,
+                  }))}
+                />
+                <p className="text-[11px] text-[var(--foreground-muted)] mt-1">
+                  {
+                    MOBILE_MENU_PLACEMENTS.find(
+                      (p) => p.value === mobileMenuPlacement
+                    )?.note
+                  }
+                </p>
+              </div>
             </div>
           </SettingCard>
         </div>

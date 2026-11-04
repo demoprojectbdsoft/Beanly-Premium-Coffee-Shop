@@ -6,8 +6,6 @@ import {
   Search,
   Menu,
   X,
-  ChevronLeft,
-  ChevronRight,
   ArrowLeftRight,
 } from "lucide-react";
 import {
@@ -31,15 +29,21 @@ import CartButton from "./CartButton";
 import WishlistButton from "./WishlistButton";
 import UserAccountMenu from "./UserAccountMenu";
 import { useCompare } from "@/lib/compare";
+import { useSiteSettings } from "@/context/SiteSettingsContext";
 
 export default function Navbar() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [isLeftDrawerOpen, setIsLeftDrawerOpen] = useState(false);
-  const [isRightDrawerOpen, setIsRightDrawerOpen] = useState(false);
+  // One navigation control on a phone, and only one panel can be up at a time.
+  // Which panel the hamburger opens — the left drawer, the right drawer or the
+  // full-screen middle panel — is the store's Site Settings choice, so the
+  // three arrows that used to sit side by side are gone: they were the same
+  // menu wearing three doors, and the bar out of their way is worth more.
+  const [menuOpen, setMenuOpen] = useState(false);
   const { count: compareCount } = useCompare();
+  const { settings } = useSiteSettings();
+  const menuPlacement = settings.mobileMenuPlacement || "middle";
 
   useEffect(() => {
     let isMounted = true;
@@ -88,35 +92,13 @@ export default function Navbar() {
     };
   }, []);
 
-  const closeAllMenus = () => {
-    setMobileOpen(false);
-    setIsLeftDrawerOpen(false);
-    setIsRightDrawerOpen(false);
-  };
-
-  const handleOpenLeftDrawer = () => {
-    setMobileOpen(false);
-    setIsRightDrawerOpen(false);
-    setIsLeftDrawerOpen(true);
-  };
-
-  const handleToggleHamburger = () => {
-    setIsLeftDrawerOpen(false);
-    setIsRightDrawerOpen(false);
-    setMobileOpen((prev) => !prev);
-  };
-
-  const handleOpenRightDrawer = () => {
-    setMobileOpen(false);
-    setIsLeftDrawerOpen(false);
-    setIsRightDrawerOpen(true);
-  };
+  const closeMenu = () => setMenuOpen(false);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       window.location.href = `/shop?search=${encodeURIComponent(searchQuery.trim())}`;
-      closeAllMenus();
+      closeMenu();
     }
   };
 
@@ -176,53 +158,25 @@ export default function Navbar() {
               <UserAccountMenu variant="storefront" />
             </div>
 
-            {/* Responsive Navigation Controls: Left Arrow + Hamburger + Right Arrow */}
+            {/* One navigation control: the hamburger, opening whatever panel
+                the store picked in Site Settings. */}
             <div className="flex md:hidden items-center gap-1 shrink-0">
-              {/* Left Arrow (HeroUI Left Drawer) */}
               <button
                 type="button"
-                aria-label="Open left drawer"
-                onClick={handleOpenLeftDrawer}
+                aria-label="Open menu"
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((prev) => !prev)}
                 className={`p-1.5 sm:p-2 rounded-lg border text-[var(--foreground)] hover:text-primary transition-colors cursor-pointer ${
-                  isLeftDrawerOpen
+                  menuOpen
                     ? "bg-primary text-white border-primary"
                     : "border-[var(--border-color)] hover:border-primary bg-[var(--surface)]/50"
                 }`}
               >
-                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-
-              {/* Hamburger Button (Toggles Sliding Expand Mobile Menu) */}
-              <button
-                type="button"
-                aria-label="Toggle mobile menu"
-                aria-expanded={mobileOpen}
-                onClick={handleToggleHamburger}
-                className={`p-1.5 sm:p-2 rounded-lg border text-[var(--foreground)] hover:text-primary transition-colors cursor-pointer ${
-                  mobileOpen
-                    ? "bg-primary text-white border-primary"
-                    : "border-[var(--border-color)] hover:border-primary bg-[var(--surface)]/50"
-                }`}
-              >
-                {mobileOpen ? (
+                {menuOpen ? (
                   <X className="w-4 h-4 sm:w-5 sm:h-5" />
                 ) : (
                   <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
                 )}
-              </button>
-
-              {/* Right Arrow (HeroUI Right Drawer) */}
-              <button
-                type="button"
-                aria-label="Open right drawer"
-                onClick={handleOpenRightDrawer}
-                className={`p-1.5 sm:p-2 rounded-lg border text-[var(--foreground)] hover:text-primary transition-colors cursor-pointer ${
-                  isRightDrawerOpen
-                    ? "bg-primary text-white border-primary"
-                    : "border-[var(--border-color)] hover:border-primary bg-[var(--surface)]/50"
-                }`}
-              >
-                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
 
@@ -232,25 +186,25 @@ export default function Navbar() {
         {/* ── Desktop Bottom Navbar (Page Links & Promo banner) ── */}
         <BottomNavbar />
 
-        {/* ── Expanding Mobile Menu Overlay (From Hamburger) ── */}
-        {mobileOpen && (
+        {/* ── Middle: full-screen panel, slid down from the bar ── */}
+        {menuOpen && menuPlacement === "middle" && (
           <div className="fixed inset-0 z-50 md:hidden">
             {/* Backdrop */}
             <div
               className="absolute inset-0 bg-black/50 backdrop-blur-xs"
-              onClick={closeAllMenus}
+              onClick={closeMenu}
             />
             {/* Full-screen panel sliding in from top */}
             <div className="absolute inset-0 bg-[var(--navbar-bg)] shadow-2xl animate-in slide-in-from-top-2 duration-200 flex flex-col overflow-hidden">
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-color)] bg-[var(--surface)] shrink-0">
-                <div onClick={closeAllMenus}>
+                <div onClick={closeMenu}>
                   <SparqLogo size="sm" />
                 </div>
                 <button
                   type="button"
                   aria-label="Close menu"
-                  onClick={closeAllMenus}
+                  onClick={closeMenu}
                   className="p-2 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-alt)] transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
@@ -261,80 +215,64 @@ export default function Navbar() {
                 <MobileMenuContent
                   categories={categories}
                   subCategories={subCategories}
-                  onClose={closeAllMenus}
+                  onClose={closeMenu}
                 />
               </div>
             </div>
           </div>
         )}
 
-        {/* ── HeroUI Left Drawer (from Left Arrow) ── */}
-        <Drawer
-          isOpen={isLeftDrawerOpen}
-          onOpenChange={(open) => {
-            if (!open) setIsLeftDrawerOpen(false);
-          }}
-        >
-          <DrawerBackdrop className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex justify-start transition-opacity duration-200">
-            <DrawerContent
-              placement="left"
-              className="mr-auto h-full w-full max-w-[320px] sm:max-w-[360px] bg-[var(--navbar-bg)] text-[var(--foreground)] shadow-2xl border-r border-[var(--border-color)] flex flex-col"
+        {/* ── Side drawer: the same menu, arriving from the edge the store
+            picked. One drawer for both edges, because the only thing that
+            changes between them is which side it hangs on. ── */}
+        {menuPlacement !== "middle" && (
+          <Drawer
+            isOpen={menuOpen}
+            onOpenChange={(open) => {
+              if (!open) setMenuOpen(false);
+            }}
+          >
+            <DrawerBackdrop
+              className={`fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex transition-opacity duration-200 ${
+                menuPlacement === "right" ? "justify-end" : "justify-start"
+              }`}
             >
-              <DrawerDialog className="flex flex-col h-full outline-none">
-                <DrawerHeader className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-color)] bg-[var(--surface)] shrink-0">
-                  <div onClick={closeAllMenus}>
-                    <SparqLogo size="sm" />
-                  </div>
-                  <DrawerCloseTrigger className="p-2 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-alt)] transition-colors cursor-pointer">
-                    <X className="w-5 h-5" />
-                  </DrawerCloseTrigger>
-                </DrawerHeader>
+              <DrawerContent
+                placement={menuPlacement}
+                className={`h-full w-full max-w-[320px] sm:max-w-[360px] bg-[var(--navbar-bg)] text-[var(--foreground)] shadow-2xl border-[var(--border-color)] flex flex-col ${
+                  menuPlacement === "right"
+                    ? "ml-auto border-l"
+                    : "mr-auto border-r"
+                }`}
+              >
+                <DrawerDialog className="flex flex-col h-full outline-none">
+                  <DrawerHeader className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-color)] bg-[var(--surface)] shrink-0">
+                    {menuPlacement === "right" ? (
+                      <span className="text-sm font-bold text-[var(--foreground)] uppercase tracking-wide">
+                        Menu &amp; Categories
+                      </span>
+                    ) : (
+                      <div onClick={closeMenu}>
+                        <SparqLogo size="sm" />
+                      </div>
+                    )}
+                    <DrawerCloseTrigger className="p-2 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-alt)] transition-colors cursor-pointer">
+                      <X className="w-5 h-5" />
+                    </DrawerCloseTrigger>
+                  </DrawerHeader>
 
-                <DrawerBody className="flex-1 overflow-hidden p-0 flex flex-col min-h-0">
-                  <MobileMenuContent
-                    categories={categories}
-                    subCategories={subCategories}
-                    onClose={closeAllMenus}
-                  />
-                </DrawerBody>
-              </DrawerDialog>
-            </DrawerContent>
-          </DrawerBackdrop>
-        </Drawer>
-
-        {/* ── HeroUI Right Drawer (from Right Arrow) ── */}
-        <Drawer
-          isOpen={isRightDrawerOpen}
-          onOpenChange={(open) => {
-            if (!open) setIsRightDrawerOpen(false);
-          }}
-        >
-          <DrawerBackdrop className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex justify-end transition-opacity duration-200">
-            <DrawerContent
-              placement="right"
-              className="ml-auto h-full w-full max-w-[320px] sm:max-w-[360px] bg-[var(--navbar-bg)] text-[var(--foreground)] shadow-2xl border-l border-[var(--border-color)] flex flex-col"
-            >
-              <DrawerDialog className="flex flex-col h-full outline-none">
-                <DrawerHeader className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-color)] bg-[var(--surface)] shrink-0">
-                  <span className="text-sm font-bold text-[var(--foreground)] uppercase tracking-wide">
-                    Menu & Categories
-                  </span>
-                  <DrawerCloseTrigger className="p-2 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-alt)] transition-colors cursor-pointer">
-                    <X className="w-5 h-5" />
-                  </DrawerCloseTrigger>
-                </DrawerHeader>
-
-                <DrawerBody className="flex-1 overflow-hidden p-0 flex flex-col min-h-0">
-                  <MobileMenuContent
-                    categories={categories}
-                    subCategories={subCategories}
-                    onClose={closeAllMenus}
-                  />
-                </DrawerBody>
-              </DrawerDialog>
-            </DrawerContent>
-          </DrawerBackdrop>
-        </Drawer>
+                  <DrawerBody className="flex-1 overflow-hidden p-0 flex flex-col min-h-0">
+                    <MobileMenuContent
+                      categories={categories}
+                      subCategories={subCategories}
+                      onClose={closeMenu}
+                    />
+                  </DrawerBody>
+                </DrawerDialog>
+              </DrawerContent>
+            </DrawerBackdrop>
+          </Drawer>
+        )}
       </header>
 
       {/* ── Fixed Bottom Row on Small Devices (Home, Shop, About, Services, Contact with hover tooltips) ── */}

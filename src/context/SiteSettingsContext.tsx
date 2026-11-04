@@ -24,6 +24,8 @@ export const DEFAULT_SITE_SETTINGS: SiteSettingsData = {
     { label: "Store Locator", href: "/store-locator" },
     { label: "Track Order", href: "/track-order" },
   ],
+  // One hamburger on a phone, and by default it opens the full-screen panel.
+  mobileMenuPlacement: "middle",
   logoType: "both",
   navbarLogo: { light: "", dark: "" },
   footerLogo: { light: "", dark: "" },
