@@ -61,9 +61,13 @@ export default function CompareClient() {
   const [addingId, setAddingId] = useState<string | null>(null);
 
   // Every specification key used by at least one product becomes a table row.
+  // Brand-ish keys are skipped here because the dedicated "Brand" row already
+  // surfaces them through brandOf, so listing them again would show brand twice.
   const specKeys = Array.from(
     new Set(items.flatMap((item) => Object.keys(item.specifications || {})))
-  ).sort();
+  )
+    .filter((key) => !/brand|manufacturer|make/i.test(key))
+    .sort();
 
   // With two or more products, mark the cheapest price so it is easy to spot.
   const cheapestId =
