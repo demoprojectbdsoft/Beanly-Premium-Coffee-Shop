@@ -1,4 +1,5 @@
 import { getRequiredCustomer } from "@/lib/core/session";
+import DashboardShell from "@/components/dashboard/DashboardShell";
 
 /**
  * The buyer workspace. A customer reaches it directly, and an approved vendor
@@ -10,10 +11,12 @@ import { getRequiredCustomer } from "@/lib/core/session";
  * dashboard is on screen is the URL's job, so a guard that also demanded a
  * matching session hint would send someone standing in the right place to the
  * forbidden page. Buying itself is still checked where the money moves.
+ *
+ * The guard is above the chrome, not below it: an account without the buyer
+ * entry is refused before the buyer sidebar, the basket shortcut and the
+ * workspace note have been drawn.
  */
 export default async function CustomerLayout({ children }: { children: React.ReactNode }) {
   await getRequiredCustomer();
-  return <>
-    {children}
-  </>;
+  return <DashboardShell workspace="customer">{children}</DashboardShell>;
 }

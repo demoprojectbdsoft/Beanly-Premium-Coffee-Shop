@@ -1,69 +1,24 @@
-"use client";
+import React from "react";
+import type { LayoutProps } from "@/types";
 
-import React, { useState } from "react";
-import { usePathname } from "next/navigation";
-import { LayoutProps } from "@/types";
-import DashboardNavbar from "@/components/dashboard/DashboardNavbar";
-import AdminSidebar from "@/components/dashboard/AdminSidebar";
-import CustomerSidebar from "@/components/dashboard/CustomerSidebar";
-import RiderSidebar from "@/components/dashboard/RiderSidebar";
-import VendorSidebar from "@/components/dashboard/VendorSidebar";
-import MobileBottomNav from "@/components/shared/MobileBottomNav";
-import DashboardWorkspaceSync from "@/components/dashboard/DashboardWorkspaceSync";
-
+/**
+ * The `/dashboard` group draws nothing itself, on purpose.
+ *
+ * This layout used to carry the whole chrome — sidebar, header, phone bar — and
+ * picked which workspace to draw straight from the URL. That made the chrome
+ * reachable by URL alone: the guard that refuses a workspace sits in the
+ * workspace's own layout, one level *below* this, so its refusal arrives after
+ * this layout has already been sent. A customer who typed `/dashboard/admin`
+ * watched the admin desk appear, heard the "You are in the Admin dashboard"
+ * note, and only then bounced to the forbidden page. The page behind the
+ * sidebar was never served, but the sidebar itself was: the names of the
+ * admin's screens are a map of the store's back office.
+ *
+ * So the chrome moved down into `DashboardShell`, and each workspace layout
+ * mounts it after its own guard has approved the account. What is left here is
+ * the pass-through that keeps the group's routes under one folder without
+ * putting anything on screen ahead of a check.
+ */
 export default function DashboardLayout({ children }: LayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const pathname = usePathname();
-
-  // The route decides which workspace is on screen: admin, rider, vendor or
-  // customer.
-  const isAdmin = pathname.startsWith("/dashboard/admin");
-  const isRider = pathname.startsWith("/dashboard/rider");
-  const isVendor = pathname.startsWith("/dashboard/vendor");
-
-  return (
-    <div className="flex min-h-screen bg-[var(--surface-alt)] text-[var(--foreground)] transition-colors duration-200">
-      {/* Says which dashboard the URL opened, and keeps the session hint in
-          step with it. Draws nothing. */}
-      <DashboardWorkspaceSync />
-
-      {/* Responsive Collapsible Sidebar */}
-      {isAdmin ? (
-        <AdminSidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
-      ) : isRider ? (
-        <RiderSidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
-      ) : isVendor ? (
-        <VendorSidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
-      ) : (
-        <CustomerSidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <DashboardNavbar
-          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
-        />
-
-        {/* Render Page Children */}
-        <main className="flex-1 p-4 sm:p-6 md:p-8 pb-20 md:pb-8 overflow-y-auto">
-          {children}
-        </main>
-      </div>
-
-      {/* Fixed Mobile Bottom Bar for responsive devices */}
-      <MobileBottomNav />
-    </div>
-  );
+  return <>{children}</>;
 }

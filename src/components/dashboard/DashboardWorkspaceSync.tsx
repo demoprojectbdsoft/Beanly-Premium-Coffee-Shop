@@ -20,7 +20,10 @@ import { useDashboardRole } from "@/hooks/useDashboardRole";
  *    replaced rather than stacked, so moving between pages inside a dashboard
  *    never spams them. This is the answer to "am I in my shop or in my buyer
  *    account?" — the sidebar chip, the header chip and the toast all say the
- *    same word because all three read the same path.
+ *    same word because all three read the same path. Only a workspace the
+ *    account actually holds ever gets named: announcing the admin desk to
+ *    somebody the server is about to refuse would tell them where they had
+ *    reached, even though nothing of that desk had loaded yet.
  *
  * 2. Bring the session hint back in line with the page. The switcher used to
  *    write the hint first and only then navigate, so every refusal (a role an
@@ -42,7 +45,8 @@ export default function DashboardWorkspaceSync() {
 
   // ── 1. Say which dashboard this is ────────────────────────────────────────
   useEffect(() => {
-    if (!user || announced.current === key) return;
+    if (!user || !canEnter(workspace)) return;
+    if (announced.current === key) return;
     announced.current = key;
     toast.info(`You are in the ${label} dashboard`, {
       // One toast for the whole app: a new workspace replaces the old note
@@ -51,7 +55,7 @@ export default function DashboardWorkspaceSync() {
       icon: <Layers className="w-4 h-4" />,
       autoClose: 2600,
     });
-  }, [key, label, user]);
+  }, [canEnter, key, label, user, workspace]);
 
   // ── 2. Repair the session hint the URL has outgrown ───────────────────────
   //
