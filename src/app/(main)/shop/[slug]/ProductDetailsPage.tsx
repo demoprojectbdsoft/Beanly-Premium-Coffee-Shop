@@ -247,11 +247,14 @@ export default function ProductDetailsPage({
   };
 
   const handleShare = async () => {
-    const currentUrl = typeof window !== "undefined" ? window.location.href : "";
+    const productUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/shop/${product.slug || product.id}`
+        : "";
     const shareData = {
       title: product.title,
-      text: `Check out ${product.title} on ${settings.siteName || "Sparq"}!`,
-      url: currentUrl,
+      text: `Check out ${product.title} on Sparq!`,
+      url: productUrl,
     };
 
     if (
@@ -273,12 +276,12 @@ export default function ProductDetailsPage({
     // Fallback: Copy link to clipboard
     try {
       if (typeof navigator !== "undefined" && navigator.clipboard) {
-        await navigator.clipboard.writeText(currentUrl);
+        await navigator.clipboard.writeText(productUrl);
         toast.success("Product link copied to clipboard!", {
           icon: <span>🔗</span>,
         });
       } else {
-        toast.info("Share URL: " + currentUrl);
+        toast.info("Share URL: " + productUrl);
       }
     } catch {
       toast.error("Failed to copy link");
