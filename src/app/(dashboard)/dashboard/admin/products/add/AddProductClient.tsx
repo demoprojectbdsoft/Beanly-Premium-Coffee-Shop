@@ -32,6 +32,7 @@ import { addProduct } from "@/lib/action/products";
 import { WARRANTY_TYPE_OPTIONS } from "@/lib/warranty";
 import { hasOfferDiscount } from "@/lib/offer";
 import { hasBrandSpec } from "@/lib/productSpecs";
+import { recalcPricing } from "@/lib/pricing";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { useDemoAdmin } from "@/hooks/useDemoAdmin";
@@ -155,20 +156,26 @@ export default function AddProductClient({
     setFormState((prev) => ({ ...prev, title, slug: generateSlug(title) }));
   }
 
+  // Price or original price is the source: the discount percentage follows.
   function handlePriceChange(newPrice: string, newOriginalPrice: string) {
-    const price = parseFloat(newPrice);
-    const originalPrice = parseFloat(newOriginalPrice);
-
-    const discount =
-      price && originalPrice && originalPrice > price
-        ? Math.round(((originalPrice - price) / originalPrice) * 100).toString()
-        : "";
-
     setFormState((prev) => ({
       ...prev,
-      price: newPrice,
-      originalPrice: newOriginalPrice,
-      discountPercentage: discount,
+      ...recalcPricing(
+        { price: newPrice, originalPrice: newOriginalPrice, discountPercentage: prev.discountPercentage },
+        "price"
+      ),
+    }));
+  }
+
+  // Discount percentage is the source: the selling price follows from the
+  // original price (or the original price follows from the selling price).
+  function handleDiscountChange(newDiscount: string) {
+    setFormState((prev) => ({
+      ...prev,
+      ...recalcPricing(
+        { price: prev.price, originalPrice: prev.originalPrice, discountPercentage: newDiscount },
+        "discountPercentage"
+      ),
     }));
   }
 
@@ -855,12 +862,7 @@ export default function AddProductClient({
                     type="number"
                     placeholder="Auto-calculated"
                     value={formState.discountPercentage}
-                    onChange={(e) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        discountPercentage: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => handleDiscountChange(e.target.value)}
                   />
                 </div>
 

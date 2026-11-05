@@ -43,6 +43,7 @@ import { updateProduct, deleteProduct } from "@/lib/action/products";
 import { WARRANTY_TYPE_OPTIONS } from "@/lib/warranty";
 import { hasOfferDiscount } from "@/lib/offer";
 import { hasBrandSpec } from "@/lib/productSpecs";
+import { recalcPricing } from "@/lib/pricing";
 import { isStockTracked } from "@/lib/stock";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 
@@ -289,21 +290,26 @@ export default function ProductsClient({
   // the selling price. Equal prices would run a timer for a deal nobody gets.
   const hasEditDiscount = hasOfferDiscount(editForm.price, editForm.originalPrice);
 
-  // Auto calculate discount on price or original price change during update
+  // Price or original price is the source: the discount percentage follows.
   const handleEditPriceChange = (newPrice: string, newOriginalPrice: string) => {
-    const price = parseFloat(newPrice);
-    const originalPrice = parseFloat(newOriginalPrice);
-
-    const discount =
-      price && originalPrice && originalPrice > price
-        ? Math.round(((originalPrice - price) / originalPrice) * 100).toString()
-        : "";
-
     setEditForm((prev) => ({
       ...prev,
-      price: newPrice,
-      originalPrice: newOriginalPrice,
-      discountPercentage: discount,
+      ...recalcPricing(
+        { price: newPrice, originalPrice: newOriginalPrice, discountPercentage: prev.discountPercentage },
+        "price"
+      ),
+    }));
+  };
+
+  // Discount percentage is the source: the selling price follows from the
+  // original price (or the original price follows from the selling price).
+  const handleEditDiscountChange = (newDiscount: string) => {
+    setEditForm((prev) => ({
+      ...prev,
+      ...recalcPricing(
+        { price: prev.price, originalPrice: prev.originalPrice, discountPercentage: newDiscount },
+        "discountPercentage"
+      ),
     }));
   };
 
@@ -1106,9 +1112,7 @@ export default function ProductsClient({
                         min="0"
                         max="100"
                         value={editForm.discountPercentage}
-                        onChange={(e) =>
-                          setEditForm((prev) => ({ ...prev, discountPercentage: e.target.value }))
-                        }
+                        onChange={(e) => handleEditDiscountChange(e.target.value)}
                         className="w-full h-10 rounded-xl bg-[var(--surface-alt)] dark:bg-[var(--surface)] text-xs"
                       />
                     </div>
