@@ -687,13 +687,16 @@ export default function RiderApplicationWizard({
           <div className="space-y-4">
             {/* Every document arrives as a file off the device. A licence photo
                 lives in a phone gallery or on a desk scanner, not on a hosting
-                site, so a bare link box was one an applicant could never fill. */}
+                site, so a bare link box was one an applicant could never fill.
+                A scan is as often a PDF as a photograph, so the picker takes
+                both and the store keeps whichever arrives. */}
             <div className="grid gap-4 sm:grid-cols-2">
               <ImageUploader
                 label="Driving licence"
                 required={needsVehicleDocs}
                 compact
                 allowUrl={false}
+                accept="document"
                 hint={
                   needsVehicleDocs
                     ? "Readable number and expiry — both sides if you have them."
@@ -706,6 +709,7 @@ export default function RiderApplicationWizard({
                 label="National ID / Passport"
                 compact
                 allowUrl={false}
+                accept="document"
                 hint="The same ID you gave the number of in step 1."
                 value={draft.documents.nationalIdUrl || ""}
                 onChange={(url) => patchDocuments({ nationalIdUrl: url })}
@@ -715,6 +719,7 @@ export default function RiderApplicationWizard({
                 required={needsVehicleDocs}
                 compact
                 allowUrl={false}
+                accept="document"
                 hint={
                   needsVehicleDocs
                     ? "The plate on these papers must match the number in Vehicle."
@@ -727,6 +732,7 @@ export default function RiderApplicationWizard({
                 label="Other document"
                 compact
                 allowUrl={false}
+                accept="document"
                 hint="Anything else the reviewer asked for, or a trade licence."
                 value={draft.documents.otherUrl || ""}
                 onChange={(url) => patchDocuments({ otherUrl: url })}

@@ -22,6 +22,7 @@ import { toast } from "react-toastify";
 import type { VendorApplicationDetail } from "@/types/vendor";
 import { getVendorStatusStyle } from "@/lib/vendorStatus";
 import { formatOrderDateTime } from "@/lib/dateTime";
+import DocumentViewer from "@/components/shared/DocumentViewer";
 import { reviewVendorApplication } from "@/lib/action/vendor";
 
 /**
@@ -306,21 +307,16 @@ export default function VendorReviewClient({ detail }: VendorReviewClientProps) 
           <Panel title="Verification" icon={FileText}>
             <Row label="Business type">{value(verification.businessType)}</Row>
             <Row label="Registration">{value(verification.registrationNumber)}</Row>
-            <Row label="Document">
-              {verification.documentUrl ? (
-                <a
-                  href={verification.documentUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-[var(--brand-flat)] hover:underline"
-                >
-                  View file
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              ) : (
-                "—"
-              )}
-            </Row>
+            {/* Opened here rather than in a new tab: a reviewer comparing a
+                trade licence against the registration number above needs both
+                on screen at once, and a PDF now previews in place. */}
+            <div className="mt-3 max-w-xs">
+              <DocumentViewer
+                label="Verification document"
+                href={verification.documentUrl}
+                compact
+              />
+            </div>
             {verification.notes && (
               <p className="mt-2 whitespace-pre-line rounded-xl bg-[var(--surface-alt)] p-2.5 text-[11px] leading-relaxed text-[var(--foreground-muted)]">
                 {verification.notes}

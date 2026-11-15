@@ -583,6 +583,8 @@ export default function StoreProfileClient({
             {application && (
               <ImageUploader
                 label="Verification document"
+                accept="document"
+                hint="A trade licence, TIN certificate or company registration — a photo or a PDF."
                 value={draft.documentUrl}
                 onChange={(url) => set("documentUrl", url)}
                 urlPlaceholder="https://"

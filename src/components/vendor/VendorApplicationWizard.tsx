@@ -571,7 +571,8 @@ export default function VendorApplicationWizard({
             <ImageUploader
               label="Verification document"
               compact
-              hint="A scanned trade licence, TIN or company certificate. The store team reads it during review."
+              accept="document"
+              hint="A scanned trade licence, TIN or company certificate — a photo or a PDF. The store team reads it during review."
               value={draft.verification.documentUrl || ""}
               onChange={(url) => patchVerification({ documentUrl: url })}
             />

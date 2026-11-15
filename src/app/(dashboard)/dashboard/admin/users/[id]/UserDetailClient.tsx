@@ -22,7 +22,6 @@ import {
   Copy,
   Check,
   MapPin,
-  FileText,
   Star,
   ShoppingBag,
   Lock,
@@ -38,6 +37,7 @@ import { rolesOf, roleOf, suspendedRolesOf } from "@/lib/core/roles";
 import { useDemoAdmin } from "@/hooks/useDemoAdmin";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import UserAvatar from "@/components/shared/UserAvatar";
+import DocumentViewer from "@/components/shared/DocumentViewer";
 import type { VendorApplicationDetail } from "@/types/vendor";
 import type { RiderApplicationDetail } from "@/types/rider";
 
@@ -837,14 +837,13 @@ export default function UserDetailClient({
                   }
                 />
                 {riderDetail.application.documents?.drivingLicenseUrl && (
-                  <a
-                    href={riderDetail.application.documents.drivingLicenseUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="col-span-2 inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
-                  >
-                    <FileText className="w-3.5 h-3.5" /> Driving license document
-                  </a>
+                  <div className="col-span-2 max-w-xs">
+                    <DocumentViewer
+                      label="Driving license"
+                      href={riderDetail.application.documents.drivingLicenseUrl}
+                      compact
+                    />
+                  </div>
                 )}
               </div>
             )}

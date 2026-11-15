@@ -26,6 +26,7 @@ import type { RiderApplicationDetail } from "@/types/rider";
 import { RIDER_TIMESLOT_OPTIONS, RIDER_WEEKDAY_OPTIONS } from "@/types/rider";
 import { getRiderStatusStyle } from "@/lib/riderStatus";
 import { formatOrderDateTime } from "@/lib/dateTime";
+import DocumentViewer from "@/components/shared/DocumentViewer";
 import { reviewRiderApplication } from "@/lib/action/rider";
 
 /**
@@ -79,35 +80,6 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
         {children}
       </span>
     </div>
-  );
-}
-
-function DocLink({ label, href }: { label: string; href?: string }) {
-  if (!href) {
-    return (
-      <div className="rounded-xl border border-dashed border-[var(--border-color)] px-3 py-2.5">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--foreground-muted)]">
-          {label}
-        </p>
-        <p className="mt-0.5 text-[11px] text-[var(--foreground-muted)]">Not provided</p>
-      </div>
-    );
-  }
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)] px-3 py-2.5 transition-colors hover:border-[var(--brand-flat)]/40 cursor-pointer"
-    >
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--foreground-muted)]">
-        {label}
-      </p>
-      <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--brand-flat)]">
-        View file
-        <ExternalLink className="h-3 w-3" />
-      </p>
-    </a>
   );
 }
 
@@ -297,10 +269,10 @@ export default function RiderReviewClient({ detail }: RiderReviewClientProps) {
 
           <Panel title="Documents" icon={FileText}>
             <div className="grid gap-2 sm:grid-cols-2">
-              <DocLink label="Driving license" href={documents.drivingLicenseUrl} />
-              <DocLink label="National ID" href={documents.nationalIdUrl} />
-              <DocLink label="Vehicle papers" href={documents.vehicleDocsUrl} />
-              <DocLink label="Other" href={documents.otherUrl} />
+              <DocumentViewer label="Driving license" href={documents.drivingLicenseUrl} compact />
+              <DocumentViewer label="National ID" href={documents.nationalIdUrl} compact />
+              <DocumentViewer label="Vehicle papers" href={documents.vehicleDocsUrl} compact />
+              <DocumentViewer label="Other" href={documents.otherUrl} compact />
             </div>
             {documents.notes && (
               <p className="mt-2 whitespace-pre-line rounded-xl bg-[var(--surface-alt)] p-2.5 text-[11px] leading-relaxed text-[var(--foreground-muted)]">

@@ -2,7 +2,17 @@
 
 import React, { useRef, useState } from "react";
 import { Input } from "@heroui/react";
-import { Upload, Link2, X, Loader2, ImageIcon } from "lucide-react";
+import { Upload, Link2, X, Loader2, ImageIcon, FileText } from "lucide-react";
+import {
+  DOCUMENT_ACCEPT,
+  fileNameOf,
+  fileKindOf,
+  guessMime,
+  isAllowedDocumentType,
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_LABEL,
+  uploadDocument,
+} from "@/lib/files";
 
 // ─── Read the ImgBB API key from the environment variable ────────────────────
 // Set NEXT_PUBLIC_IMGBB_API_KEY in your .env.local file
@@ -46,6 +56,16 @@ interface ImageUploaderProps {
   compact?: boolean;
   /** One line of help under the label, e.g. what the reviewer wants to see. */
   hint?: string;
+  /**
+   * What the field takes: an illustration, or a document.
+   *
+   * `"document"` widens the picker to PDFs and Word files as well as photos,
+   * and sends anything that is not a photo to the store's own API instead of the
+   * image host. An application's licence or trade certificate is as likely to
+   * be a PDF as a photograph, and a picker that refuses one is a dead end for
+   * the applicant rather than a safeguard.
+   */
+  accept?: "image" | "document";
 }
 
 // ─── ImageUploader Component ─────────────────────────────────────────────────
@@ -68,6 +88,7 @@ export default function ImageUploader({
   allowUrl = true,
   compact = false,
   hint,
+  accept = "image",
 }: ImageUploaderProps) {
   // Ref to the hidden <input type="file"> so we can open the file picker
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -84,10 +105,22 @@ export default function ImageUploader({
   // Whether the user is dragging a file over the drop zone
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // ── Upload a file to ImgBB ──────────────────────────────────────────────────
+  // ── Upload a file ──────────────────────────────────────────────────────────
   const handleFile = async (file: File) => {
-    // Reject non-image files early
-    if (!file.type.startsWith("image/")) {
+    const mime = guessMime(file);
+
+    // A document field takes photos, PDFs and Word files; an illustration field
+    // takes photos, because the image host behind it cannot render anything else.
+    if (accept === "document") {
+      if (!isAllowedDocumentType(mime)) {
+        setUploadError("Attach a photo, a PDF or a Word document.");
+        return;
+      }
+      if (file.size > MAX_UPLOAD_BYTES) {
+        setUploadError(`That file is larger than ${MAX_UPLOAD_LABEL}.`);
+        return;
+      }
+    } else if (!mime.startsWith("image/")) {
       setUploadError("Please select a valid image file.");
       return;
     }
@@ -96,8 +129,12 @@ export default function ImageUploader({
     setUploadError(null);
 
     try {
-      const url = await uploadToImgBB(file);
-      onChange(url); // Pass the hosted URL back to the parent
+      // A photograph still goes straight to the image host; a PDF or a Word file
+      // goes to the store's API, which can keep it and serve it back for review.
+      const url = mime.startsWith("image/")
+        ? await uploadToImgBB(file)
+        : (await uploadDocument(file)).url;
+      onChange(url);
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Upload failed. Please try again.";
@@ -207,7 +244,7 @@ export default function ImageUploader({
               <>
                 <Loader2 className={`text-primary animate-spin ${compact ? "w-5 h-5" : "w-7 h-7"}`} />
                 <p className={`font-semibold text-primary ${compact ? "text-[11px]" : "text-xs"}`}>
-                  Uploading to ImgBB…
+                  Uploading…
                 </p>
               </>
             ) : (
@@ -217,7 +254,11 @@ export default function ImageUploader({
                     compact ? "w-8 h-8" : "w-10 h-10"
                   }`}
                 >
-                  <ImageIcon className={`text-primary ${compact ? "w-4 h-4" : "w-5 h-5"}`} />
+                  {accept === "document" ? (
+                    <FileText className={`text-primary ${compact ? "w-4 h-4" : "w-5 h-5"}`} />
+                  ) : (
+                    <ImageIcon className={`text-primary ${compact ? "w-4 h-4" : "w-5 h-5"}`} />
+                  )}
                 </div>
                 <div className="text-center">
                   <p
@@ -228,7 +269,9 @@ export default function ImageUploader({
                     Click to browse or drag & drop
                   </p>
                   <p className="text-[10px] text-[var(--foreground-muted)] mt-0.5">
-                    PNG, JPG, WEBP, GIF — uploaded to ImgBB
+                    {accept === "document"
+                      ? `JPG, PNG, PDF or DOC — up to ${MAX_UPLOAD_LABEL}`
+                      : "PNG, JPG, WEBP, GIF — uploaded to ImgBB"}
                   </p>
                 </div>
               </>
@@ -239,7 +282,7 @@ export default function ImageUploader({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept={accept === "document" ? DOCUMENT_ACCEPT : "image/*"}
             className="hidden"
             onChange={handleFileInputChange}
           />
@@ -263,26 +306,32 @@ export default function ImageUploader({
         <p className="text-[10px] font-semibold text-rose-500">{uploadError}</p>
       )}
 
-      {/* Image preview — shown once an image URL is set */}
+      {/* Preview — a thumbnail for a photo, a labelled tile for a PDF */}
       {value && !isUploading && (
         <div className="flex items-center gap-3 mt-1 p-2.5 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)]">
           {/* Thumbnail */}
           <div className="w-16 h-16 rounded-lg overflow-hidden border border-[var(--border-color)] shrink-0 bg-[var(--surface-elevated)]">
-            <img
-              src={value}
-              alt="Preview"
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                // Hide broken image icon if the URL is invalid
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
-            />
+            {fileKindOf(value) === "image" ? (
+              <img
+                src={value}
+                alt="Preview"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Hide broken image icon if the URL is invalid
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-primary">
+                <FileText className="w-6 h-6" />
+              </span>
+            )}
           </div>
 
           {/* URL text + remove button */}
           <div className="flex flex-col gap-1 flex-1 min-w-0">
             <p className="text-[10px] text-[var(--foreground-muted)] font-medium">
-              Uploaded
+              {fileKindOf(value) === "image" ? "Uploaded" : fileNameOf(value) || "Document"}
             </p>
             <p className="text-[10px] text-[var(--foreground-muted)] truncate">{value}</p>
             <button

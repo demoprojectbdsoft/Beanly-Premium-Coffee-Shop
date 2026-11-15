@@ -831,6 +831,7 @@ export default function RiderProfileClient({
                 label="Driving licence"
                 compact
                 allowUrl={false}
+                accept="document"
                 hint="Readable number and expiry."
                 value={documents.drivingLicenseUrl}
                 onChange={(url) => patchDocuments({ drivingLicenseUrl: url })}
@@ -839,6 +840,7 @@ export default function RiderProfileClient({
                 label="National ID / Passport"
                 compact
                 allowUrl={false}
+                accept="document"
                 value={documents.nationalIdUrl}
                 onChange={(url) => patchDocuments({ nationalIdUrl: url })}
               />
@@ -846,6 +848,7 @@ export default function RiderProfileClient({
                 label="Vehicle registration papers"
                 compact
                 allowUrl={false}
+                accept="document"
                 hint="The plate here must match the one in Vehicle."
                 value={documents.vehicleDocsUrl}
                 onChange={(url) => patchDocuments({ vehicleDocsUrl: url })}
@@ -854,6 +857,7 @@ export default function RiderProfileClient({
                 label="Other document"
                 compact
                 allowUrl={false}
+                accept="document"
                 hint="Anything else the store asked for."
                 value={documents.otherUrl}
                 onChange={(url) => patchDocuments({ otherUrl: url })}
