@@ -13,7 +13,6 @@ import {
   MapPin,
   MapPinned,
   Navigation,
-  ShieldAlert,
   ShieldCheck,
   Smartphone,
   Wallet,
@@ -22,7 +21,7 @@ import { getUserSession } from "@/lib/core/session";
 import { hasRole } from "@/lib/core/roles";
 import { asRiderApplication, getMyRiderApplication } from "@/lib/api/rider";
 import { getRiderStatusLabel } from "@/lib/riderStatus";
-import FaqAccordion from "@/components/shared/FaqAccordion";
+import FaqAccordion, { type FaqItem } from "@/components/shared/FaqAccordion";
 
 export const dynamic = "force-dynamic";
 
@@ -125,42 +124,42 @@ const AT_A_GLANCE = [
 
 const FAQS = [
   {
-    icon: CircleUser,
+    icon: "user",
     question: "Do I need a second account?",
     answer:
       "No. The application is linked to the account you already have. Approval adds the rider role beside your customer role — nothing is copied and nothing is reset.",
   },
   {
-    icon: Clock3,
+    icon: "clock",
     question: "How long does the review take?",
     answer:
       "Most applications are read within two working days. Every decision is sent to you, and a rejection always arrives with the reason it was given.",
   },
   {
-    icon: FileCheck2,
+    icon: "file",
     question: "Which documents do I have to upload?",
     answer:
       "A driving licence and the vehicle registration papers for a motorcycle, scooter or car, plus a national ID or passport. On a bicycle or on foot, the licence and the papers are not asked for.",
   },
   {
-    icon: Navigation,
+    icon: "navigation",
     question: "Do I have to ride across the whole city?",
     answer:
       "No. You set the maximum distance per delivery and the area you serve, and requests are matched to them. You can change both from the rider profile at any time.",
   },
   {
-    icon: Wallet,
+    icon: "wallet",
     question: "How and when am I paid?",
     answer:
       "The fee the store set on a job is booked as earned the moment the customer's code closes the delivery. Your earnings and the store's payout board read the same numbers.",
   },
   {
-    icon: ShieldAlert,
+    icon: "shield",
     question: "Can I still shop while I deliver?",
     answer:
       "Yes, from the customer dashboard. The cart is closed while you are working as a rider, so switching your active role back to customer is what opens it again.",
   },
-];
+] satisfies FaqItem[];
 
 /** What approval keeps, read as a promise rather than a feature list. */
 const PROMISE = [

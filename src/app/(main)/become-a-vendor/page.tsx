@@ -14,7 +14,6 @@ import {
   MapPin,
   Rocket,
   Send,
-  ShieldAlert,
   ShieldCheck,
   ShoppingBag,
   Sparkles,
@@ -30,7 +29,7 @@ import { getUserSession } from "@/lib/core/session";
 import { roleOf } from "@/lib/core/roles";
 import { getVendorStatusLabel } from "@/lib/vendorStatus";
 import VendorPricing from "@/components/vendor/VendorPricing";
-import FaqAccordion from "@/components/shared/FaqAccordion";
+import FaqAccordion, { type FaqItem } from "@/components/shared/FaqAccordion";
 
 export const dynamic = "force-dynamic";
 
@@ -167,42 +166,42 @@ const AT_A_GLANCE = [
 
 const FAQS = [
   {
-    icon: CircleUser,
+    icon: "user",
     question: "Do I need a second account?",
     answer:
       "No. The application is linked to the account you already have. Approval changes that account's role to vendor and creates the store beside it — nothing is copied and nothing is reset.",
   },
   {
-    icon: ShoppingBag,
+    icon: "shopping",
     question: "Can I keep shopping while I sell?",
     answer:
       "Yes. A vendor may add to cart, wishlist and check out from another vendor's store. Only staff and riders are kept out of the cart.",
   },
   {
-    icon: Clock3,
+    icon: "clock",
     question: "What happens while my application is reviewed?",
     answer:
       "Sign-in is paused until the store team decides, because an applicant holds no marketplace authority. You are emailed the outcome, and after a rejection you can sign in and apply again.",
   },
   {
-    icon: ShieldAlert,
+    icon: "shield",
     question: "What if I am rejected?",
     answer:
       "Your account stays a customer. The reason is saved and shown on your application status page, and you may resubmit on the same application so the earlier review stays in the file.",
   },
   {
-    icon: FileCheck2,
+    icon: "file",
     question: "Do I need a trade licence?",
     answer:
       "No. Verification is optional — a home seller is welcome. A licence or registration number only speeds the review up.",
   },
   {
-    icon: Gauge,
+    icon: "gauge",
     question: "How do the plan limits work?",
     answer:
       "Every limit — products, featured slots, coupons — is read from the plan table by the API. Reaching a limit stops the action with a message naming the limit and the plan that lifts it.",
   },
-];
+] satisfies FaqItem[];
 
 interface BecomeAVendorPageProps {
   searchParams: Promise<{ plan?: string }>;

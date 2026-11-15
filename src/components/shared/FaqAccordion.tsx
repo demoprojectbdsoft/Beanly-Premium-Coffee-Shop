@@ -2,25 +2,27 @@
 
 import React from "react";
 import { Accordion } from "@heroui/react";
-import { ChevronDown, HelpCircle, type LucideIcon } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { contentIcon, type ContentIconName } from "@/lib/contentIcons";
 
 /**
- * The FAQ every pitch page reads from.
+ * The FAQ every pitch and help page reads from.
  *
  * HeroUI's own accordion rather than a `<details>` list: the panel animates its
  * height, the chevron turns with the state, and the trigger is a real button —
  * so a question can be opened with the keyboard, announced as expanded, and
  * closed again without the page writing any of that itself.
  *
- * Each question carries its own icon, because a reader scanning six questions
- * finds "trade licence" by its glyph long before they read the words.
+ * The icon is a *name*, not a component. This file is a client component and
+ * the pages that use it are server components, so anything passed across that
+ * boundary has to be serialisable — a component is a function and cannot be.
  */
 
 export interface FaqItem {
   question: string;
   answer: string;
-  /** The glyph beside the question; a plain help mark when none is given. */
-  icon?: LucideIcon;
+  /** The glyph beside the question, looked up by name; a help mark by default. */
+  icon?: ContentIconName;
 }
 
 interface FaqAccordionProps {
@@ -55,7 +57,7 @@ export default function FaqAccordion({
       className="flex flex-col gap-2.5"
     >
       {items.map((item, index) => {
-        const Icon = item.icon ?? HelpCircle;
+        const Icon = contentIcon(item.icon);
         const key = String(index);
 
         return (
