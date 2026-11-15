@@ -676,8 +676,15 @@ export default function AdminWarrantiesClient({
                     </td>
                     <td className="py-3 px-4 text-center"><WarrantyStatusBadge status={w.status} size="sm" /></td>
                     <td className="py-3 px-4 text-right">
-                      <Button isIconOnly size="sm" variant="ghost" className="h-8 w-8 rounded-lg" onPress={() => openWarrantyModal(w)}>
-                        <Eye className="w-4 h-4" />
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="ghost"
+                        className="h-9 w-9 rounded-lg text-[var(--foreground-muted)] hover:text-primary hover:bg-primary/10 cursor-pointer"
+                        aria-label="Open warranty details"
+                        onPress={() => openWarrantyModal(w)}
+                      >
+                        <Eye className="w-[18px] h-[18px]" />
                       </Button>
                     </td>
                   </tr>

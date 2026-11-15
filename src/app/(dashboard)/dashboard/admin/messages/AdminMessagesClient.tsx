@@ -471,20 +471,20 @@ export default function AdminMessagesClient({
                           size="sm"
                           variant="ghost"
                           onPress={() => openMessage(item)}
-                          className="w-8 h-8 rounded-lg text-[var(--foreground-muted)] hover:text-primary hover:bg-primary/10 cursor-pointer"
+                          className="w-9 h-9 rounded-lg text-[var(--foreground-muted)] hover:text-primary hover:bg-primary/10 cursor-pointer"
                           aria-label="Read message"
                         >
-                          <Eye className="w-3.5 h-3.5" />
+                          <Eye className="w-[18px] h-[18px]" />
                         </Button>
                         <Button
                           isIconOnly
                           size="sm"
                           variant="ghost"
                           onPress={() => promptDelete(item)}
-                          className="w-8 h-8 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
+                          className="w-9 h-9 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
                           aria-label="Delete message"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-[18px] h-[18px]" />
                         </Button>
                       </div>
                     </td>

@@ -461,9 +461,9 @@ export default function TransactionsClient({
                         <Button
                           size="sm"
                           onPress={() => handleOpenDetail(t)}
-                          className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 dark:hover:bg-[var(--accent)]/10 text-xs font-bold transition-colors cursor-pointer"
+                          className="inline-flex h-8 items-center gap-1.5 px-3.5 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 dark:hover:bg-[var(--accent)]/10 text-xs font-bold transition-colors cursor-pointer"
                         >
-                          <Eye className="w-3.5 h-3.5" />
+                          <Eye className="w-4 h-4" />
                           <span>View</span>
                         </Button>
                       </td>

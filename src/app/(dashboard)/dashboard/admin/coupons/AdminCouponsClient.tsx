@@ -361,7 +361,7 @@ export default function AdminCouponsClient({
                         onClick={() => go({ edit: coupon._id })}
                         className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-color)] px-2 py-1.5 text-[10px] font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-alt)] cursor-pointer"
                       >
-                        <Pencil className="h-3 w-3" />
+                        <Pencil className="h-3.5 w-3.5" />
                         Edit
                       </button>
 
@@ -371,7 +371,7 @@ export default function AdminCouponsClient({
                         disabled={busyId === coupon._id}
                         className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-color)] px-2 py-1.5 text-[10px] font-semibold text-[var(--foreground-muted)] transition-colors hover:bg-[var(--surface-alt)] hover:text-[var(--foreground)] disabled:opacity-50 cursor-pointer"
                       >
-                        {busyId === coupon._id && <Loader2 className="h-3 w-3 animate-spin" />}
+                        {busyId === coupon._id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                         {coupon.isActive ? "Stop" : "Resume"}
                       </button>
 
@@ -379,9 +379,9 @@ export default function AdminCouponsClient({
                         type="button"
                         onClick={() => remove(coupon)}
                         disabled={busyId === coupon._id}
-                        className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-color)] px-2 py-1.5 text-[10px] font-semibold text-[var(--foreground-muted)] transition-colors hover:bg-[var(--surface-alt)] hover:text-rose-600 disabled:opacity-50 cursor-pointer"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-color)] text-[var(--foreground-muted)] transition-colors hover:bg-[var(--surface-alt)] hover:text-rose-600 disabled:opacity-50 cursor-pointer"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   ) : (

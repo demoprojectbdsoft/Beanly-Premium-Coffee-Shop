@@ -195,7 +195,7 @@ export default function VendorApplicationsClient({
                         <StatusIcon className="h-2.5 w-2.5" />
                         {style.label}
                       </span>
-                      <ArrowRight className="h-3.5 w-3.5 text-[var(--foreground-muted)]" />
+                      <ArrowRight className="h-4 w-4 text-[var(--foreground-muted)]" />
                     </div>
                   </Link>
                 </li>

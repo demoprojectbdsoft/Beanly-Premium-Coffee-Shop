@@ -6,6 +6,8 @@ import { ArrowRight, ShoppingCart, Sparkles } from "lucide-react";
 import { SlideItem } from "@/types";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { hasOfferDiscount } from "@/lib/offer";
+import { padCountdown } from "@/lib/countdown";
+import { useCountdown } from "@/hooks/useCountdown";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 export interface SlideData {
@@ -27,41 +29,19 @@ export interface SlideData {
 const FALLBACK_IMAGE =
   "https://i.ibb.co.com/Q3Tpt7Df/industries-consumer-electronics-removebg-preview.png";
 
-// ─── Countdown Hook ──────────────────────────────────────────────────────────
-function useCountdown(targetDate?: Date) {
-  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0, ended: false });
-
-  useEffect(() => {
-    if (!targetDate) return;
-    const tick = () => {
-      const diff = targetDate.getTime() - Date.now();
-      if (diff > 0) {
-        setTimeLeft({
-          hours: Math.floor(diff / 3_600_000),
-          minutes: Math.floor((diff / 60_000) % 60),
-          seconds: Math.floor((diff / 1_000) % 60),
-          ended: false,
-        });
-      } else {
-        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, ended: true });
-      }
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [targetDate]);
-
-  return timeLeft;
-}
-
 // ─── Countdown Box ───────────────────────────────────────────────────────────
+// The box is sized by its content instead of a fixed width, so a 100+ hour
+// deal keeps "HOURS" on one line and a three-digit number never pushes the
+// label into a broken "HOUR / S" wrap.
 function CountdownBox({ value, label }: { value: number; label: string }) {
   return (
-    <div className="border-2 border-primary rounded-md p-1.5 w-12 text-center bg-[var(--surface)] text-[var(--foreground)] shadow-xs">
-      <span className="block text-lg font-bold text-[var(--foreground)] leading-none">
-        {String(value).padStart(2, "0")}
+    <div className="flex min-w-[52px] shrink-0 flex-col items-center justify-center rounded-md border-2 border-primary bg-[var(--surface)] px-1.5 py-1.5 text-[var(--foreground)] shadow-xs">
+      <span className="block text-lg font-bold leading-none tabular-nums text-[var(--foreground)]">
+        {padCountdown(value)}
       </span>
-      <span className="text-[9px] text-[var(--foreground-muted)] uppercase font-semibold">{label}</span>
+      <span className="mt-0.5 block whitespace-nowrap text-[9px] font-semibold uppercase leading-none text-[var(--foreground-muted)]">
+        {label}
+      </span>
     </div>
   );
 }
@@ -124,6 +104,15 @@ export default function HeroSlider({ initialSlides = [] }: HeroSliderProps) {
     return () => clearInterval(id);
   }, [currentSlide, isPaused, slides.length]);
 
+  // Hooks run on every render, so the active slide and its timer are resolved
+  // before the empty state can return early.
+  const activeIndex = currentSlide < slides.length ? currentSlide : 0;
+  const slide = slides[activeIndex];
+  const countdown = useCountdown(slide?.targetDate);
+  // The hero shows a single hours box, so a multi-day deal counts its days
+  // into hours instead of resetting to 23 every evening.
+  const totalHours = countdown.days * 24 + countdown.hours;
+
   // If no slides exist in the database
   if (slides.length === 0) {
     return (
@@ -151,10 +140,6 @@ export default function HeroSlider({ initialSlides = [] }: HeroSliderProps) {
       </div>
     );
   }
-
-  const activeIndex = currentSlide < slides.length ? currentSlide : 0;
-  const slide = slides[activeIndex];
-  const { hours, minutes, seconds, ended: countdownEnded } = useCountdown(slide?.targetDate);
 
   return (
     <div className="w-full">
@@ -224,16 +209,16 @@ export default function HeroSlider({ initialSlides = [] }: HeroSliderProps) {
 
             <div className="flex items-baseline justify-center md:justify-start gap-2">
               <span className="text-3xl font-normal text-red-500 dark:text-red-400">{slide.price}</span>
-              {slide.originalPrice && slide.hasDiscount && !countdownEnded && (
+              {slide.originalPrice && slide.hasDiscount && !countdown.ended && (
                 <span className="text-sm text-[var(--foreground-muted)] line-through">{slide.originalPrice}</span>
               )}
             </div>
 
-            {slide.hasDiscount && (
-              <div className="flex items-center justify-center md:justify-start gap-2 pt-1">
-                <CountdownBox value={hours} label="HOURS" />
-                <CountdownBox value={minutes} label="MINS" />
-                <CountdownBox value={seconds} label="SECS" />
+            {slide.hasDiscount && !countdown.ended && (
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5 pt-1">
+                <CountdownBox value={totalHours} label="HOURS" />
+                <CountdownBox value={countdown.minutes} label="MINS" />
+                <CountdownBox value={countdown.seconds} label="SECS" />
               </div>
             )}
 

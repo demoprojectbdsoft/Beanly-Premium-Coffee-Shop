@@ -35,6 +35,7 @@ import { toast } from "react-toastify";
 import { Product, SlideItem } from "@/types";
 import { addSlide, updateSlide, deleteSlide } from "@/lib/action/slides";
 import { hasOfferDiscount } from "@/lib/offer";
+import { countdownParts, parseCountdownTarget } from "@/lib/countdown";
 import HeroUIDateTimePicker from "@/components/shared/HeroUIDateTimePicker";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 
@@ -71,22 +72,16 @@ function formatDisplayDate(dateVal?: string | Date): string {
 
 // Helper to calculate countdown time remaining string
 function getTimeRemaining(dateVal?: string | Date) {
-  if (!dateVal) return { text: "No timer set", expired: false, hours: 0, mins: 0, secs: 0 };
-  const d = new Date(dateVal);
-  const diff = d.getTime() - Date.now();
-  if (diff <= 0) {
-    return { text: "Offer Ended (Standard Price)", expired: true, hours: 0, mins: 0, secs: 0 };
+  const target = parseCountdownTarget(dateVal);
+  if (!target) return { text: "No timer set", expired: false };
+  const parts = countdownParts(target);
+  if (parts.ended) {
+    return { text: "Offer Ended (Standard Price)", expired: true };
   }
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const mins = Math.floor((diff / (1000 * 60)) % 60);
-  const secs = Math.floor((diff / 1000) % 60);
-  return {
-    text: `${hours}h ${mins}m left`,
-    expired: false,
-    hours,
-    mins,
-    secs,
-  };
+  // Days are folded in only when they are real, so a week-long deal reads
+  // "6d 22h left" instead of the unwieldy "166h 5m left".
+  const days = parts.days > 0 ? `${parts.days}d ` : "";
+  return { text: `${days}${parts.hours}h ${parts.minutes}m left`, expired: false };
 }
 
 export default function HomeSliderClient({
@@ -639,24 +634,24 @@ export default function HomeSliderClient({
                         <div className="inline-flex items-center gap-1.5">
                           <button
                             onClick={() => setPreviewSlide(slide)}
-                            className="p-1.5 rounded-lg text-[var(--foreground-muted)] hover:text-primary hover:bg-primary/10 dark:hover:bg-[var(--accent)]/10 transition-colors cursor-pointer"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-[var(--foreground-muted)] hover:text-primary hover:bg-primary/10 dark:hover:bg-[var(--accent)]/10 transition-colors cursor-pointer"
                             title="Preview Hero Banner"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-[18px] h-[18px]" />
                           </button>
                           <button
                             onClick={() => handleOpenEdit(slide)}
-                            className="p-1.5 rounded-lg text-primary hover:bg-primary/10 dark:hover:bg-[var(--accent)]/10 transition-colors cursor-pointer"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-primary hover:bg-primary/10 dark:hover:bg-[var(--accent)]/10 transition-colors cursor-pointer"
                             title="Edit Slide"
                           >
-                            <Edit2 className="w-4 h-4" />
+                            <Edit2 className="w-[18px] h-[18px]" />
                           </button>
                           <button
                             onClick={() => handleOpenDelete(slide)}
-                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                             title="Delete Slide"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-[18px] h-[18px]" />
                           </button>
                         </div>
                       </td>

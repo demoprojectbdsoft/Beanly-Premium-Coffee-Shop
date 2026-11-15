@@ -25,6 +25,7 @@ import {
   FileText,
   Star,
   ShoppingBag,
+  Lock,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import {
@@ -244,70 +245,106 @@ export default function UserDetailClient({
   const patch = (next: Partial<AdminUser>) =>
     setUser((prev) => ({ ...prev, ...next }));
 
-  // Overwrite the whole approved list. The API re-applies its invariants, so we
-  // read roles/activeRole/roleSuspensions straight back off the response.
-  const toggleRole = (role: string, checked: boolean) =>
+  // Every role write answers with the same three fields, so both the switches
+  // above and the per-role desk below read the server's reply the same way
+  // instead of guessing what the invariants did to the request.
+  const applyRoleResult = (data: Record<string, unknown>, fallbackRoles?: string[]) => {
+    const roles = Array.isArray(data.roles) ? (data.roles as string[]) : fallbackRoles;
+    const activeRole = typeof data.activeRole === "string" ? data.activeRole : undefined;
+    setUser((prev) => ({
+      ...prev,
+      ...(roles ? { roles } : {}),
+      ...(activeRole ? { activeRole, role: activeRole } : {}),
+      roleSuspensions: Array.isArray(data.roleSuspensions)
+        ? (data.roleSuspensions as RoleSuspensionRow[])
+        : prev.roleSuspensions,
+    }));
+  };
+
+  const labelOf = (role: string) => ROLE_META[role]?.label || role;
+
+  // Revoke is stronger than suspend: it removes the authority, clears the
+  // marketplace state behind it and drops any parking row the role still had,
+  // so a later grant starts unsuspended. Offered on each held marketplace role
+  // and used by the switch above when a held role is clicked again.
+  const applyRevoke = async (role: string) => {
+    const res = await revokeUserRole(userId, { role });
+    if (res?.success === false) {
+      toast.error(res?.message || `Failed to revoke ${labelOf(role)}`);
+      return;
+    }
+    const data = (res?.data || {}) as Record<string, unknown>;
+    applyRoleResult(data, held.filter((r) => r !== role));
+    // The panels read the marketplace state too, so drop it here for an instant
+    // reply and let the router pull the authoritative row back on refresh.
+    setUser((prev) => ({
+      ...prev,
+      ...(role === "vendor" ? { vendorStatus: "none", vendorApplicationId: undefined } : {}),
+      ...(role === "rider" ? { riderStatus: "none", riderApplicationId: undefined } : {}),
+    }));
+    toast.success(`${labelOf(role)} revoked`);
+    router.refresh();
+  };
+
+  const revoke = (role: string) => setBusy(() => applyRevoke(role));
+
+  // One switch per authority: clicking a held role revokes it, clicking an
+  // empty one applies it, and several can be applied one after another because
+  // the whole approved list is written on every call.
+  const toggleRole = (role: string, checked: boolean) => {
+    // The customer entry is the account's floor — the API re-adds it to every
+    // write — so the switch explains itself instead of pretending to revoke.
+    if (role === "customer") {
+      toast.info(
+        "Every account keeps the customer role, so the person can still sign in and shop."
+      );
+      return;
+    }
+    if (!checked) {
+      revoke(role);
+      return;
+    }
+
     setBusy(async () => {
-      const next = checked
-        ? Array.from(new Set([...held, role]))
-        : held.filter((r) => r !== role);
-      if (next.length === 0) {
-        toast.error("An account must keep at least one role");
+      const requested = Array.from(new Set([...held, role]));
+      const res = await setUserRoles(userId, requested);
+      if (res?.success === false) {
+        toast.error(res?.message || `Failed to grant ${labelOf(role)}`);
         return;
       }
-      const res = await setUserRoles(userId, next);
-      if (res?.success !== false) {
-        const data = (res?.data || {}) as Record<string, unknown>;
-        patch({
-          roles: (data.roles as string[]) ?? next,
-          activeRole: (data.activeRole as string) ?? user.activeRole,
-          role: (data.activeRole as string) ?? user.role,
-          roleSuspensions: (data.roleSuspensions as RoleSuspensionRow[]) ?? user.roleSuspensions,
-        });
-        toast.success(checked ? `${role} granted` : `${role} revoked`);
+
+      const data = (res?.data || {}) as Record<string, unknown>;
+      applyRoleResult(data, requested);
+
+      // The API decides the invariants, so report what it actually wrote: an
+      // admin entry collapses the list to one authority, and a role it refused
+      // must not look granted.
+      const granted = rolesOf({ roles: (data.roles as string[]) ?? requested });
+      if (!granted.includes(role)) {
+        toast.error(`${labelOf(role)} was not applied`);
         router.refresh();
-      } else {
-        toast.error(res?.message || "Failed to update roles");
+        return;
       }
+      const dropped = (Array.isArray(data.removed) ? data.removed : "") as string[];
+      toast.success(
+        dropped.length > 0
+          ? `${labelOf(role)} granted — ${dropped.map(labelOf).join(", ")} removed`
+          : `${labelOf(role)} granted`
+      );
+      router.refresh();
     });
+  };
 
   const toggleSuspension = (role: string, nextSuspended: boolean) =>
     setBusy(async () => {
       const res = await setUserRoleSuspension(userId, { role, suspended: nextSuspended });
       if (res?.success !== false) {
         const data = (res?.data || {}) as Record<string, unknown>;
-        patch({
-          roleSuspensions: (data.roleSuspensions as RoleSuspensionRow[]) ?? user.roleSuspensions,
-          activeRole: (data.activeRole as string) ?? user.activeRole,
-          role: (data.activeRole as string) ?? user.role,
-        });
-        toast.success(nextSuspended ? `${role} suspended` : `${role} released`);
+        applyRoleResult(data);
+        toast.success(`${labelOf(role)} ${nextSuspended ? "suspended" : "released"}`);
         router.refresh();
       } else {
         toast.error(res?.message || "Failed to update suspension");
-      }
-    });
-
-  // Revoke is stronger than suspend: it removes the authority and clears the
-  // marketplace state behind it. Offered on each held marketplace role.
-  const revoke = (role: string) =>
-    setBusy(async () => {
-      const res = await revokeUserRole(userId, { role });
-      if (res?.success !== false) {
-        toast.success(`${role} revoked`);
-        // Revoke changes fields the panels read (status, application ids), so
-        // drop the role locally for an instant reply and let the router pull
-        // the authoritative row back on refresh.
-        setUser((prev) => ({
-          ...prev,
-          roles: rolesOf(prev).filter((r) => r !== role),
-          roleSuspensions: (prev.roleSuspensions || []).filter(
-            (row) => String(row.role || "").toLowerCase() !== role
-          ),
-        }));
-        router.refresh();
-      } else {
-        toast.error(res?.message || "Failed to revoke role");
       }
     });
 
@@ -455,11 +492,20 @@ export default function UserDetailClient({
                 const meta = ROLE_META[role];
                 const Icon = meta.icon;
                 const isHeld = held.includes(role);
+                const isLocked = role === "customer";
                 return (
                   <button
                     key={role}
                     type="button"
                     disabled={busy}
+                    aria-pressed={isHeld}
+                    title={
+                      isLocked
+                        ? "Every account keeps the customer role so the person can still sign in and shop"
+                        : role === "admin"
+                          ? "Admin is a single authority — granting it clears the other roles"
+                          : undefined
+                    }
                     onClick={() => toggleRole(role, !isHeld)}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
                       isHeld
@@ -469,14 +515,16 @@ export default function UserDetailClient({
                   >
                     <Icon className="w-3.5 h-3.5" />
                     <span>{meta.label}</span>
-                    {isHeld && <Check className="w-3 h-3" />}
+                    {isHeld && (isLocked ? <Lock className="w-3 h-3" /> : <Check className="w-3 h-3" />)}
+                    {suspended.includes(role) && <Ban className="w-3 h-3" />}
                   </button>
                 );
               })}
             </div>
             <p className="text-[10px] leading-relaxed text-[var(--foreground-muted)]">
-              Admin is a single authority on its own; every other account always keeps the
-              customer role so the person can still shop.
+              Click a role to apply it and click it again to revoke it — several can be applied on
+              one account. Admin is a single authority on its own, and every other account always
+              keeps the customer role so the person can still shop.
             </p>
           </div>
 
@@ -522,6 +570,11 @@ export default function UserDetailClient({
           <div className="space-y-2 pt-1 border-t border-[var(--border-color)]">
             <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
               Per-role access
+            </p>
+            <p className="text-[10px] leading-relaxed text-[var(--foreground-muted)]">
+              Suspending closes one dashboard and keeps the role, so releasing it needs no new
+              application. Revoking removes the role itself, clears the marketplace state behind it
+              and drops any suspension on it.
             </p>
             {MARKETPLACE_ROLES.filter((role) => held.includes(role)).map((role) => {
               const meta = ROLE_META[role];

@@ -563,9 +563,9 @@ export default function UsersClient({
                             <Link
                               href={detailHref}
                               aria-label={`View ${name}`}
-                              className="inline-flex items-center gap-1.5 w-8 h-8 justify-center rounded-lg text-[var(--foreground-muted)] hover:text-primary hover:bg-primary/10 cursor-pointer transition-colors"
+                              className="inline-flex items-center gap-1.5 w-9 h-9 justify-center rounded-lg text-[var(--foreground-muted)] hover:text-primary hover:bg-primary/10 cursor-pointer transition-colors"
                             >
-                              <Eye className="w-4 h-4" />
+                              <Eye className="w-[18px] h-[18px]" />
                             </Link>
                           </div>
                         </td>

@@ -503,9 +503,9 @@ export default function AdminDeliveriesClient({
                           <Link
                             href={`/track-order/${delivery.orderId}`}
                             title="Track this delivery"
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--surface-alt)] border border-[var(--border-color)] text-[var(--foreground-muted)] hover:text-primary transition-colors"
+                            className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--surface-alt)] border border-[var(--border-color)] text-[var(--foreground-muted)] hover:text-primary transition-colors"
                           >
-                            <LocateFixed className="w-3.5 h-3.5" />
+                            <LocateFixed className="w-[18px] h-[18px]" />
                           </Link>
                           {live && (
                             <>
@@ -513,9 +513,9 @@ export default function AdminDeliveriesClient({
                                 size="sm"
                                 onPress={() => openAssign(delivery)}
                                 aria-label="Assign or hand over"
-                                className="h-8 min-w-8 px-0 rounded-lg bg-[var(--surface-alt)] border border-[var(--border-color)] text-[var(--foreground)]"
+                                className="h-9 min-w-9 px-0 rounded-lg bg-[var(--surface-alt)] border border-[var(--border-color)] text-[var(--foreground)]"
                               >
-                                <Truck className="w-3.5 h-3.5" />
+                                <Truck className="w-[18px] h-[18px]" />
                               </Button>
                               <Button
                                 size="sm"
@@ -524,9 +524,9 @@ export default function AdminDeliveriesClient({
                                   setCancelTarget(delivery);
                                 }}
                                 aria-label="Cancel this delivery"
-                                className="h-8 min-w-8 px-0 rounded-lg bg-rose-500/10 border border-rose-500/25 text-rose-600 dark:text-rose-400"
+                                className="h-9 min-w-9 px-0 rounded-lg bg-rose-500/10 border border-rose-500/25 text-rose-600 dark:text-rose-400"
                               >
-                                <XCircle className="w-3.5 h-3.5" />
+                                <XCircle className="w-[18px] h-[18px]" />
                               </Button>
                             </>
                           )}

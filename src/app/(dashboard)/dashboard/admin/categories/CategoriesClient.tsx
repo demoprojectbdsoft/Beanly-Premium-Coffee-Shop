@@ -500,17 +500,17 @@ export default function CategoriesClient({
                           <div className="inline-flex items-center gap-1.5">
                             <button
                               onClick={() => handleOpenEditCategory(category)}
-                              className="p-1.5 rounded-lg text-primary hover:bg-primary/10 dark:hover:bg-[var(--accent)]/10 transition-colors cursor-pointer"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-primary hover:bg-primary/10 dark:hover:bg-[var(--accent)]/10 transition-colors cursor-pointer"
                               title="Edit Category"
                             >
-                              <Edit2 className="w-4 h-4" />
+                              <Edit2 className="w-[18px] h-[18px]" />
                             </button>
                             <button
                               onClick={() => handleOpenDelete("category", category)}
-                              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                               title="Delete Category"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-[18px] h-[18px]" />
                             </button>
                           </div>
                         </td>
@@ -593,17 +593,17 @@ export default function CategoriesClient({
                                 <div className="inline-flex items-center gap-1.5">
                                   <button
                                     onClick={() => handleOpenEditSubCategory(sub)}
-                                    className="p-1.5 rounded-lg text-primary hover:bg-primary/10 dark:hover:bg-[var(--accent)]/10 transition-colors cursor-pointer"
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-primary hover:bg-primary/10 dark:hover:bg-[var(--accent)]/10 transition-colors cursor-pointer"
                                     title="Edit Subcategory"
                                   >
-                                    <Edit2 className="w-3.5 h-3.5" />
+                                    <Edit2 className="w-4 h-4" />
                                   </button>
                                   <button
                                     onClick={() => handleOpenDelete("subcategory", sub)}
-                                    className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                                     title="Delete Subcategory"
                                   >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>
                               </td>

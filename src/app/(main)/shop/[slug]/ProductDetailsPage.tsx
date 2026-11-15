@@ -46,6 +46,8 @@ import { addReview, editReview } from "@/lib/action/reviews";
 import { addToCart, isCarted as checkIsCartedAction } from "@/lib/action/cart";
 import { COMPARE_LIMIT, useCompare } from "@/lib/compare";
 import { hasOfferDiscount } from "@/lib/offer";
+import { padCountdown, parseCountdownTarget } from "@/lib/countdown";
+import { useCountdown } from "@/hooks/useCountdown";
 import { isProductOutOfStock, unitsLeft } from "@/lib/stock";
 import {
   addToWishlist,
@@ -112,34 +114,12 @@ export default function ProductDetailsPage({
   const [editHoverRating, setEditHoverRating] = useState<number>(0);
 
   // ── Countdown Timer ────────────────────────────────────────────────────────
-  const offerTarget = useMemo(() => {
-    if (!product?.offerEndDate) return null;
-    const d = new Date(product.offerEndDate);
-    return isNaN(d.getTime()) ? null : d;
-  }, [product?.offerEndDate]);
+  const offerTarget = useMemo(
+    () => parseCountdownTarget(product?.offerEndDate),
+    [product?.offerEndDate]
+  );
 
-  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, ended: true });
-
-  useEffect(() => {
-    if (!offerTarget) return;
-    const tick = () => {
-      const diff = offerTarget.getTime() - Date.now();
-      if (diff > 0) {
-        setCountdown({
-          days: Math.floor(diff / 86_400_000),
-          hours: Math.floor((diff / 3_600_000) % 24),
-          minutes: Math.floor((diff / 60_000) % 60),
-          seconds: Math.floor((diff / 1_000) % 60),
-          ended: false,
-        });
-      } else {
-        setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0, ended: true });
-      }
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [offerTarget]);
+  const countdown = useCountdown(offerTarget);
 
   // A deal only runs while the selling price is lower than the original price.
   // Equal prices mean no offer, so the timer and the old price stay hidden.
@@ -882,8 +862,8 @@ export default function ProductDetailsPage({
                     ].map(({ v, l }, i, arr) => (
                       <div key={l} className="flex items-center gap-1.5">
                         <div className="flex flex-col items-center">
-                          <span className="min-w-[34px] text-center text-sm font-black text-white bg-gradient-to-b from-primary to-primary-hover rounded-lg px-1.5 py-1 shadow-md shadow-primary/30 tabular-nums">
-                            {String(v).padStart(2, "0")}
+                          <span className="min-w-[34px] whitespace-nowrap text-center text-sm font-black text-white bg-gradient-to-b from-primary to-primary-hover rounded-lg px-1.5 py-1 shadow-md shadow-primary/30 tabular-nums">
+                            {padCountdown(v)}
                           </span>
                           <span className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">{l}</span>
                         </div>

@@ -825,17 +825,17 @@ function PromoBlock({
                 <div className="inline-flex items-center gap-1.5">
                   <button
                     onClick={() => onEdit(promo)}
-                    className="p-1.5 rounded-lg text-primary hover:bg-primary/10 dark:hover:bg-[var(--accent)]/10 transition-colors cursor-pointer"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-primary hover:bg-primary/10 dark:hover:bg-[var(--accent)]/10 transition-colors cursor-pointer"
                     title="Edit banner"
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Edit2 className="w-[18px] h-[18px]" />
                   </button>
                   <button
                     onClick={() => onDelete(promo)}
-                    className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                     title="Delete banner"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-[18px] h-[18px]" />
                   </button>
                 </div>
               </div>

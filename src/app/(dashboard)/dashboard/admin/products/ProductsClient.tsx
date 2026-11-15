@@ -851,29 +851,29 @@ export default function ProductsClient({
 
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1.5">
                           <Link
                             href={`/dashboard/admin/products/${product.slug}`}
-                            className="p-1.5 rounded-lg text-[var(--foreground-muted)] hover:text-primary hover:bg-primary/10 transition-colors"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-[var(--foreground-muted)] hover:text-primary hover:bg-primary/10 transition-colors"
                             title="View Product Page"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-[18px] h-[18px]" />
                           </Link>
                           <button
                             type="button"
                             onClick={() => handleOpenEdit(product)}
-                            className="p-1.5 rounded-lg text-[var(--foreground-muted)] hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition-colors cursor-pointer bg-transparent"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-[var(--foreground-muted)] hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition-colors cursor-pointer bg-transparent"
                             title="Quick Edit"
                           >
-                            <Edit2 className="w-4 h-4" />
+                            <Edit2 className="w-[18px] h-[18px]" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleOpenDelete(product)}
-                            className="p-1.5 rounded-lg text-[var(--foreground-muted)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer bg-transparent"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-[var(--foreground-muted)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer bg-transparent"
                             title="Delete Product"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-[18px] h-[18px]" />
                           </button>
                         </div>
                       </td>
