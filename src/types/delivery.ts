@@ -295,7 +295,15 @@ export interface DeliveryDestination {
 export interface DeliveryTracking {
   order: DeliveryTrackingOrder;
   delivery: DeliveryRecord | null;
+  /**
+   * The rider's position, and the road behind it.
+   *
+   * Null until the rider starts the delivery: the phone reports from pickup, so
+   * the trail begins at the store door, but a dot parked outside the shop reads
+   * as a delivery that has stalled. The trail here is already cut to the ride.
+   */
   location: DeliveryLocation | null;
+  /** Arrival estimate, measured from that position — null while it is null. */
   eta: DeliveryEta | null;
   otp: (DeliveryCode & { progress: number }) | null;
   isOwner: boolean;
@@ -324,7 +332,7 @@ export interface RiderStats {
   earningsInWindow: number;
   /** Percent of finished jobs that were delivered. */
   successRate: number;
-  /** Average minutes from accept to delivered. */
+  /** Average minutes from start delivery to delivered. */
   avgDeliveryMinutes: number;
 }
 

@@ -333,7 +333,7 @@ export function riderStatCards(
     {
       title: "Avg Delivery Time",
       value: formatMinutes(stats.avgDeliveryMinutes),
-      change: "Accept to doorstep",
+      change: "Start delivery to doorstep",
       isPositive: true,
       iconName: "Timer",
     },
