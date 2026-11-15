@@ -40,12 +40,22 @@ interface ImageUploaderProps {
   required?: boolean;      // Show a required asterisk on the label
   name?: string;           // HTML form field name (for FormData)
   urlPlaceholder?: string; // Placeholder text for the URL input tab
+  /** Hide the URL tab, so the only way in is a file from the device. */
+  allowUrl?: boolean;
+  /** A shorter drop zone, for forms that stack several uploaders side by side. */
+  compact?: boolean;
+  /** One line of help under the label, e.g. what the reviewer wants to see. */
+  hint?: string;
 }
 
 // ─── ImageUploader Component ─────────────────────────────────────────────────
 // This component has two modes the user can switch between:
 //   1. "Upload File" — pick a file from device, upload to ImgBB
 //   2. "Image URL"  — paste a direct image link
+//
+// A document field turns the URL mode off (`allowUrl={false}`): a licence photo
+// lives in a phone gallery or on a desk scanner, not on a hosting site, so a
+// bare link box was never something an applicant could fill in.
 //
 // After an image is set, a live preview is shown with a remove button.
 export default function ImageUploader({
@@ -55,6 +65,9 @@ export default function ImageUploader({
   required = false,
   name,
   urlPlaceholder = "https://example.com/image.webp",
+  allowUrl = true,
+  compact = false,
+  hint,
 }: ImageUploaderProps) {
   // Ref to the hidden <input type="file"> so we can open the file picker
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -138,37 +151,40 @@ export default function ImageUploader({
         {label}
         {required && <span className="text-rose-500 ml-0.5">*</span>}
       </label>
+      {hint && <p className="text-[10px] text-[var(--foreground-muted)]">{hint}</p>}
 
       {/* Hidden input so FormData can read the final image URL by field name */}
       {name && <input type="hidden" name={name} value={value} />}
 
-      {/* Tab switcher: Upload File | Image URL */}
-      <div className="flex gap-1 p-1 rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)] w-fit">
-        <button
-          type="button"
-          onClick={() => setActiveTab("upload")}
-          className={`flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-            activeTab === "upload" ? activeTabClass : inactiveTabClass
-          }`}
-        >
-          <Upload className="w-3 h-3" />
-          Upload File
-        </button>
+      {/* Tab switcher: Upload File | Image URL — only when a URL is allowed */}
+      {allowUrl && (
+        <div className="flex gap-1 p-1 rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)] w-fit">
+          <button
+            type="button"
+            onClick={() => setActiveTab("upload")}
+            className={`flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              activeTab === "upload" ? activeTabClass : inactiveTabClass
+            }`}
+          >
+            <Upload className="w-3 h-3" />
+            Upload File
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("url")}
-          className={`flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-            activeTab === "url" ? activeTabClass : inactiveTabClass
-          }`}
-        >
-          <Link2 className="w-3 h-3" />
-          Image URL
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab("url")}
+            className={`flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              activeTab === "url" ? activeTabClass : inactiveTabClass
+            }`}
+          >
+            <Link2 className="w-3 h-3" />
+            Image URL
+          </button>
+        </div>
+      )}
 
       {/* ── Upload tab: drag-and-drop zone ── */}
-      {activeTab === "upload" && (
+      {(!allowUrl || activeTab === "upload") && (
         <div>
           <div
             role="button"
@@ -180,7 +196,8 @@ export default function ImageUploader({
             onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
             onDragLeave={() => setIsDragOver(false)}
             onDrop={handleDrop}
-            className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-6 transition-all cursor-pointer select-none
+            className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl transition-all cursor-pointer select-none
+              ${compact ? "p-3.5 gap-1.5" : "p-6"}
               ${dropZoneClass}
               ${isUploading ? "pointer-events-none opacity-70" : ""}
             `}
@@ -188,18 +205,26 @@ export default function ImageUploader({
             {/* Show spinner while uploading, otherwise show the upload prompt */}
             {isUploading ? (
               <>
-                <Loader2 className="w-7 h-7 text-primary animate-spin" />
-                <p className="text-xs font-semibold text-primary">
+                <Loader2 className={`text-primary animate-spin ${compact ? "w-5 h-5" : "w-7 h-7"}`} />
+                <p className={`font-semibold text-primary ${compact ? "text-[11px]" : "text-xs"}`}>
                   Uploading to ImgBB…
                 </p>
               </>
             ) : (
               <>
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <ImageIcon className="w-5 h-5 text-primary" />
+                <div
+                  className={`rounded-xl bg-primary/10 flex items-center justify-center ${
+                    compact ? "w-8 h-8" : "w-10 h-10"
+                  }`}
+                >
+                  <ImageIcon className={`text-primary ${compact ? "w-4 h-4" : "w-5 h-5"}`} />
                 </div>
                 <div className="text-center">
-                  <p className="text-xs font-bold text-[var(--foreground)]">
+                  <p
+                    className={`font-bold text-[var(--foreground)] ${
+                      compact ? "text-[11px]" : "text-xs"
+                    }`}
+                  >
                     Click to browse or drag & drop
                   </p>
                   <p className="text-[10px] text-[var(--foreground-muted)] mt-0.5">
@@ -222,7 +247,7 @@ export default function ImageUploader({
       )}
 
       {/* ── URL tab: paste an image link ── */}
-      {activeTab === "url" && (
+      {allowUrl && activeTab === "url" && (
         <Input
           placeholder={urlPlaceholder}
           value={value}
@@ -257,7 +282,7 @@ export default function ImageUploader({
           {/* URL text + remove button */}
           <div className="flex flex-col gap-1 flex-1 min-w-0">
             <p className="text-[10px] text-[var(--foreground-muted)] font-medium">
-              Image preview
+              Uploaded
             </p>
             <p className="text-[10px] text-[var(--foreground-muted)] truncate">{value}</p>
             <button

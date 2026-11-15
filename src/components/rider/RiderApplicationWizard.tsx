@@ -88,6 +88,15 @@ function requiresVehicleDocs(type: RiderVehicleType): boolean {
   return type === "motorcycle" || type === "scooter" || type === "car";
 }
 
+/**
+ * An uploaded document reads as a word on the review step, not as the long
+ * hosted link it became — the link is what the reviewer clicks, not what the
+ * applicant has to proof-read before submitting.
+ */
+function documentState(url?: string | null): string {
+  return url?.trim() ? "Uploaded" : "";
+}
+
 /** One labelled field, so every step looks the same. */
 function Field({
   label,
@@ -261,6 +270,8 @@ export default function RiderApplicationWizard({
     if (index === 4 && requiresVehicleDocs(draft.vehicle.type)) {
       if (!draft.documents.drivingLicenseUrl?.trim())
         return "Upload a photo of your driving licence.";
+      if (!draft.documents.vehicleDocsUrl?.trim())
+        return "Upload the vehicle registration papers.";
     }
     return null;
   };
@@ -669,42 +680,57 @@ export default function RiderApplicationWizard({
         );
       }
 
-      case 4:
+      case 4: {
+        const needsVehicleDocs = requiresVehicleDocs(draft.vehicle.type);
+
         return (
           <div className="space-y-4">
+            {/* Every document arrives as a file off the device. A licence photo
+                lives in a phone gallery or on a desk scanner, not on a hosting
+                site, so a bare link box was one an applicant could never fill. */}
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Driving licence (photo URL)">
-                <input
-                  className={INPUT_CLASS}
-                  value={draft.documents.drivingLicenseUrl || ""}
-                  onChange={(e) => patchDocuments({ drivingLicenseUrl: e.target.value })}
-                  placeholder="https://"
-                />
-              </Field>
-              <Field label="National ID (photo URL)">
-                <input
-                  className={INPUT_CLASS}
-                  value={draft.documents.nationalIdUrl || ""}
-                  onChange={(e) => patchDocuments({ nationalIdUrl: e.target.value })}
-                  placeholder="https://"
-                />
-              </Field>
-              <Field label="Vehicle papers (photo URL)">
-                <input
-                  className={INPUT_CLASS}
-                  value={draft.documents.vehicleDocsUrl || ""}
-                  onChange={(e) => patchDocuments({ vehicleDocsUrl: e.target.value })}
-                  placeholder="https://"
-                />
-              </Field>
-              <Field label="Other document (photo URL)">
-                <input
-                  className={INPUT_CLASS}
-                  value={draft.documents.otherUrl || ""}
-                  onChange={(e) => patchDocuments({ otherUrl: e.target.value })}
-                  placeholder="https://"
-                />
-              </Field>
+              <ImageUploader
+                label="Driving licence"
+                required={needsVehicleDocs}
+                compact
+                allowUrl={false}
+                hint={
+                  needsVehicleDocs
+                    ? "Readable number and expiry — both sides if you have them."
+                    : "Optional for a bicycle or on foot."
+                }
+                value={draft.documents.drivingLicenseUrl || ""}
+                onChange={(url) => patchDocuments({ drivingLicenseUrl: url })}
+              />
+              <ImageUploader
+                label="National ID / Passport"
+                compact
+                allowUrl={false}
+                hint="The same ID you gave the number of in step 1."
+                value={draft.documents.nationalIdUrl || ""}
+                onChange={(url) => patchDocuments({ nationalIdUrl: url })}
+              />
+              <ImageUploader
+                label="Vehicle registration papers"
+                required={needsVehicleDocs}
+                compact
+                allowUrl={false}
+                hint={
+                  needsVehicleDocs
+                    ? "The plate on these papers must match the number in Vehicle."
+                    : "Optional for a bicycle or on foot."
+                }
+                value={draft.documents.vehicleDocsUrl || ""}
+                onChange={(url) => patchDocuments({ vehicleDocsUrl: url })}
+              />
+              <ImageUploader
+                label="Other document"
+                compact
+                allowUrl={false}
+                hint="Anything else the reviewer asked for, or a trade licence."
+                value={draft.documents.otherUrl || ""}
+                onChange={(url) => patchDocuments({ otherUrl: url })}
+              />
             </div>
 
             <Field label="Anything else the reviewer should see?">
@@ -747,6 +773,7 @@ export default function RiderApplicationWizard({
             </Field>
           </div>
         );
+      }
 
       case 5:
         return (
@@ -794,8 +821,10 @@ export default function RiderApplicationWizard({
             <SummaryBlock
               title="Documents & experience"
               rows={[
-                { label: "Driving licence", value: draft.documents.drivingLicenseUrl },
-                { label: "National ID", value: draft.documents.nationalIdUrl },
+                { label: "Driving licence", value: documentState(draft.documents.drivingLicenseUrl) },
+                { label: "National ID", value: documentState(draft.documents.nationalIdUrl) },
+                { label: "Vehicle papers", value: documentState(draft.documents.vehicleDocsUrl) },
+                { label: "Other document", value: documentState(draft.documents.otherUrl) },
                 { label: "Experience", value: `${draft.experience.years} year(s)` },
                 { label: "Previous platforms", value: draft.experience.previousPlatforms },
               ]}

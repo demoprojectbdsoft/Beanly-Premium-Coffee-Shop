@@ -824,38 +824,40 @@ export default function RiderProfileClient({
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Driving licence (photo URL)">
-                <input
-                  className={inputClass}
-                  value={documents.drivingLicenseUrl}
-                  onChange={(event) => patchDocuments({ drivingLicenseUrl: event.target.value })}
-                  placeholder="https://"
-                />
-              </Field>
-              <Field label="National ID (photo URL)">
-                <input
-                  className={inputClass}
-                  value={documents.nationalIdUrl}
-                  onChange={(event) => patchDocuments({ nationalIdUrl: event.target.value })}
-                  placeholder="https://"
-                />
-              </Field>
-              <Field label="Vehicle papers (photo URL)">
-                <input
-                  className={inputClass}
-                  value={documents.vehicleDocsUrl}
-                  onChange={(event) => patchDocuments({ vehicleDocsUrl: event.target.value })}
-                  placeholder="https://"
-                />
-              </Field>
-              <Field label="Other document (photo URL)">
-                <input
-                  className={inputClass}
-                  value={documents.otherUrl}
-                  onChange={(event) => patchDocuments({ otherUrl: event.target.value })}
-                  placeholder="https://"
-                />
-              </Field>
+              {/* Upload, not a link box: the renewed paper is a photo on the
+                  rider's phone, and the store re-reads it from the same field
+                  the application wizard writes. */}
+              <ImageUploader
+                label="Driving licence"
+                compact
+                allowUrl={false}
+                hint="Readable number and expiry."
+                value={documents.drivingLicenseUrl}
+                onChange={(url) => patchDocuments({ drivingLicenseUrl: url })}
+              />
+              <ImageUploader
+                label="National ID / Passport"
+                compact
+                allowUrl={false}
+                value={documents.nationalIdUrl}
+                onChange={(url) => patchDocuments({ nationalIdUrl: url })}
+              />
+              <ImageUploader
+                label="Vehicle registration papers"
+                compact
+                allowUrl={false}
+                hint="The plate here must match the one in Vehicle."
+                value={documents.vehicleDocsUrl}
+                onChange={(url) => patchDocuments({ vehicleDocsUrl: url })}
+              />
+              <ImageUploader
+                label="Other document"
+                compact
+                allowUrl={false}
+                hint="Anything else the store asked for."
+                value={documents.otherUrl}
+                onChange={(url) => patchDocuments({ otherUrl: url })}
+              />
             </div>
 
             <Field label="Anything else the reviewer should see?">
