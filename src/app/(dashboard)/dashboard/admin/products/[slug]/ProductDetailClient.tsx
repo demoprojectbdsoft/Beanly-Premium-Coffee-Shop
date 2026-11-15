@@ -82,7 +82,10 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     "Uncategorized";
 
   // ── Financial & Sales Computations ──────────────────────────
-  const sellCount = typeof product.sellCount === "number" ? product.sellCount : 0;
+  // Units and money come from the delivered order lines: an old sale keeps the
+  // price it was charged at, and a unit returned with its order stops counting.
+  const sales = product.sales;
+  const sellCount = sales?.units ?? (typeof product.sellCount === "number" ? product.sellCount : 0);
   // A product saved without a stock number is not stock-tracked: it has no units
   // to value, so the stock cards say so instead of showing zeros.
   const stockTracked = isStockTracked(product.stockQuantity);
@@ -92,14 +95,14 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const investPrice = product.investPrice;
 
   const hasInvestPrice = investPrice != null && !isNaN(investPrice);
-  const unitProfit = hasInvestPrice ? price - investPrice : null;
-  const isUnitProfitable = unitProfit != null && unitProfit >= 0;
+  const unitProfit =
+    product.unitProfit ?? (hasInvestPrice ? price - investPrice : null);
+  const isUnitProfitable = unitProfit != null && unitProfit > 0;
 
   // Profit margin %: (Selling Price - Cost) / Selling Price * 100
   const profitMargin =
-    hasInvestPrice && price > 0
-      ? ((price - investPrice) / price) * 100
-      : null;
+    product.profitMargin ??
+    (hasInvestPrice && price > 0 ? ((price - investPrice) / price) * 100 : null);
 
   // Markup %: (Selling Price - Cost) / Cost * 100
   const markupPercent =
@@ -108,20 +111,37 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       : null;
 
   // Realized Gross Revenue & Realized Net Profit / Loss
-  const totalRevenue = price * sellCount;
-  const totalCost = hasInvestPrice ? investPrice * sellCount : null;
-  const totalProfitLoss = hasInvestPrice && unitProfit != null ? unitProfit * sellCount : null;
-  const isTotalProfitable = totalProfitLoss != null && totalProfitLoss >= 0;
+  const totalRevenue = sales?.revenue ?? price * sellCount;
+  const totalCost = sales ? sales.cost : hasInvestPrice ? investPrice * sellCount : null;
+  const totalProfitLoss = sales
+    ? sales.profit
+    : hasInvestPrice && unitProfit != null
+      ? unitProfit * sellCount
+      : null;
+  const isTotalProfitable = totalProfitLoss != null && totalProfitLoss > 0;
 
   // Inventory Valuations
   const inventoryRetailValue = price * stockQuantity;
   const inventoryCostValue = hasInvestPrice ? investPrice * stockQuantity : null;
 
   // Offer Status — a countdown only runs while the price is really discounted.
-  const offerRunning = Boolean(product.offerEndDate) && hasOfferDiscount(product.price, product.originalPrice);
+  const offerEnd = product.offerEndsAt ?? product.offerEndDate;
+  const hasOfferEnd = Boolean(offerEnd);
   const isOfferExpired =
-    product.isOfferExpired ||
-    (product.offerEndDate && new Date(product.offerEndDate).getTime() <= Date.now());
+    product.isOfferExpired || (hasOfferEnd && new Date(offerEnd as string).getTime() <= Date.now());
+  // A dated offer is one of three things: running with a discount, running at
+  // full price (nothing to advertise), or lapsed. The deadline decides.
+  const offerDiscountLive =
+    !isOfferExpired && hasOfferDiscount(product.price, product.originalPrice);
+  const offerRunning = offerDiscountLive;
+
+  // A zero result is break-even, not a loss, and it carries no sign.
+  const unitProfitWord =
+    unitProfit == null ? "" : unitProfit > 0 ? "Profit" : unitProfit < 0 ? "Loss" : "Break-even";
+  const unitProfitSign =
+    unitProfit == null || unitProfit === 0 ? "" : unitProfit > 0 ? "+" : "-";
+  const totalProfitSign =
+    totalProfitLoss == null || totalProfitLoss === 0 ? "" : totalProfitLoss > 0 ? "+" : "-";
 
   // Warranty Type label (dynamic — never a static string)
   const warrantyTypeLabel =
@@ -282,7 +302,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             Financial Performance &amp; Profit / Loss Analytics
           </h2>
           <span className="text-xs text-[var(--foreground-muted)] font-medium">
-            Based on {sellCount} total units sold
+            Based on {sellCount} delivered unit{sellCount === 1 ? "" : "s"}
           </span>
         </div>
 
@@ -328,7 +348,11 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               </span>
             </div>
             <div className="mt-2 text-[11px] text-[var(--foreground-muted)]">
-              Gross sales ({sellCount} × {formatPrice(price)})
+              {sellCount > 0 ? (
+                <span>Gross sales from delivered orders</span>
+              ) : (
+                <span>No delivered orders yet</span>
+              )}
             </div>
           </Card>
 
@@ -364,19 +388,23 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                     className={`text-3xl font-black font-mono ${
                       isUnitProfitable
                         ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-rose-600 dark:text-rose-400"
+                        : unitProfit === 0
+                          ? "text-[var(--foreground)]"
+                          : "text-rose-600 dark:text-rose-400"
                     }`}
                   >
-                    {isUnitProfitable ? "+" : "-"}{formatPrice(Math.abs(unitProfit))}
+                    {unitProfitSign}{formatPrice(Math.abs(unitProfit))}
                   </span>
                   <span
                     className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
                       isUnitProfitable
                         ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
-                        : "bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300"
+                        : unitProfit === 0
+                          ? "bg-[var(--surface-alt)] text-[var(--foreground-muted)]"
+                          : "bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300"
                     }`}
                   >
-                    {isUnitProfitable ? "Profit" : "Loss"}
+                    {unitProfitWord}
                   </span>
                 </div>
               ) : (
@@ -430,10 +458,12 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                     className={`text-3xl font-black font-mono ${
                       isTotalProfitable
                         ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-rose-600 dark:text-rose-400"
+                        : totalProfitLoss === 0
+                          ? "text-[var(--foreground)]"
+                          : "text-rose-600 dark:text-rose-400"
                     }`}
                   >
-                    {isTotalProfitable ? "+" : "-"}{formatPrice(Math.abs(totalProfitLoss))}
+                    {totalProfitSign}{formatPrice(Math.abs(totalProfitLoss))}
                   </span>
                 </div>
               ) : (
@@ -462,7 +492,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 {stockTracked ? formatPrice(inventoryRetailValue) : "Not tracked"}
               </span>
               <span className="text-[10px] text-[var(--foreground-muted)] block mt-0.5">
-                {stockTracked ? `${stockQuantity} units @ retail` : "No stock count on this product"}
+                {stockTracked ? `${stockQuantity} units @ current price` : "No stock count on this product"}
               </span>
             </div>
             <Boxes className="w-6 h-6 text-primary/60" />

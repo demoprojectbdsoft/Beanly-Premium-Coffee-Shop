@@ -161,6 +161,17 @@ export interface Product {
   profitMargin?: number;      // computed: (price - investPrice) / price * 100
   unitProfit?: number;        // computed: price - investPrice
   totalProfit?: number;       // computed: (price - investPrice) * sellCount
+  /**
+   * Money actually taken on delivered orders for this product (admin shape).
+   * Summed from the order lines, so an old sale keeps its old price and a
+   * cancelled order stops counting.
+   */
+  sales?: {
+    units: number;
+    revenue: number;
+    cost: number | null;
+    profit: number | null;
+  };
   isOfferExpired?: boolean;   // true when offerEndDate has passed
   image: string;
   additionalImages?: string[];
