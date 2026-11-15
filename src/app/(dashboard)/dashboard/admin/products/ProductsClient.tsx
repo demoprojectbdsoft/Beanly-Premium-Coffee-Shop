@@ -246,13 +246,32 @@ export default function ProductsClient({
     }
     if (specs.length === 0) specs.push({ key: "Brand", value: "" });
 
+    // The form edits what is stored, never the effective price on screen. A
+    // lapsed offer reverts its display price to the original price, and saving
+    // that number back would raise the selling price for good.
+    const storedPrice = p.storedPrice ?? p.price;
+    const storedOriginalPrice = p.storedOriginalPrice ?? p.originalPrice;
+    const storedDiscount = recalcPricing(
+      {
+        price: storedPrice != null ? String(storedPrice) : "",
+        originalPrice: storedOriginalPrice != null ? String(storedOriginalPrice) : "",
+        discountPercentage: "",
+      },
+      "price"
+    ).discountPercentage;
+    const offerDeadline = p.offerEndsAt ?? p.offerEndDate;
+    const offerDeadlineValue =
+      offerDeadline && !isNaN(new Date(offerDeadline).getTime())
+        ? new Date(offerDeadline).toISOString()
+        : "";
+
     setEditForm({
       title: p.title || "",
       slug: p.slug || "",
-      price: p.price ? String(p.price) : "",
-      originalPrice: p.originalPrice ? String(p.originalPrice) : "",
+      price: storedPrice != null ? String(storedPrice) : "",
+      originalPrice: storedOriginalPrice != null ? String(storedOriginalPrice) : "",
       investPrice: p.investPrice != null ? String(p.investPrice) : "",
-      discountPercentage: p.discountPercentage ? String(p.discountPercentage) : "",
+      discountPercentage: storedDiscount,
       // A product with no stock number is not tracked; the field then starts empty.
       stockQuantity: p.stockQuantity != null ? String(p.stockQuantity) : "",
       sku: p.sku || "",
@@ -268,7 +287,7 @@ export default function ProductsClient({
         p.warrantyPeriodMonths != null ? String(p.warrantyPeriodMonths) : "",
       warrantyType: p.warrantyType || "manufacturer-warranty",
       warrantyTerms: p.warrantyTerms || "",
-      offerEndDate: p.offerEndDate ? new Date(p.offerEndDate).toISOString() : "",
+      offerEndDate: offerDeadlineValue,
     });
     setEditSpecs(specs);
     setIsEditOpen(true);

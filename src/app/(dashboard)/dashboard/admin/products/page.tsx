@@ -24,7 +24,8 @@ export default async function AdminProductsPage({
   const limit = Number(params?.limit) || 10;
 
   const [productsRes, categoriesRes, subCategoriesRes] = await Promise.all([
-    getProducts({ ...params, page, limit }),
+    // The desk reads the admin shape: cost, margin and every row it governs.
+    getProducts({ ...params, page, limit }, { admin: true }),
     getCategories(),
     getSubCategories(),
   ]);

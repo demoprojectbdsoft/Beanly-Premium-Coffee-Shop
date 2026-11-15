@@ -11,7 +11,8 @@ interface ProductDetailPageProps {
 
 export default async function AdminProductDetailPage({ params }: ProductDetailPageProps) {
   const { slug } = await params;
-  const productRes = await getProductBySlug(slug);
+  // The admin shape also reads a seller's draft or hidden row.
+  const productRes = await getProductBySlug(slug, { admin: true });
 
   const product = productRes?.data || productRes;
 

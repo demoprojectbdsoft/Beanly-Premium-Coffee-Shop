@@ -144,6 +144,18 @@ export interface Product {
   subCategoryIds?: { name: string; slug: string; _id?: string; id?: string }[];
   price: number;
   originalPrice?: number;
+  /**
+   * The prices as they are stored, present only on the admin shape.
+   *
+   * `price` / `originalPrice` are what a buyer is charged right now: a lapsed
+   * offer reverts `price` to the original price and hides `originalPrice`. An
+   * edit form must round-trip these stored values instead, or saving it would
+   * write the display price back into the product.
+   */
+  storedPrice?: number;
+  storedOriginalPrice?: number;
+  /** The offer deadline as stored, lapsed or not (admin shape only). */
+  offerEndsAt?: string | Date | null;
   investPrice?: number;       // admin-only: purchase/cost price
   discountPercentage?: number; // e.g. 80 for -80%
   profitMargin?: number;      // computed: (price - investPrice) / price * 100

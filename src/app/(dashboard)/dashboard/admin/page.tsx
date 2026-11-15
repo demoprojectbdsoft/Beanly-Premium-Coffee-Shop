@@ -16,7 +16,8 @@ async function getAdminDashboardData() {
   try {
     const [ordersRes, productsRes, usersRes, transRes, catRes, settingsRes, payoutsRes] = await Promise.allSettled([
       getAllOrders({ limit: 1000 }),
-      getProducts({ limit: 1000 }),
+      // The overview costs every sold line, so it needs the admin shape.
+      getProducts({ limit: 1000 }, { admin: true }),
       getUsers("limit=1000"),
       getTransactions({ limit: 1000 }),
       getCategories(),
