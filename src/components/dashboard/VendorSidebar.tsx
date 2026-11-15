@@ -45,19 +45,19 @@ const OVERVIEW_ITEM = {
 
 const NAV_GROUPS: { title: string; items: { name: string; href: string; icon: LucideIcon }[] }[] = [
   {
-    title: "Sales",
+    title: "Store",
+    items: [
+      { name: "Products", href: "/dashboard/vendor/products", icon: Package },
+      { name: "Store Profile", href: "/dashboard/vendor/profile", icon: Store },
+    ],
+  },
+  {
+    title: "Sales & Marketing",
     items: [
       { name: "Orders", href: "/dashboard/vendor/orders", icon: ShoppingBag },
       { name: "Analytics", href: "/dashboard/vendor/analytics", icon: BarChart3 },
       { name: "Coupons", href: "/dashboard/vendor/coupons", icon: Ticket },
       { name: "Promotions", href: "/dashboard/vendor/promotions", icon: Sparkles },
-    ],
-  },
-  {
-    title: "Store",
-    items: [
-      { name: "Products", href: "/dashboard/vendor/products", icon: Package },
-      { name: "Store Profile", href: "/dashboard/vendor/profile", icon: Store },
     ],
   },
   {
@@ -163,8 +163,8 @@ export default function VendorSidebar({ isOpen, onClose }: VendorSidebarProps) {
             </button>
           </div>
 
-          {/* Main menu — the overview leads, then the groups */}
-          <nav className="space-y-5">
+          {/* Main menu — the overview leads, then grouped sections */}
+          <nav className="space-y-4">
             <SidebarLink
               {...OVERVIEW_ITEM}
               isActive={isActiveLink(OVERVIEW_ITEM.href)}
@@ -172,8 +172,8 @@ export default function VendorSidebar({ isOpen, onClose }: VendorSidebarProps) {
             />
 
             {NAV_GROUPS.map((group) => (
-              <div key={group.title} className="space-y-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)] px-3 mb-2 opacity-75">
+              <div key={group.title} className="space-y-1 pt-3 border-t border-[var(--border-color)]/60">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)] px-3 mb-1.5 opacity-75">
                   {group.title}
                 </p>
                 {group.items.map((item) => (
