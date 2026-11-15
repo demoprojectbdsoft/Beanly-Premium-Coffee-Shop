@@ -76,6 +76,18 @@ const INPUT_CLASS =
   "w-full h-10 px-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] text-xs text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]/70 focus:outline-none focus:ring-2 focus:ring-[var(--brand-flat)]/35";
 const AREA_CLASS = `${INPUT_CLASS} h-auto min-h-[90px] py-2 resize-y`;
 
+/**
+ * Whether this vehicle carries a plate and a licence.
+ *
+ * A motorcycle, scooter or car is registered and driven on a licence, so the
+ * review desk asks for both numbers and the licence photo. Someone delivering
+ * on a bicycle or on foot has neither to show, and the fields say so instead of
+ * pretending to be required.
+ */
+function requiresVehicleDocs(type: RiderVehicleType): boolean {
+  return type === "motorcycle" || type === "scooter" || type === "car";
+}
+
 /** One labelled field, so every step looks the same. */
 function Field({
   label,
@@ -240,11 +252,15 @@ export default function RiderApplicationWizard({
     }
     if (index === 3) {
       if (!draft.vehicle.type) return "Choose the vehicle you deliver with.";
-      const needsPlate = draft.vehicle.type === "motorcycle" || draft.vehicle.type === "car" || draft.vehicle.type === "scooter";
+      const needsPlate = requiresVehicleDocs(draft.vehicle.type);
       if (needsPlate && !draft.vehicle.number?.trim())
         return "Enter the vehicle registration number.";
       if (needsPlate && !draft.vehicle.licenseNumber?.trim())
         return "Enter your driving licence number.";
+    }
+    if (index === 4 && requiresVehicleDocs(draft.vehicle.type)) {
+      if (!draft.documents.drivingLicenseUrl?.trim())
+        return "Upload a photo of your driving licence.";
     }
     return null;
   };
@@ -577,7 +593,11 @@ export default function RiderApplicationWizard({
           </div>
         );
 
-      case 3:
+      case 3: {
+        // The plate and licence are only asked of a registered vehicle, so the
+        // required mark on both follows the type the applicant picked above.
+        const needsVehicleDocs = requiresVehicleDocs(draft.vehicle.type);
+
         return (
           <div className="space-y-4">
             <Field label="Vehicle type" required>
@@ -590,8 +610,19 @@ export default function RiderApplicationWizard({
               />
             </Field>
 
+            {/* The two numbers the review desk reads against the uploaded
+                papers, so they carry the same required mark the validation
+                already enforces for a registered vehicle. */}
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Registration / plate number" hint="Not needed for walking or bicycle.">
+              <Field
+                label="Registration / plate number"
+                required={needsVehicleDocs}
+                hint={
+                  needsVehicleDocs
+                    ? "Must match the vehicle papers you upload in Documents."
+                    : "Not needed for a bicycle or on foot."
+                }
+              >
                 <input
                   className={INPUT_CLASS}
                   value={draft.vehicle.number || ""}
@@ -599,7 +630,15 @@ export default function RiderApplicationWizard({
                   placeholder="DHAKA METRO-GH 12-3456"
                 />
               </Field>
-              <Field label="Driving licence number">
+              <Field
+                label="Driving licence number"
+                required={needsVehicleDocs}
+                hint={
+                  needsVehicleDocs
+                    ? "The licence you ride or drive on."
+                    : "Not needed for a bicycle or on foot."
+                }
+              >
                 <input
                   className={INPUT_CLASS}
                   value={draft.vehicle.licenseNumber || ""}
@@ -628,6 +667,7 @@ export default function RiderApplicationWizard({
             </div>
           </div>
         );
+      }
 
       case 4:
         return (
