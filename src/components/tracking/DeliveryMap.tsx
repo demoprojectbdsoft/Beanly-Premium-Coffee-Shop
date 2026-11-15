@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Map as LeafletMap, Marker, Polyline } from "leaflet";
+import { MapPinOff } from "lucide-react";
 import type { DeliveryDestination } from "@/types/delivery";
 import { vehicleMarker } from "@/lib/rider";
 
@@ -95,6 +96,18 @@ export default function DeliveryMap({
    */
   const [isReady, setIsReady] = useState(false);
 
+  /*
+   * Whether there is anything at all to put on a map.
+   *
+   * Leaflet cannot be created without a centre, and the centre it used to be
+   * given was a city nobody had asked about — so a page with no rider position
+   * and an address that would not geocode showed a tidy street map of the wrong
+   * place. That reads as a fixed location rather than a missing one. With no
+   * target there is no map: the box says so instead, and the tiles are never
+   * requested.
+   */
+  const hasTarget = Boolean(rider || destination);
+
   /** Frames everything we know about, once, and again on demand. */
   const frame = useCallback(() => {
     const map = mapRef.current;
@@ -115,6 +128,20 @@ export default function DeliveryMap({
 
   // Create the map once, then hand it back when the screen goes away.
   useEffect(() => {
+    /*
+     * Read the opening point from the props as the map is built, rather than
+     * following them: a later position should move the view, not rebuild the
+     * map. That is why the dependencies below are the one flag and not these
+     * two values.
+     */
+    const target: [number, number] | null = rider
+      ? [rider.lat, rider.lng]
+      : destination
+        ? [destination.lat, destination.lng]
+        : null;
+    // Nothing to frame: no map, no tiles, and above all no default city.
+    if (!target) return;
+
     let cancelled = false;
     let created: LeafletMap | null = null;
 
@@ -127,7 +154,7 @@ export default function DeliveryMap({
         zoomControl: true,
         attributionControl: true,
         scrollWheelZoom: false,
-      }).setView([23.8103, 90.4125], 12);
+      }).setView(target, 14);
 
       L.tileLayer(TILE_URL, { attribution: ATTRIBUTION, maxZoom: 19 }).addTo(created);
       mapRef.current = created;
@@ -142,8 +169,13 @@ export default function DeliveryMap({
       destinationRef.current = null;
       trailRef.current = null;
       riderHtmlRef.current = "";
+      // Tearing the map down has to be reflected in the flag the marker and
+      // framing effects read, or a map rebuilt later would draw no markers:
+      // the flag would still say "ready" from the one that was removed.
+      setIsReady(false);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasTarget]);
 
   // Keep the markers in step with each poll.
   useEffect(() => {
@@ -224,45 +256,67 @@ export default function DeliveryMap({
   return (
     <div className="space-y-2">
       <div className="relative rounded-2xl overflow-hidden border border-[var(--border-color)] bg-[var(--surface-alt)]">
-        <div ref={containerRef} style={{ height }} className="w-full z-0" />
+        {hasTarget ? (
+          <>
+            <div ref={containerRef} style={{ height }} className="w-full z-0" />
 
-        <button
-          type="button"
-          onClick={frame}
-          className="absolute top-3 right-3 z-[500] px-2.5 py-1.5 rounded-lg bg-[var(--surface-elevated)]/95 backdrop-blur border border-[var(--border-color)] text-[10px] font-bold text-[var(--foreground)] shadow-xs cursor-pointer hover:bg-[var(--surface-elevated)]"
-        >
-          Recenter
-        </button>
+            <button
+              type="button"
+              onClick={frame}
+              className="absolute top-3 right-3 z-[500] px-2.5 py-1.5 rounded-lg bg-[var(--surface-elevated)]/95 backdrop-blur border border-[var(--border-color)] text-[10px] font-bold text-[var(--foreground)] shadow-xs cursor-pointer hover:bg-[var(--surface-elevated)]"
+            >
+              Recenter
+            </button>
 
-        {!rider && (
-          <div className="absolute inset-x-0 bottom-0 z-[500] p-2.5 bg-[var(--surface-elevated)]/95 backdrop-blur border-t border-[var(--border-color)] text-[11px] font-semibold text-[var(--foreground-muted)] text-center">
-            Waiting for the rider to share their position
+            {!rider && (
+              <div className="absolute inset-x-0 bottom-0 z-[500] p-2.5 bg-[var(--surface-elevated)]/95 backdrop-blur border-t border-[var(--border-color)] text-[11px] font-semibold text-[var(--foreground-muted)] text-center">
+                Waiting for the rider to share their position
+              </div>
+            )}
+          </>
+        ) : (
+          /* No position and no placed address: a map would have to invent a
+             centre, so the box says what is missing instead. */
+          <div
+            style={{ height }}
+            className="flex flex-col items-center justify-center gap-2 px-6 text-center"
+          >
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface)] border border-[var(--border-color)] text-[var(--foreground-muted)]">
+              <MapPinOff className="w-5 h-5" />
+            </span>
+            <p className="text-xs font-bold text-[var(--foreground)]">Nothing to place yet</p>
+            <p className="max-w-xs text-[11px] leading-relaxed text-[var(--foreground-muted)]">
+              The map draws the rider&apos;s position and the delivery address. Neither has
+              arrived yet, so there is nothing honest to show.
+            </p>
           </div>
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 text-[10px] font-semibold text-[var(--foreground-muted)]">
-        <span className="inline-flex items-center gap-1.5">
-          {vehicle ? (
-            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white border-2 border-emerald-600 text-[11px] leading-none shadow-xs">
-              {vehicle.glyph}
-            </span>
-          ) : (
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/70 shadow-xs" />
-          )}
-          Rider, live{vehicle ? ` · ${vehicle.label}` : ""}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block w-2.5 h-2.5 rounded-sm bg-rose-500 border border-white/70 shadow-xs" />
-          {destinationUnavailable ? "Address, not placed on the map" : "Delivery address"}
-        </span>
-        {trail.length > 1 && (
+      {hasTarget && (
+        <div className="flex flex-wrap items-center gap-3 text-[10px] font-semibold text-[var(--foreground-muted)]">
           <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block w-4 h-0.5 rounded-full bg-emerald-500/70" />
-            Route so far
+            {vehicle ? (
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white border-2 border-emerald-600 text-[11px] leading-none shadow-xs">
+                {vehicle.glyph}
+              </span>
+            ) : (
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/70 shadow-xs" />
+            )}
+            Rider, live{vehicle ? ` · ${vehicle.label}` : ""}
           </span>
-        )}
-      </div>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-rose-500 border border-white/70 shadow-xs" />
+            {destinationUnavailable ? "Address, not placed on the map" : "Delivery address"}
+          </span>
+          {trail.length > 1 && (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block w-4 h-0.5 rounded-full bg-emerald-500/70" />
+              Route so far
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
