@@ -212,16 +212,27 @@ export function aggregateAdminDashboard(
 
   // 1. Total Gross Revenue & Delivered Revenue
   let totalRevenue = 0;
+  // Orders that still stand. A cancelled order carries no money, so it is kept
+  // out of the average as well as out of the revenue.
+  let billableOrdersCount = 0;
   let deliveredOrdersCount = 0;
   let processingOrdersCount = 0;
   const activeCustomers = users.filter((u) => (u.role || "").toLowerCase() !== "admin");
   const activeCustomersCount = activeCustomers.length;
 
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const newThisMonth = activeCustomers.filter(
-    (u) => u.createdAt && new Date(u.createdAt).getTime() >= thirtyDaysAgo.getTime()
-  ).length;
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  /*
+   * "New this month" is read from the 1st, not from thirty days back: on the
+   * 2nd the old reading counted almost a whole previous month while the card
+   * said "this month".
+   */
+  const newThisMonth = activeCustomers.filter((u) => {
+    if (!u.createdAt) return false;
+    const joined = new Date(u.createdAt).getTime();
+    return !Number.isNaN(joined) && joined >= monthStart.getTime();
+  }).length;
 
   // Monthly breakdown map: Month Name -> { revenue, orders }
   const monthList = getLastNMonths(8);
@@ -312,11 +323,13 @@ export function aggregateAdminDashboard(
   orders.forEach((order) => {
     const amt = Number(order.totalAmount ?? 0);
     const st = (order.orderStatus || "processing").toLowerCase();
-
-    // Sum revenue (excluding cancelled)
-    if (st !== "cancelled") {
-      totalRevenue += amt;
-    }
+    /*
+     * A cancelled order is not a sale: nothing left the shelf and nothing was
+     * paid, so it must not move revenue, cost or profit anywhere on the
+     * overview. It is still counted in the status breakdown below, which is the
+     * one place a cancellation belongs.
+     */
+    const isBillable = st !== "cancelled";
 
     if (st === "delivered" || st === "completed") {
       deliveredOrdersCount++;
@@ -336,6 +349,12 @@ export function aggregateAdminDashboard(
       statusCounts.Pending.count++;
       statusCounts.Pending.amount += amt;
     }
+
+    // Every money figure below this line belongs to orders that still stand.
+    if (!isBillable) return;
+
+    totalRevenue += amt;
+    billableOrdersCount++;
 
     // Payment method mapping
     const pm = (order.paymentMethod || "").toLowerCase();
@@ -454,7 +473,7 @@ export function aggregateAdminDashboard(
     }
 
     // Profit time-series bucketing
-    if (order.createdAt && st !== "cancelled") {
+    if (order.createdAt) {
       const orderDate = new Date(order.createdAt);
       if (!isNaN(orderDate.getTime())) {
         const itemsRevenue = Array.isArray(order.items)
@@ -662,11 +681,13 @@ export function aggregateAdminDashboard(
     orders: v.orders,
   }));
 
-  // Overall profit / cost totals
-  const grossProfit = topProducts.reduce((s, p) => s + (p.profit || 0), 0) +
-    Object.values(productSalesMap)
-      .filter((_, i) => i >= 5)
-      .reduce((s, p) => s + (p.profit || 0), 0);
+  /*
+   * The totals are read straight from the per-product ledger. Summing the top
+   * five and then "the rest of the map" mixed a list sorted by revenue with a
+   * map sorted by first sale, so some products were counted twice and others
+   * never at all.
+   */
+  const grossProfit = Object.values(productSalesMap).reduce((s, p) => s + (p.profit || 0), 0);
   const totalCost = Object.values(productSalesMap).reduce((s, p) => s + (p.cost || 0), 0);
 
   /*
@@ -681,7 +702,7 @@ export function aggregateAdminDashboard(
   const profitMargin = totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 100 * 10) / 10 : 0;
 
   // Key Performance Indicators (KPIs)
-  const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
+  const avgOrderValue = billableOrdersCount > 0 ? totalRevenue / billableOrdersCount : 0;
   const deliverySuccessRate = orders.length > 0 ? Math.round((deliveredOrdersCount / orders.length) * 100) : 0;
 
   const kpis: AdminKPIs = {
@@ -701,13 +722,22 @@ export function aggregateAdminDashboard(
     {
       title: "Total Revenue",
       value: `${currencySymbol}${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      change: `From ${orders.length} total orders`,
+      // The figure is billable orders only, so the subtitle counts the same set
+      // instead of all rows the page happened to read.
+      change:
+        orders.length > billableOrdersCount
+          ? `From ${billableOrdersCount.toLocaleString()} orders (${(
+              orders.length - billableOrdersCount
+            ).toLocaleString()} cancelled excluded)`
+          : `From ${billableOrdersCount.toLocaleString()} orders`,
       isPositive: true,
       iconName: "DollarSign",
     },
     {
       title: "Net Profit",
-      value: `${currencySymbol}${Math.max(0, totalProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      // A loss has to read as a loss. Clamping the figure to zero showed "$0.00"
+      // on a month that lost money, which is the one thing this card exists for.
+      value: `${totalProfit < 0 ? "-" : ""}${currencySymbol}${Math.abs(totalProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       change:
         feesPaid > 0
           ? `After ${currencySymbol}${feesPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} paid to riders`
@@ -818,10 +848,6 @@ export function aggregateCustomerDashboard(
     const amt = Number(ord.totalAmount ?? 0);
     const st = (ord.orderStatus || "processing").toLowerCase();
 
-    if (st !== "cancelled") {
-      totalSpent += amt;
-    }
-
     if (st === "delivered" || st === "completed") {
       deliveredCount++;
       statusMap.Delivered++;
@@ -834,6 +860,16 @@ export function aggregateCustomerDashboard(
       processingCount++;
       statusMap.Processing++;
     }
+
+    /*
+     * A cancelled order never reached the card, the shelf or the doorstep, so
+     * it must not add to what was spent, to what was saved, to the category
+     * split or to the payment split. It stays in the status ring, where a
+     * cancellation is the point.
+     */
+    if (st === "cancelled") return;
+
+    totalSpent += amt;
 
     // Payment method
     const pm = (ord.paymentMethod || "COD").toUpperCase();
@@ -923,6 +959,9 @@ export function aggregateCustomerDashboard(
     { name: "Delivered", value: Math.round((deliveredCount / totalOrders) * 100), color: "#10b981" },
     { name: "Shipped / In Transit", value: Math.round((inTransitCount / totalOrders) * 100), color: getChartColor(0) },
     { name: "Processing", value: Math.round((processingCount / totalOrders) * 100), color: getChartColor(2) },
+    // Without this slice the ring added up to less than 100% and a cancelled
+    // order simply vanished from the customer's own history.
+    { name: "Cancelled", value: Math.round((statusMap.Cancelled / totalOrders) * 100), color: "#ef4444" },
   ].filter((s) => s.value > 0);
 
   // Payment Method Data (Graph 5)

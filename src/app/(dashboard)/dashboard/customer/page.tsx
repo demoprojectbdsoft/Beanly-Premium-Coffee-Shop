@@ -47,6 +47,27 @@ function mapPaymentMethod(method: string): string {
   }
 }
 
+/*
+ * Payment state, mapped from the transaction status the API sends with an
+ * order. The order list has no transaction beside it, so an older row simply
+ * carries no payment state instead of a made-up "Paid".
+ */
+function mapPaymentStatus(status?: string): CustomerOrder["paymentStatus"] {
+  switch ((status || "").toLowerCase()) {
+    case "success":
+    case "paid":
+      return "Paid";
+    case "pending":
+      return "Pending";
+    case "failed":
+      return "Failed";
+    case "refunded":
+      return "Refunded";
+    default:
+      return undefined;
+  }
+}
+
 function formatTimelineDate(dateValue?: string | Date): string {
   if (!dateValue) return "";
   const d = new Date(dateValue);
@@ -260,7 +281,7 @@ export default async function CustomerDashboardPage() {
       customerResponse: order.customerResponse || null,
       customerResponseNote: order.customerResponseNote || "",
       customerResponseAt: order.customerResponseAt || null,
-      paymentStatus: "Paid",
+      paymentStatus: mapPaymentStatus(order.paymentStatus),
       paymentMethod: mapPaymentMethod(order.paymentMethod),
       total: order.totalAmount ?? 0,
       pointsRedeemed: order.pointsRedeemed ?? 0,
