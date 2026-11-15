@@ -408,14 +408,13 @@ export default function VendorApplicationWizard({
               urlPlaceholder="https://"
             />
 
-            <Field label="Cover image URL">
-              <input
-                className={INPUT_CLASS}
-                value={draft.storeInfo.coverImage || ""}
-                onChange={(event) => patchStore({ coverImage: event.target.value })}
-                placeholder="https://"
-              />
-            </Field>
+            <ImageUploader
+              label="Cover image"
+              hint="The wide banner across the top of your store page."
+              value={draft.storeInfo.coverImage || ""}
+              onChange={(url) => patchStore({ coverImage: url })}
+              urlPlaceholder="https://"
+            />
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Facebook">
@@ -566,17 +565,16 @@ export default function VendorApplicationWizard({
               </Field>
             </div>
 
-            <Field
-              label="Document link"
-              hint="A link to a scanned licence or ID. The store team reads it during review."
-            >
-              <input
-                className={INPUT_CLASS}
-                value={draft.verification.documentUrl || ""}
-                onChange={(event) => patchVerification({ documentUrl: event.target.value })}
-                placeholder="https://"
-              />
-            </Field>
+            {/* Uploaded, not pasted: a licence is a photo on the applicant's
+                phone, and asking them to host it somewhere first is how an
+                optional step turns into an abandoned application. */}
+            <ImageUploader
+              label="Verification document"
+              compact
+              hint="A scanned trade licence, TIN or company certificate. The store team reads it during review."
+              value={draft.verification.documentUrl || ""}
+              onChange={(url) => patchVerification({ documentUrl: url })}
+            />
 
             <Field label="Notes for the reviewer">
               <textarea
@@ -652,7 +650,10 @@ export default function VendorApplicationWizard({
               rows={[
                 { label: "Business type", value: draft.verification.businessType },
                 { label: "Registration", value: draft.verification.registrationNumber },
-                { label: "Document", value: draft.verification.documentUrl },
+                {
+                  label: "Document",
+                  value: draft.verification.documentUrl?.trim() ? "Uploaded" : "",
+                },
                 { label: "Notes", value: draft.verification.notes },
               ]}
             />
