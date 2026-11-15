@@ -124,6 +124,19 @@ export function isCarriedDelivery(delivery: { status: DeliveryStatus }): boolean
 }
 
 /**
+ * The stage from which the customer's map opens.
+ *
+ * Picked up is not enough. At that moment the rider is still standing outside
+ * the store, so the dot the customer would be shown is a parked phone — it
+ * looks like live tracking and reads as a rider who has stopped moving. The map
+ * opens when the rider presses start delivery and the parcel is genuinely on
+ * its way, which is also the stage the delivery clock starts counting from.
+ */
+export function isTrackingLive(delivery: { status: DeliveryStatus }): boolean {
+  return delivery.status === "out_for_delivery";
+}
+
+/**
  * The job a rider's phone should report for: the carried one that has come
  * furthest, and the most recently moved when two are level. A rider who takes a
  * second parcel should not leave the first customer watching a frozen dot.

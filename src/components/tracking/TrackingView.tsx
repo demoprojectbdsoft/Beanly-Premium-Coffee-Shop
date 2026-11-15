@@ -28,7 +28,7 @@ import {
   formatDistance,
   formatEta,
   formatMoment,
-  isCarriedDelivery,
+  isTrackingLive,
   vehicleMarker,
 } from "@/lib/rider";
 import { fetchTrackingAction, regenerateDeliveryCodeAction } from "@/lib/action/deliveries";
@@ -81,16 +81,17 @@ export default function TrackingView({ initial, destination }: TrackingViewProps
     : false;
 
   /*
-    The map exists only while somebody is actually carrying the parcel.
+    The map exists only while the parcel is genuinely on its way.
 
-    Before the pickup there is nothing to show: the rider has the job, not the
-    box, and a map that draws the destination pin over an empty city reads like a
-    live position when it is a guess. After the hand-over the position is history
-    — keeping the last dot on screen invites the customer to watch a rider who has
-    already gone. Both ends of the delivery get words instead of a picture, and
-    only the carried middle gets the road.
+    Three stages are kept off it. Before the pickup the rider has the job, not
+    the box, so there is nothing to draw. After the pickup the rider is still
+    standing outside the store, and a parked phone reads as a rider who has
+    stopped moving. After the hand-over the position is history, and keeping the
+    last dot on screen invites the customer to watch somebody who has already
+    gone. Each of those gets words that say what is actually happening; only
+    start-delivery-to-doorstep gets the road.
   */
-  const isCarried = delivery ? isCarriedDelivery(delivery) : false;
+  const isTracking = delivery ? isTrackingLive(delivery) : false;
 
   // ── Polling ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -137,11 +138,23 @@ export default function TrackingView({ initial, destination }: TrackingViewProps
         note: delivery.rider ? `${delivery.rider.name} is carrying this one` : undefined,
       },
       { key: "accepted", label: DELIVERY_STAGE_LABELS.accepted, at: delivery.acceptedAt },
-      { key: "picked_up", label: DELIVERY_STAGE_LABELS.picked_up, at: delivery.pickedUpAt },
+      {
+        key: "picked_up",
+        label: DELIVERY_STAGE_LABELS.picked_up,
+        at: delivery.pickedUpAt,
+        note: delivery.pickedUpAt
+          ? "The rider has the parcel; the map opens when they set off."
+          : undefined,
+      },
       {
         key: "out_for_delivery",
         label: DELIVERY_STAGE_LABELS.out_for_delivery,
         at: delivery.outForDeliveryAt,
+        // The stage the customer is waiting for, so the timeline says out loud
+        // that this is where the map and the delivery clock both begin.
+        note: delivery.outForDeliveryAt
+          ? "Live tracking and the delivery clock start here."
+          : undefined,
       },
       { key: "delivered", label: DELIVERY_STAGE_LABELS.delivered, at: delivery.deliveredAt },
     ];
@@ -228,7 +241,7 @@ export default function TrackingView({ initial, destination }: TrackingViewProps
               {statusLabel}
             </Chip>
             {/* "Live" means a position is moving on the map — nothing else. */}
-            {isCarried && (
+            {isTracking && (
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Live
@@ -242,7 +255,9 @@ export default function TrackingView({ initial, destination }: TrackingViewProps
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {data.eta && isLive && (
+          {/* The arrival estimate is measured from the rider's own position, so
+              it is only a real number once that position is being reported. */}
+          {data.eta && isTracking && (
             <div className="px-3.5 py-2 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)]">
               <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
                 Arrival
@@ -272,7 +287,7 @@ export default function TrackingView({ initial, destination }: TrackingViewProps
       {/* ── Map + rider ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 bg-[var(--surface)] border border-[var(--border-color)] rounded-2xl p-4 shadow-xs space-y-3">
-          {isCarried ? (
+          {isTracking ? (
             <>
               <DeliveryMap
                 rider={data.location}
@@ -318,6 +333,28 @@ export default function TrackingView({ initial, destination }: TrackingViewProps
                 </p>
               )}
             </>
+          ) : delivery?.status === "picked_up" ? (
+            /*
+              The parcel has changed hands but the ride has not started.
+
+              Named as its own state because "awaiting pickup" would be a lie at
+              this point, and the customer is entitled to know the box is
+              already with somebody — the map is simply not open yet.
+            */
+            <PositionPlaceholder
+              tone="wait"
+              icon={<Package className="w-5 h-5 text-[var(--brand-flat)]" />}
+              title="Parcel collected"
+              text={`${
+                delivery.rider?.name ? delivery.rider.name : "Your rider"
+              } has your parcel. The map opens the moment they start the delivery.`}
+            >
+              {delivery.pickedUpAt && (
+                <p className="text-[11px] font-semibold text-[var(--foreground-muted)]">
+                  Collected {formatMoment(delivery.pickedUpAt)}
+                </p>
+              )}
+            </PositionPlaceholder>
           ) : delivery?.status === "delivered" ? (
             <PositionPlaceholder
               tone="done"
@@ -356,13 +393,13 @@ export default function TrackingView({ initial, destination }: TrackingViewProps
             <PositionPlaceholder
               tone="wait"
               icon={<Clock className="w-5 h-5 text-[var(--brand-flat)]" />}
-              title={delivery ? "Awaiting pickup" : "Not with a rider yet"}
+              title={delivery ? "Waiting for the rider to set off" : "Not with a rider yet"}
               text={
                 delivery
-                  ? `The map opens the moment ${
+                  ? `The map opens once ${
                       delivery.rider?.name ? delivery.rider.name : "your rider"
-                    } collects the parcel. Until then there is no position to draw.`
-                  : "The store hands your order to a rider, and the map opens when they pick it up."
+                    } collects the parcel and starts the delivery. Until then there is no position to draw.`
+                  : "The store hands your order to a rider, and the map opens when they collect it and start the delivery."
               }
             />
           )}
