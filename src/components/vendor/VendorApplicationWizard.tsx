@@ -8,7 +8,6 @@ import {
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
-  Building2,
   Check,
   CircleUser,
   Loader2,
@@ -20,7 +19,6 @@ import {
 import type {
   BillingCycle,
   VendorApplicationDraft,
-  VendorPlan,
   VendorPlanId,
 } from "@/types/vendor";
 import { VENDOR_BUSINESS_TYPES } from "@/types/vendor";
@@ -28,22 +26,20 @@ import { submitVendorApplication } from "@/lib/action/vendor";
 import { useWizardDraft } from "@/hooks/useWizardDraft";
 import AppSelect from "@/components/shared/AppSelect";
 import ImageUploader from "@/components/shared/ImageUploader";
-import { planPrice } from "@/lib/vendorPlan";
-import { formatPrice } from "@/lib/currency";
-import PlanCards from "./PlanCards";
 
 /**
- * The six-step application.
+ * The five-step application.
  *
  * A customer who is already signed in is the whole point: the personal step
  * arrives filled with the name, email and phone the account already holds, so
  * applying never asks for something the store already knows. Submitting links
  * the application to that same account — the API never creates a second user.
+ *
+ * The subscription plan is handled after approval in the vendor dashboard's
+ * Plan & Billing desk.
  */
 
 interface VendorApplicationWizardProps {
-  plans: VendorPlan[];
-  currency?: string;
   initialDraft: VendorApplicationDraft;
   storeName?: string;
   /** A rejected applicant is applying again; the wording says so. */
@@ -57,7 +53,6 @@ const STEPS = [
   { title: "Store", blurb: "How buyers will see you", icon: Store },
   { title: "Address", blurb: "Where the store operates", icon: MapPin },
   { title: "Verification", blurb: "Documents, if you have them", icon: BadgeCheck },
-  { title: "Plan", blurb: "What you sell with", icon: Building2 },
   { title: "Review", blurb: "Check and submit", icon: Send },
 ];
 
@@ -135,8 +130,6 @@ function slugPreview(name: string, slug: string): string {
 }
 
 export default function VendorApplicationWizard({
-  plans,
-  currency,
   initialDraft,
   storeName,
   isResubmission = false,
@@ -151,11 +144,6 @@ export default function VendorApplicationWizard({
     STORAGE_KEY,
     initialDraft,
     { enabled: !isResubmission }
-  );
-
-  const activePlan = useMemo(
-    () => plans.find((plan) => plan.id === draft.selectedPlan) ?? plans[0],
-    [plans, draft.selectedPlan]
   );
 
   const linkedStore = slugPreview(draft.storeInfo.name, draft.storeInfo.slug);
@@ -184,12 +172,6 @@ export default function VendorApplicationWizard({
       ...current,
       verification: { ...current.verification, ...patch },
     }));
-
-  const setCycle = (cycle: BillingCycle) =>
-    setDraft((current) => ({ ...current, billingCycle: cycle }));
-
-  const setPlan = (planId: VendorPlanId) =>
-    setDraft((current) => ({ ...current, selectedPlan: planId }));
 
   // ── Step validation ─────────────────────────────────────────────────────────
   // One rule set, defined once in `stepErrorFor` below: the Next button checks
@@ -255,8 +237,8 @@ export default function VendorApplicationWizard({
           documentUrl: draft.verification.documentUrl?.trim() || "",
           notes: draft.verification.notes?.trim() || "",
         },
-        selectedPlan: draft.selectedPlan,
-        billingCycle: draft.billingCycle,
+        selectedPlan: "free",
+        billingCycle: "monthly",
       })) as { success?: boolean; message?: string } | null;
 
       if (result?.success === false) {
@@ -588,26 +570,6 @@ export default function VendorApplicationWizard({
           </div>
         );
 
-      case 4:
-        return (
-          <div className="space-y-4">
-            <PlanCards
-              plans={plans}
-              currency={currency}
-              cycle={draft.billingCycle}
-              onCycleChange={setCycle}
-              selected={draft.selectedPlan}
-              onSelect={setPlan}
-            />
-
-            <p className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)] p-3 text-[10px] text-[var(--foreground-muted)]">
-              {activePlan && planPrice(activePlan, draft.billingCycle) > 0
-                ? `You picked ${activePlan.name}. The free plan activates immediately on approval; a paid plan is charged through the demo checkout after you sign in as a vendor.`
-                : "The Free plan activates the moment your application is approved, with no card and no checkout."}
-            </p>
-          </div>
-        );
-
       default:
         return (
           <div className="space-y-4">
@@ -656,24 +618,6 @@ export default function VendorApplicationWizard({
                   value: draft.verification.documentUrl?.trim() ? "Uploaded" : "",
                 },
                 { label: "Notes", value: draft.verification.notes },
-              ]}
-            />
-
-            <SummaryBlock
-              title="Plan"
-              rows={[
-                { label: "Plan", value: activePlan?.name },
-                { label: "Billing", value: draft.billingCycle === "yearly" ? "Yearly" : "Monthly" },
-                {
-                  label: "Price",
-                  value: activePlan
-                    ? planPrice(activePlan, draft.billingCycle) === 0
-                      ? "Free"
-                      : formatPrice(planPrice(activePlan, draft.billingCycle), currency, {
-                          showDecimals: false,
-                        })
-                    : "—",
-                },
               ]}
             />
 

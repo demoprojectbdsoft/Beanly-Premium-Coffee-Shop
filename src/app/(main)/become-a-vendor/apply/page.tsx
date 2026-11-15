@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getUserSession } from "@/lib/core/session";
 import { isVendorRole } from "@/lib/core/roles";
-import { asApplication, asPlans, getMyVendorApplication, getVendorPlans } from "@/lib/api/vendor";
+import { asApplication, getMyVendorApplication } from "@/lib/api/vendor";
 import { getSiteSettings } from "@/lib/api/siteSettings";
 import type {
   BillingCycle,
@@ -105,11 +105,7 @@ export default async function VendorApplyPage({ searchParams }: ApplyPageProps) 
     redirect("/dashboard/vendor");
   }
 
-  const [application, plans, settingsRes] = await Promise.all([
-    getMyVendorApplication().then(asApplication),
-    getVendorPlans().then(asPlans),
-    getSiteSettings(),
-  ]);
+  const application = await getMyVendorApplication().then(asApplication).catch(() => null);
 
   // An open or approved application cannot be submitted twice; the status page
   // is the only useful place to be.
@@ -117,26 +113,15 @@ export default async function VendorApplyPage({ searchParams }: ApplyPageProps) 
     redirect("/become-a-vendor/status");
   }
 
-  const params = await searchParams;
-  const requestedPlan = PLAN_IDS.includes((params?.plan || "") as VendorPlanId)
-    ? ((params?.plan || "free") as VendorPlanId)
-    : application?.selectedPlan || "free";
-
   const accountUser = user as typeof user & { phone?: string | null };
-  const draft = application
+  const initialDraft: VendorApplicationDraft = application
     ? draftFromApplication(
         application,
         user.name || "",
         user.email || "",
         accountUser.phone || ""
       )
-    : emptyDraft(user.name || "", user.email || "", accountUser.phone || "", requestedPlan);
-
-  // A plan clicked on the landing page wins over the earlier, withdrawn choice.
-  const initialDraft: VendorApplicationDraft = {
-    ...draft,
-    selectedPlan: params?.plan ? requestedPlan : draft.selectedPlan,
-  };
+    : emptyDraft(user.name || "", user.email || "", accountUser.phone || "", "free");
 
   return (
     <div className="py-8 space-y-6">
@@ -155,13 +140,11 @@ export default async function VendorApplyPage({ searchParams }: ApplyPageProps) 
         <p className="max-w-2xl text-xs text-[var(--foreground-muted)]">
           {application
             ? "Your earlier answers are already here. Change what the store team asked for and resubmit — the reference stays the same."
-            : "Six short steps. The personal step is filled from your account, and submitting never creates a second user."}
+            : "Five short steps. The personal step is filled from your account, and submitting never creates a second user."}
         </p>
       </header>
 
       <VendorApplicationWizard
-        plans={plans}
-        currency={settingsRes?.data?.currency}
         initialDraft={initialDraft}
         storeName={application?.storeInfo?.name}
         isResubmission={Boolean(application)}

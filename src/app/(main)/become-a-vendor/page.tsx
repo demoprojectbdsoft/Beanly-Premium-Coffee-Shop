@@ -49,8 +49,8 @@ export const dynamic = "force-dynamic";
 const HOW_IT_WORKS = [
   {
     icon: FileCheck2,
-    title: "Apply in six steps",
-    text: "Your name and email arrive already filled from your account. You add the store, the address, the documents you have and the plan you want.",
+    title: "Apply in five steps",
+    text: "Your name and email arrive already filled from your account. You add the store, the address, the documents you have and submit for review.",
   },
   {
     icon: Clock3,
@@ -65,17 +65,16 @@ const HOW_IT_WORKS = [
   {
     icon: Rocket,
     title: "Start selling",
-    text: "The Free plan is live immediately. Paid plans unlock after the demo checkout, and every plan's limits are enforced by the API.",
+    text: "The Free plan is live immediately. Manage or upgrade your plan anytime from your vendor dashboard's Plan & Billing desk.",
   },
 ];
 
-/** The form's own six steps, named so nobody is surprised by step four. */
+/** The form's own five steps. */
 const FORM_STEPS = [
   { icon: CircleUser, label: "Personal" },
   { icon: Store, label: "Store" },
   { icon: MapPin, label: "Address" },
   { icon: BadgeCheck, label: "Verification" },
-  { icon: Building2, label: "Plan" },
   { icon: Send, label: "Review" },
 ];
 
