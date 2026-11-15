@@ -92,6 +92,9 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const stockQuantity = stockTracked ? (product.stockQuantity as number) : 0;
   const price = typeof product.price === "number" ? product.price : 0;
   const originalPrice = product.originalPrice;
+  // A lapsed offer hides the strike-through everywhere, but the desk still has
+  // to read the MSRP it set, so fall back to the stored value.
+  const msrp = originalPrice ?? product.storedOriginalPrice;
   const investPrice = product.investPrice;
 
   const hasInvestPrice = investPrice != null && !isNaN(investPrice);
@@ -128,12 +131,14 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const offerEnd = product.offerEndsAt ?? product.offerEndDate;
   const hasOfferEnd = Boolean(offerEnd);
   const isOfferExpired =
-    product.isOfferExpired || (hasOfferEnd && new Date(offerEnd as string).getTime() <= Date.now());
+    Boolean(product.isOfferExpired) ||
+    (hasOfferEnd && new Date(offerEnd as string).getTime() <= Date.now());
   // A dated offer is one of three things: running with a discount, running at
-  // full price (nothing to advertise), or lapsed. The deadline decides.
-  const offerDiscountLive =
-    !isOfferExpired && hasOfferDiscount(product.price, product.originalPrice);
-  const offerRunning = offerDiscountLive;
+  // full price (nothing to advertise), or lapsed. A lapsed deadline is the one
+  // worth calling out: the shop is back at full price and the offer still sits
+  // on the record until someone ends or renews it.
+  const offerLapsed = hasOfferEnd && isOfferExpired;
+  const offerRunning = !offerLapsed && hasOfferDiscount(product.price, product.originalPrice);
 
   // A zero result is break-even, not a loss, and it carries no sign.
   const unitProfitWord =
@@ -232,15 +237,16 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             )}
 
             {offerRunning && (
-              <span
-                className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${
-                  isOfferExpired
-                    ? "bg-[var(--surface-alt)] text-gray-500 border-[var(--border-color)]"
-                    : "bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 border-red-200/60 dark:border-red-800/40"
-                }`}
-              >
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 border-red-200/60 dark:border-red-800/40">
                 <Clock className="w-3 h-3" />
-                {isOfferExpired ? "Offer Lapsed" : "Active Special Offer"}
+                Active Special Offer
+              </span>
+            )}
+
+            {offerLapsed && (
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border bg-[var(--surface-alt)] text-[var(--foreground-muted)] border-[var(--border-color)]">
+                <Clock className="w-3 h-3" />
+                Offer Lapsed
               </span>
             )}
 
@@ -523,14 +529,20 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             <div>
               <span className="text-[10px] uppercase font-bold text-[var(--foreground-muted)] block">Promotion &amp; Offer Status</span>
               <span className="text-sm font-bold text-[var(--foreground)] block mt-0.5">
-                {offerRunning
-                  ? isOfferExpired
-                    ? "Lapsed on " + formatDate(product.offerEndDate)
-                    : "Ends " + formatDate(product.offerEndDate)
-                  : "Standard Pricing"}
+                {offerLapsed
+                  ? `Lapsed ${formatDate(offerEnd)}`
+                  : offerRunning
+                    ? hasOfferEnd
+                      ? `Ends ${formatDate(offerEnd)}`
+                      : "No end date"
+                    : "Standard Pricing"}
               </span>
               <span className="text-[10px] text-[var(--foreground-muted)] block">
-                {product.discountPercentage ? `${product.discountPercentage}% active discount` : "No special discount applied"}
+                {product.discountPercentage
+                  ? `${product.discountPercentage}% active discount`
+                  : offerLapsed
+                    ? "Full price restored"
+                    : "No special discount applied"}
               </span>
             </div>
             <Clock className="w-6 h-6 text-amber-500/60" />
@@ -715,7 +727,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               <div className="p-3 bg-[var(--surface-alt)] rounded-xl border border-[var(--border-color)]">
                 <span className="text-[10px] uppercase font-bold text-[var(--foreground-muted)] block">Original Price (MSRP)</span>
                 <span className="text-base font-black text-[var(--foreground)] font-mono block mt-0.5">
-                  {originalPrice ? formatPrice(originalPrice) : "—"}
+                  {msrp ? formatPrice(msrp) : "—"}
                 </span>
               </div>
 
@@ -728,7 +740,13 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
               <div className="p-3 bg-[var(--surface-alt)] rounded-xl border border-[var(--border-color)]">
                 <span className="text-[10px] uppercase font-bold text-[var(--foreground-muted)] block">Discount %</span>
-                <span className="text-base font-black text-emerald-600 dark:text-emerald-400 font-mono block mt-0.5">
+                <span
+                  className={`text-base font-black font-mono block mt-0.5 ${
+                    product.discountPercentage
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-[var(--foreground-muted)]"
+                  }`}
+                >
                   {product.discountPercentage ? `${product.discountPercentage}%` : "0%"}
                 </span>
               </div>

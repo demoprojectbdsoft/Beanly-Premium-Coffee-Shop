@@ -186,6 +186,10 @@ export default function ProductsClient({
   });
   const [editSpecs, setEditSpecs] = useState<SpecRow[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
+  // What shoppers pay right now, and whether the offer on record has already
+  // ended — both read when the form opens, because the form itself carries the
+  // expired sale price and cannot tell a renewed offer from a finished one.
+  const [editBaseline, setEditBaseline] = useState({ price: 0, offerLapsed: false });
 
   // Delete Modal State
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -260,10 +264,14 @@ export default function ProductsClient({
       "price"
     ).discountPercentage;
     const offerDeadline = p.offerEndsAt ?? p.offerEndDate;
-    const offerDeadlineValue =
-      offerDeadline && !isNaN(new Date(offerDeadline).getTime())
-        ? new Date(offerDeadline).toISOString()
-        : "";
+    const offerDeadlineMs = offerDeadline ? new Date(offerDeadline).getTime() : NaN;
+    const offerDeadlineValue = Number.isFinite(offerDeadlineMs)
+      ? new Date(offerDeadlineMs).toISOString()
+      : "";
+    setEditBaseline({
+      price: typeof p.price === "number" ? p.price : 0,
+      offerLapsed: Number.isFinite(offerDeadlineMs) && offerDeadlineMs <= Date.now(),
+    });
 
     setEditForm({
       title: p.title || "",
@@ -366,10 +374,19 @@ export default function ProductsClient({
 
     setIsUpdating(true);
 
+    // A deadline that already went by leaves the shop at the original price.
+    // Saving then has to keep that price: writing the expired sale price back
+    // would hand out the discount for good. A new future deadline renews it.
+    const deadlineMs = editForm.offerEndDate
+      ? new Date(editForm.offerEndDate).getTime()
+      : NaN;
+    const renewedOffer = Number.isFinite(deadlineMs) && deadlineMs > Date.now();
+    const endsLapsedOffer = editBaseline.offerLapsed && !renewedOffer;
+
     const payload: any = {
       title: editForm.title,
       slug: editForm.slug || generateSlug(editForm.title),
-      price: parseFloat(editForm.price) || 0,
+      price: endsLapsedOffer ? editBaseline.price : parseFloat(editForm.price) || 0,
       originalPrice: editForm.originalPrice ? parseFloat(editForm.originalPrice) : undefined,
       investPrice: editForm.investPrice ? parseFloat(editForm.investPrice) : undefined,
       discountPercentage: editForm.discountPercentage ? parseFloat(editForm.discountPercentage) : undefined,
@@ -390,10 +407,9 @@ export default function ProductsClient({
         : undefined,
       warrantyType: editForm.warrantyType,
       warrantyTerms: editForm.warrantyTerms || undefined,
-      offerEndDate:
-        hasEditDiscount && editForm.offerEndDate
-          ? new Date(editForm.offerEndDate).toISOString()
-          : undefined,
+      // No future deadline means no countdown: sending `null` clears a deadline
+      // that is still on the record, instead of leaving a lapsed one behind.
+      offerEndDate: renewedOffer && hasEditDiscount ? new Date(deadlineMs).toISOString() : null,
       specifications: specObj,
     };
 
@@ -462,8 +478,10 @@ export default function ProductsClient({
     total: products.length,
     totalPages: 1,
   };
-  const startItem = total > 0 ? (page - 1) * limit + 1 : 0;
-  const endItem = Math.min(page * limit, total);
+  // A page can outlive the rows it counted: the summary then has to stay inside
+  // the real range instead of printing "41–12 of 12".
+  const startItem = total > 0 ? Math.min((page - 1) * limit + 1, total) : 0;
+  const endItem = total > 0 ? Math.min(page * limit, total) : 0;
 
   const getPageNumbers = (): (number | "ellipsis")[] => {
     const pages: (number | "ellipsis")[] = [];
@@ -771,27 +789,33 @@ export default function ProductsClient({
                               {formatPrice(product.originalPrice)}
                             </span>
                           )}
-                          {product.investPrice != null ? (
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <span
-                                className={`text-[10px] font-bold ${
-                                  product.price >= product.investPrice
-                                    ? "text-emerald-600 dark:text-emerald-400"
-                                    : "text-rose-500"
-                                }`}
-                                title={`Cost: ${formatPrice(product.investPrice)} | Profit: ${
-                                  product.price >= product.investPrice ? "+" : ""
-                                }${formatPrice(product.price - product.investPrice)}`}
-                              >
-                                {product.price >= product.investPrice ? "+" : ""}{formatPrice(product.price - product.investPrice)} P/L
-                              </span>
-                              {product.profitMargin != null && (
-                                <span className="text-[9px] text-[var(--foreground-muted)] font-medium">
-                                  ({product.profitMargin}%)
+                          {product.investPrice != null ? (() => {
+                            // One unit at cost is break-even: no sign, no green, no
+                            // red — the row should not claim a profit that is zero.
+                            const margin = product.price - product.investPrice;
+                            const tone =
+                              margin > 0
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : margin < 0
+                                  ? "text-rose-500"
+                                  : "text-[var(--foreground-muted)]";
+                            const sign = margin > 0 ? "+" : margin < 0 ? "-" : "";
+                            return (
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <span
+                                  className={`text-[10px] font-bold ${tone}`}
+                                  title={`Cost: ${formatPrice(product.investPrice)} | P/L: ${sign}${formatPrice(Math.abs(margin))}`}
+                                >
+                                  {sign}{formatPrice(Math.abs(margin))} P/L
                                 </span>
-                              )}
-                            </div>
-                          ) : null}
+                                {product.profitMargin != null && (
+                                  <span className="text-[9px] text-[var(--foreground-muted)] font-medium">
+                                    ({product.profitMargin}%)
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })() : null}
                         </div>
                       </td>
 
@@ -1330,6 +1354,14 @@ export default function ProductsClient({
                   </div>
 
                   {/* Deal Countdown End Date Picker — only for a real discount */}
+                  {editBaseline.offerLapsed && (
+                    <p className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/40 rounded-xl px-3 py-2">
+                      This offer has already ended, so the shop is at the original
+                      price. Set a new end date to renew it — saving keeps the
+                      current price either way.
+                    </p>
+                  )}
+
                   {hasEditDiscount ? (
                     <HeroUIDateTimePicker
                       label="Special Deal Countdown End Date & Time"

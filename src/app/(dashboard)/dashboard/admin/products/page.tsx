@@ -20,32 +20,45 @@ export default async function AdminProductsPage({
   searchParams,
 }: AdminProductsPageProps) {
   const params = await searchParams;
-  const page = Number(params?.page) || 1;
-  const limit = Number(params?.limit) || 10;
+  const page = Math.max(1, Math.floor(Number(params?.page)) || 1);
+  const limit = Math.max(1, Math.floor(Number(params?.limit)) || 10);
 
-  const [productsRes, categoriesRes, subCategoriesRes] = await Promise.all([
-    // The desk reads the admin shape: cost, margin and every row it governs.
-    getProducts({ ...params, page, limit }, { admin: true }),
+  // The desk reads the admin shape: cost, margin and every row it governs.
+  const readCatalog = async (targetPage: number) => {
+    const res = await getProducts({ ...params, page: targetPage, limit }, { admin: true });
+    const list = Array.isArray(res?.data?.products)
+      ? res.data.products
+      : Array.isArray(res?.products)
+      ? res.products
+      : Array.isArray(res?.data)
+      ? res.data
+      : [];
+    const total = Number(res?.data?.pagination?.total ?? res?.data?.total ?? list.length) || 0;
+    return {
+      list,
+      pagination: {
+        page: targetPage,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
+  };
+
+  const [first, categoriesRes, subCategoriesRes] = await Promise.all([
+    readCatalog(page),
     getCategories(),
     getSubCategories(),
   ]);
 
-  const products = Array.isArray(productsRes?.data?.products)
-    ? productsRes.data.products
-    : Array.isArray(productsRes?.products)
-    ? productsRes.products
-    : Array.isArray(productsRes?.data)
-    ? productsRes.data
-    : Array.isArray(productsRes)
-    ? productsRes
-    : [];
-
-  const pagination = productsRes?.data?.pagination ?? {
-    page,
-    limit,
-    total: productsRes?.data?.total ?? products.length,
-    totalPages: Math.max(1, Math.ceil((productsRes?.data?.total ?? products.length) / limit)),
-  };
+  // A filter that shrank the list while the reader was further down leaves the
+  // requested page past the end of it. Read the last page that exists instead of
+  // showing an empty table and a footer that counts backwards — the same list a
+  // stale link in another tab asks for.
+  let { list: products, pagination } = first;
+  if (page > pagination.totalPages) {
+    ({ list: products, pagination } = await readCatalog(pagination.totalPages));
+  }
 
   const categories = Array.isArray(categoriesRes?.data)
     ? categoriesRes.data
