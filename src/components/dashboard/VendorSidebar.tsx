@@ -17,6 +17,7 @@ import {
   Store,
   Ticket,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "react-toastify";
@@ -25,10 +26,9 @@ import SparqLogo from "@/components/shared/SparqLogo";
 /**
  * The vendor's workspace navigation.
  *
- * It starts small on purpose: the store overview, the orders, the store
- * profile, the catalogue and the seller feed. Promotions and coupons join this
- * list as their screens arrive, so no link here ever opens a page that does not
- * exist.
+ * Grouped the same way as the admin and rider sidebars: the overview leads on
+ * its own, then the groups run from the day's work (sales, then the shop
+ * itself) and end with the account.
  *
  * Only the seller's own pages are listed. The buyer side of the same account —
  * personal orders, wishlist — lives in the customer dashboard, and the way to
@@ -37,23 +37,67 @@ import SparqLogo from "@/components/shared/SparqLogo";
  * mixes two dashboards is how a seller ends up not knowing which shop they are
  * editing.
  */
-const VENDOR_NAV_GROUPS = [
+const OVERVIEW_ITEM = {
+  name: "Overview",
+  href: "/dashboard/vendor",
+  icon: LayoutDashboard,
+};
+
+const NAV_GROUPS: { title: string; items: { name: string; href: string; icon: LucideIcon }[] }[] = [
   {
-    title: "Store",
+    title: "Sales",
     items: [
-      { name: "Overview", href: "/dashboard/vendor", icon: LayoutDashboard },
       { name: "Orders", href: "/dashboard/vendor/orders", icon: ShoppingBag },
-      { name: "Products", href: "/dashboard/vendor/products", icon: Package },
       { name: "Analytics", href: "/dashboard/vendor/analytics", icon: BarChart3 },
       { name: "Coupons", href: "/dashboard/vendor/coupons", icon: Ticket },
       { name: "Promotions", href: "/dashboard/vendor/promotions", icon: Sparkles },
+    ],
+  },
+  {
+    title: "Store",
+    items: [
+      { name: "Products", href: "/dashboard/vendor/products", icon: Package },
       { name: "Store Profile", href: "/dashboard/vendor/profile", icon: Store },
+    ],
+  },
+  {
+    title: "Account",
+    items: [
       { name: "Plan & Billing", href: "/dashboard/vendor/subscription", icon: CreditCard },
       { name: "Notifications", href: "/dashboard/vendor/notifications", icon: Bell },
       { name: "Settings", href: "/dashboard/vendor/settings", icon: Settings },
     ],
   },
 ];
+
+interface SidebarLinkProps {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  isActive: boolean;
+  onClose: () => void;
+}
+
+/** One menu row. The grouped links and the overview share it, so they look the same. */
+function SidebarLink({ name, href, icon: Icon, isActive, onClose }: SidebarLinkProps) {
+  return (
+    <Link
+      href={href}
+      onClick={onClose}
+      className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
+        isActive
+          ? "bg-brand-gradient text-[var(--on-grad-text)] shadow-xs font-bold border border-transparent"
+          : "text-[var(--foreground-muted)] hover:bg-[var(--surface-alt)] hover:text-[var(--foreground)] border border-transparent hover:border-[var(--border-color)]/60"
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <Icon className="w-4 h-4 stroke-[2]" />
+        <span>{name}</span>
+      </div>
+      {isActive && <ChevronRight className="w-3.5 h-3.5 opacity-80" />}
+    </Link>
+  );
+}
 
 interface VendorSidebarProps {
   isOpen: boolean;
@@ -65,6 +109,14 @@ export default function VendorSidebar({ isOpen, onClose }: VendorSidebarProps) {
   const router = useRouter();
   const { data: session } = authClient.useSession();
   const vendor = session?.user as { name?: string; email?: string } | undefined;
+
+  // The overview is the parent of every other vendor page, so it only counts as
+  // active on its own path. The rest stay highlighted on their sub-pages, such
+  // as /dashboard/vendor/orders/123.
+  const isActiveLink = (href: string) =>
+    href === "/dashboard/vendor"
+      ? pathname === href
+      : pathname === href || pathname.startsWith(`${href}/`);
 
   const handleSignOut = async () => {
     try {
@@ -111,41 +163,30 @@ export default function VendorSidebar({ isOpen, onClose }: VendorSidebarProps) {
             </button>
           </div>
 
-          {VENDOR_NAV_GROUPS.map((group) => (
-            <nav key={group.title} className="space-y-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)] px-3 mb-2 opacity-75">
-                {group.title}
-              </p>
-              {group.items.map((item) => {
-                const Icon = item.icon;
-                // A workspace root owns its bare path, so it must not stay
-                // active while a deeper page in the same workspace is open.
-                const isWorkspaceRoot = item.href === "/dashboard/vendor";
-                const isActive = isWorkspaceRoot
-                  ? pathname === item.href
-                  : pathname.startsWith(item.href);
+          {/* Main menu — the overview leads, then the groups */}
+          <nav className="space-y-5">
+            <SidebarLink
+              {...OVERVIEW_ITEM}
+              isActive={isActiveLink(OVERVIEW_ITEM.href)}
+              onClose={onClose}
+            />
 
-                return (
-                  <Link
+            {NAV_GROUPS.map((group) => (
+              <div key={group.title} className="space-y-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)] px-3 mb-2 opacity-75">
+                  {group.title}
+                </p>
+                {group.items.map((item) => (
+                  <SidebarLink
                     key={item.href}
-                    href={item.href}
-                    onClick={onClose}
-                    className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
-                      isActive
-                        ? "bg-brand-gradient text-[var(--on-grad-text)] shadow-xs font-bold border border-transparent"
-                        : "text-[var(--foreground-muted)] hover:bg-[var(--surface-alt)] hover:text-[var(--foreground)] border border-transparent hover:border-[var(--border-color)]/60"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-4 h-4 stroke-[2]" />
-                      <span>{item.name}</span>
-                    </div>
-                    {isActive && <ChevronRight className="w-3.5 h-3.5 opacity-80" />}
-                  </Link>
-                );
-              })}
-            </nav>
-          ))}
+                    {...item}
+                    isActive={isActiveLink(item.href)}
+                    onClose={onClose}
+                  />
+                ))}
+              </div>
+            ))}
+          </nav>
         </div>
 
         <div className="shrink-0 p-4 border-t border-[var(--border-color)] space-y-3 bg-[var(--surface-alt)]">
