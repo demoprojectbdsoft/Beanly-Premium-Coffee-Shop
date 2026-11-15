@@ -5,11 +5,15 @@ import {
   BadgeCheck,
   BarChart3,
   Boxes,
+  CircleUser,
   Clock3,
   FileCheck2,
+  Gauge,
   HeartHandshake,
   Rocket,
+  ShieldAlert,
   ShieldCheck,
+  ShoppingBag,
   Sparkles,
   Store,
   Ticket,
@@ -22,6 +26,7 @@ import { getUserSession } from "@/lib/core/session";
 import { roleOf } from "@/lib/core/roles";
 import { getVendorStatusLabel } from "@/lib/vendorStatus";
 import VendorPricing from "@/components/vendor/VendorPricing";
+import FaqAccordion from "@/components/shared/FaqAccordion";
 
 export const dynamic = "force-dynamic";
 
@@ -92,31 +97,37 @@ const BENEFITS = [
 
 const FAQS = [
   {
+    icon: CircleUser,
     question: "Do I need a second account?",
     answer:
       "No. The application is linked to the account you already have. Approval changes that account's role to vendor and creates the store beside it — nothing is copied and nothing is reset.",
   },
   {
+    icon: ShoppingBag,
     question: "Can I keep shopping while I sell?",
     answer:
       "Yes. A vendor may add to cart, wishlist and check out from another vendor's store. Only staff and riders are kept out of the cart.",
   },
   {
+    icon: Clock3,
     question: "What happens while my application is reviewed?",
     answer:
       "Sign-in is paused until the store team decides, because an applicant holds no marketplace authority. You are emailed the outcome, and after a rejection you can sign in and apply again.",
   },
   {
+    icon: ShieldAlert,
     question: "What if I am rejected?",
     answer:
       "Your account stays a customer. The reason is saved and shown on your application status page, and you may resubmit on the same application so the earlier review stays in the file.",
   },
   {
+    icon: FileCheck2,
     question: "Do I need a trade licence?",
     answer:
       "No. Verification is optional — a home seller is welcome. A licence or registration number only speeds the review up.",
   },
   {
+    icon: Gauge,
     question: "How do the plan limits work?",
     answer:
       "Every limit — products, featured slots, coupons — is read from the plan table by the API. Reaching a limit stops the action with a message naming the limit and the plan that lifts it.",
@@ -354,23 +365,8 @@ export default async function BecomeAVendorPage({ searchParams }: BecomeAVendorP
           <h2 className="text-xl font-bold text-[var(--foreground)]">Questions before you apply</h2>
         </header>
 
-        <div className="mx-auto max-w-3xl space-y-2">
-          {FAQS.map((faq) => (
-            <details
-              key={faq.question}
-              className="group rounded-xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-4 shadow-2xs"
-            >
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold text-[var(--foreground)]">
-                {faq.question}
-                <span className="text-[var(--foreground-muted)] transition-transform group-open:rotate-45">
-                  +
-                </span>
-              </summary>
-              <p className="mt-2 text-[11px] leading-relaxed text-[var(--foreground-muted)]">
-                {faq.answer}
-              </p>
-            </details>
-          ))}
+        <div className="mx-auto max-w-3xl">
+          <FaqAccordion items={FAQS} />
         </div>
       </section>
 
