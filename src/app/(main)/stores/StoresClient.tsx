@@ -211,7 +211,11 @@ export default function StoresClient({ stores, pagination, filters }: StoresClie
               href={`/stores/${store.slug}`}
               className="group flex flex-col rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] overflow-hidden shadow-2xs hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/40 hover:border-primary/40 transition-all duration-300 cursor-pointer"
             >
-              <div className="relative h-24 bg-brand-gradient">
+              <div
+                className={`relative h-24 ${
+                  store.coverImage ? "bg-[var(--surface-alt)]" : "bg-brand-gradient"
+                }`}
+              >
                 {store.coverImage && (
                   <Image
                     src={store.coverImage}
