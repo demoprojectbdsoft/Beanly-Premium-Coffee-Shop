@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { getRequiredRole } from "@/lib/core/session";
 import { asApplication, getMyVendorApplication } from "@/lib/api/vendor";
+import { asStore, getMyStore } from "@/lib/api/vendorStore";
 import { asSubscription, getMySubscription } from "@/lib/api/vendorSubscription";
 import { asOrderSummary, getMyOrderSummary } from "@/lib/api/vendorOrders";
 import { getSiteSettings } from "@/lib/api/siteSettings";
@@ -34,10 +35,11 @@ export const dynamic = "force-dynamic";
 export default async function VendorOverviewPage() {
   const user = await getRequiredRole("vendor");
 
-  const [application, subscriptionOverview, orderSummary, settingsRes] = await Promise.all([
-    getMyVendorApplication().then(asApplication),
-    getMySubscription().then(asSubscription),
-    getMyOrderSummary().then(asOrderSummary),
+  const [storeRes, application, subscriptionOverview, orderSummary, settingsRes] = await Promise.all([
+    getMyStore().then(asStore).catch(() => null),
+    getMyVendorApplication().then(asApplication).catch(() => null),
+    getMySubscription().then(asSubscription).catch(() => null),
+    getMyOrderSummary().then(asOrderSummary).catch(() => null),
     getSiteSettings(),
   ]);
 
@@ -47,7 +49,12 @@ export default async function VendorOverviewPage() {
   const usage = subscriptionOverview?.usage;
   const planIsLive = subscriptionOverview?.isLive ?? false;
   const approvedAt = application?.reviewedAt || application?.submittedAt;
-  const store = application?.storeInfo;
+  const appStore = application?.storeInfo;
+  const store = storeRes ?? appStore;
+  const coverImage = storeRes?.coverImage || appStore?.coverImage || "";
+  const logo = storeRes?.logo || appStore?.logo || "";
+  const storeName = storeRes?.name || appStore?.name || user.name || "Your store";
+  const storeSlug = storeRes?.slug || appStore?.slug || "—";
   const address = application?.businessAddress;
 
   const planPriceLabel = plan
@@ -62,8 +69,8 @@ export default async function VendorOverviewPage() {
   // the store actually has that information.
   const readiness = [
     { label: "Store description", done: Boolean(store?.description) },
-    { label: "Store logo", done: Boolean(store?.logo) },
-    { label: "Cover image", done: Boolean(store?.coverImage) },
+    { label: "Store logo", done: Boolean(logo) },
+    { label: "Cover image", done: Boolean(coverImage) },
     { label: "Business address", done: Boolean(address?.address && address?.city) },
     { label: "Verification document", done: Boolean(application?.verification?.documentUrl) },
   ];
@@ -71,28 +78,37 @@ export default async function VendorOverviewPage() {
 
   return (
     <div className="space-y-5">
-      {/* Store header */}
+      {/* Store header with cover image just like profile page */}
       <section className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] shadow-2xs">
-        <div className="h-20 bg-brand-gradient" />
+        <div className="relative h-28 bg-[var(--surface-alt)]">
+          {coverImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={coverImage} alt="Store cover" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-brand-gradient text-[10px] font-semibold uppercase tracking-wider text-[var(--on-grad-text)]/80">
+              Cover image
+            </div>
+          )}
+        </div>
         <div className="px-5 pb-5">
           <div className="-mt-8 flex flex-wrap items-end justify-between gap-3">
             <div className="flex items-end gap-3">
               <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border-4 border-[var(--surface-elevated)] bg-[var(--surface-alt)] text-[var(--brand-flat)] shadow-sm">
-                {store?.logo ? (
+                {logo ? (
                   // The logo is a URL the applicant supplied; next/image would
                   // need every host configured, so this stays a plain image.
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={store.logo} alt={store.name} className="h-full w-full object-cover" />
+                  <img src={logo} alt={storeName} className="h-full w-full object-cover" />
                 ) : (
                   <Store className="h-6 w-6" />
                 )}
               </div>
               <div className="pb-1">
                 <h1 className="text-lg font-bold leading-tight text-[var(--foreground)]">
-                  {store?.name || user.name || "Your store"}
+                  {storeName}
                 </h1>
                 <p className="text-[11px] text-[var(--foreground-muted)]">
-                  /store/{store?.slug || "—"}
+                  /store/{storeSlug}
                 </p>
               </div>
             </div>
