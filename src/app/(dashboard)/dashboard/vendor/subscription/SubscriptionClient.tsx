@@ -15,6 +15,7 @@ import {
   ReceiptText,
   RefreshCw,
   ShieldCheck,
+  Sparkles,
   Tag,
   Ticket,
   TriangleAlert,
@@ -25,6 +26,11 @@ import { cancelVendorRenewal, checkoutVendorSubscription } from "@/lib/action/ve
 import { formatPrice } from "@/lib/currency";
 import { formatOrderDate } from "@/lib/dateTime";
 import { planPrice } from "@/lib/vendorPlan";
+import {
+  buildDemoTransactionId,
+  isTransactionIdValid,
+  normaliseTransactionId,
+} from "@/lib/walletPayment";
 import type {
   BillingCycle,
   VendorPlan,
@@ -177,8 +183,10 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
   const pay = async () => {
     if (!checkoutPlan || paying) return;
 
-    if (method !== "wallet" && transactionId.trim().length < 8) {
-      toast.warning("Paste the transaction id from the wallet confirmation SMS.");
+    const isFree = checkoutPlan.id === "free" || checkoutAmount === 0;
+
+    if (!isFree && method !== "wallet" && !isTransactionIdValid(transactionId)) {
+      toast.warning("Paste the transaction id (8-20 characters) or click 'Use demo payment'.");
       return;
     }
 
@@ -187,8 +195,8 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
       const res = await checkoutVendorSubscription({
         planId: checkoutPlan.id,
         billingCycle: cycle,
-        method,
-        transactionId: method === "wallet" ? undefined : transactionId.trim(),
+        method: isFree ? "wallet" : method,
+        transactionId: isFree || method === "wallet" ? undefined : transactionId.trim(),
         idempotencyKey,
       });
 
@@ -670,6 +678,36 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-4 px-4 py-4">
+              {/* Cycle switcher (Monthly / Yearly) inside checkout modal */}
+              {checkoutPlan.id !== "free" && (
+                <div>
+                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+                    Billing cycle
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(["monthly", "yearly"] as BillingCycle[]).map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => setCycle(option)}
+                        className={`rounded-xl border px-3 py-2 text-left transition-colors cursor-pointer ${
+                          cycle === option
+                            ? "border-[var(--brand-flat)] bg-[var(--brand-flat)]/10 font-bold text-[var(--brand-flat)]"
+                            : "border-[var(--border-color)] hover:bg-[var(--surface-alt)] text-[var(--foreground)]"
+                        }`}
+                      >
+                        <span className="block text-[11px] font-bold capitalize">
+                          {option}
+                        </span>
+                        <span className="block text-[9px] text-[var(--foreground-muted)]">
+                          {money(planPrice(checkoutPlan, option))} / {option === "yearly" ? "year" : "month"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)]/60 px-3 py-2.5">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--foreground-muted)]">
                   Total
@@ -679,55 +717,88 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
                 </span>
               </div>
 
-              <div>
-                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
-                  Pay with
-                </p>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {METHODS.map((option) => (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => setMethod(option.id)}
-                      className={`rounded-xl border px-2.5 py-2 text-left transition-colors cursor-pointer ${
-                        method === option.id
-                          ? "border-[var(--brand-flat)] bg-[var(--brand-flat)]/10"
-                          : "border-[var(--border-color)] hover:bg-[var(--surface-alt)]"
-                      }`}
-                    >
-                      <span className="block text-[11px] font-bold text-[var(--foreground)]">
-                        {option.label}
-                      </span>
-                      <span className="block text-[9px] text-[var(--foreground-muted)]">
-                        {option.hint}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {method !== "wallet" && (
-                <div>
-                  <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
-                    Transaction id
-                  </label>
-                  <input
-                    value={transactionId}
-                    onChange={(event) => setTransactionId(event.target.value.toUpperCase())}
-                    placeholder="e.g. 8N7A2K4Q1Z"
-                    className="h-9 w-full rounded-xl border border-[var(--border-color)] bg-[var(--surface)] px-3 font-mono text-[11px] uppercase text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--brand-flat)]/35"
-                  />
-                  <p className="mt-1 text-[9px] text-[var(--foreground-muted)]">
-                    8 to 20 letters or digits. A wrong id is recorded as a failed payment and
-                    changes nothing.
+              {/* Free plan: No verification needed */}
+              {checkoutPlan.id === "free" || checkoutAmount === 0 ? (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+                  <div className="flex items-center gap-2 font-bold text-emerald-900 dark:text-emerald-100">
+                    <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    No Verification Required
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed opacity-90">
+                    The Free plan has no subscription fee and requires no payment or transaction verification. It activates immediately.
                   </p>
                 </div>
-              )}
+              ) : (
+                /* Paid plans: Payment method selection & demo verification option */
+                <>
+                  <div>
+                    <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+                      Pay with
+                    </p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {METHODS.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => setMethod(option.id)}
+                          className={`rounded-xl border px-2.5 py-2 text-left transition-colors cursor-pointer ${
+                            method === option.id
+                              ? "border-[var(--brand-flat)] bg-[var(--brand-flat)]/10"
+                              : "border-[var(--border-color)] hover:bg-[var(--surface-alt)]"
+                          }`}
+                        >
+                          <span className="block text-[11px] font-bold text-[var(--foreground)]">
+                            {option.label}
+                          </span>
+                          <span className="block text-[9px] text-[var(--foreground-muted)]">
+                            {option.hint}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-              <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[9px] leading-relaxed text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-                This is a demo checkout — no real money moves. The amount and the period are decided
-                by the server, and clicking Pay twice charges once.
-              </p>
+                  {method !== "wallet" && (
+                    <div>
+                      <div className="mb-1 flex items-center justify-between">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+                          Transaction ID (TrxID)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const demoTrx = buildDemoTransactionId(
+                              method === "rocket" ? "rocket" : method === "nagad" ? "nagad" : "bkash"
+                            );
+                            setTransactionId(demoTrx);
+                            toast.info(`Generated demo TrxID: ${demoTrx}`);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900 transition-colors hover:bg-amber-200 dark:border-amber-800/70 dark:bg-amber-950/50 dark:text-amber-200 dark:hover:bg-amber-950/70 cursor-pointer"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          Use demo payment
+                        </button>
+                      </div>
+                      <input
+                        value={transactionId}
+                        onChange={(event) => setTransactionId(normaliseTransactionId(event.target.value))}
+                        placeholder={
+                          method === "rocket" ? "12 digit TxnID e.g. 849201948271" : "e.g. 8N7A2K4Q1Z"
+                        }
+                        className="h-9 w-full rounded-xl border border-[var(--border-color)] bg-[var(--surface)] px-3 font-mono text-[11px] uppercase text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--brand-flat)]/35"
+                      />
+                      <p className="mt-1 text-[9px] text-[var(--foreground-muted)]">
+                        8 to 20 letters or digits. Press <strong>Use demo payment</strong> to auto-fill a simulated transaction ID.
+                      </p>
+                    </div>
+                  )}
+
+                  <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[9px] leading-relaxed text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                    This is a demo checkout — no real money moves. The amount and the period are decided
+                    by the server, and clicking Pay twice charges once.
+                  </p>
+                </>
+              )}
             </div>
 
             <div className="shrink-0 flex items-center justify-end gap-2 border-t border-[var(--border-color)] px-4 py-3">
