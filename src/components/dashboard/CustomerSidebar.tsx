@@ -27,6 +27,10 @@ import SparqLogo from "@/components/shared/SparqLogo";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { rolesOf } from "@/lib/core/roles";
 
+// The customer's charts and exports live on the overview itself (the separate
+// analytics page was merged into it and its URL only redirects here), so the
+// list opens with Overview and moves straight to the desks that have their own
+// pages.
 const CUSTOMER_NAV_ITEMS = [
   { name: "Overview", href: "/dashboard/customer", icon: LayoutDashboard },
   { name: "Wishlist", href: "/dashboard/customer/wishlist", icon: Heart },

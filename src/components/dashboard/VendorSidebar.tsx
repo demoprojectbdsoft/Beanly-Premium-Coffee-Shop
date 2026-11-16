@@ -31,7 +31,8 @@ import SparqLogo from "@/components/shared/SparqLogo";
  * The vendor's workspace navigation.
  *
  * Grouped the same way as the admin and rider sidebars: the overview leads on
- * its own, then the groups run from the day's work (sales, then the shop
+ * its own, analytics follows it because it reads the same sales one step
+ * deeper, then the groups run from the day's work (sales, then the shop
  * itself) and end with the account.
  *
  * Only the seller's own pages are listed. The buyer side of the same account —
@@ -45,6 +46,13 @@ const OVERVIEW_ITEM = {
   name: "Overview",
   href: "/dashboard/vendor",
   icon: LayoutDashboard,
+};
+
+// The report page: what the overview's headline numbers are made of.
+const ANALYTICS_ITEM = {
+  name: "Analytics",
+  href: "/dashboard/vendor/analytics",
+  icon: BarChart3,
 };
 
 const NAV_GROUPS: { title: string; items: { name: string; href: string; icon: LucideIcon }[] }[] = [
@@ -64,7 +72,6 @@ const NAV_GROUPS: { title: string; items: { name: string; href: string; icon: Lu
       { name: "Deliveries", href: "/dashboard/vendor/deliveries", icon: Truck },
       { name: "Rider Payouts", href: "/dashboard/vendor/payouts", icon: Receipt },
       { name: "Transactions", href: "/dashboard/vendor/transactions", icon: CreditCard },
-      { name: "Analytics", href: "/dashboard/vendor/analytics", icon: BarChart3 },
       { name: "Coupons", href: "/dashboard/vendor/coupons", icon: Ticket },
       { name: "Promotions", href: "/dashboard/vendor/promotions", icon: Sparkles },
     ],
@@ -172,11 +179,16 @@ export default function VendorSidebar({ isOpen, onClose }: VendorSidebarProps) {
             </button>
           </div>
 
-          {/* Main menu — the overview leads, then grouped sections */}
+          {/* Main menu — the overview leads, analytics follows it, then grouped sections */}
           <nav className="space-y-4">
             <SidebarLink
               {...OVERVIEW_ITEM}
               isActive={isActiveLink(OVERVIEW_ITEM.href)}
+              onClose={onClose}
+            />
+            <SidebarLink
+              {...ANALYTICS_ITEM}
+              isActive={isActiveLink(ANALYTICS_ITEM.href)}
               onClose={onClose}
             />
 

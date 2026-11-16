@@ -37,12 +37,21 @@ import SparqLogo from "@/components/shared/SparqLogo";
 import { useDashboardRole } from "@/hooks/useDashboardRole";
 
 // The menu is split into groups so a long list of links stays readable. The
-// overview leads on its own, then each group is drawn in the order written
-// here.
+// overview leads on its own, analytics sits directly beneath it because it is
+// the same picture of the store read one step deeper, then each group is drawn
+// in the order written here.
 const OVERVIEW_ITEM = {
   name: "Overview",
   href: "/dashboard/admin",
   icon: LayoutDashboard,
+};
+
+// Views, clicks and wishlist saves: the demand sitting behind the overview's
+// headline numbers.
+const ANALYTICS_ITEM = {
+  name: "Analytics",
+  href: "/dashboard/admin/analytics",
+  icon: BarChart3,
 };
 
 const NAV_GROUPS = [
@@ -62,8 +71,6 @@ const NAV_GROUPS = [
   {
     title: "Sales",
     items: [
-      // Views, clicks and wishlist saves: the demand that has not ordered yet.
-      { name: "Analytics", href: "/dashboard/admin/analytics", icon: BarChart3 },
       { name: "Orders", href: "/dashboard/admin/orders", icon: ShoppingBag },
       { name: "Deliveries", href: "/dashboard/admin/deliveries", icon: Truck },
       { name: "Rider payouts", href: "/dashboard/admin/payouts", icon: Banknote },
@@ -200,11 +207,16 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             </button>
           </div>
 
-          {/* Main Menu — the overview leads, then the groups */}
+          {/* Main Menu — the overview leads, analytics follows it, then the groups */}
           <nav className="space-y-5">
             <SidebarLink
               {...OVERVIEW_ITEM}
               isActive={isActiveLink(OVERVIEW_ITEM.href)}
+              onClose={onClose}
+            />
+            <SidebarLink
+              {...ANALYTICS_ITEM}
+              isActive={isActiveLink(ANALYTICS_ITEM.href)}
               onClose={onClose}
             />
 
