@@ -153,7 +153,11 @@ export default function DeliveryDetailModal({
                       </Chip>
                     </div>
                     <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
-                      Assigned {formatMoment(view.createdAt)}
+                      Assigned by{" "}
+                      <span className="font-semibold text-[var(--foreground)]">
+                        {view.assignedBy?.name || "the store"}
+                      </span>{" "}
+                      · {formatMoment(view.createdAt)}
                       {view.distanceKm ? ` · ${formatDistance(view.distanceKm)}` : ""}
                     </p>
                     <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">

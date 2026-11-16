@@ -39,6 +39,19 @@ export interface DeliveryEvent {
   note: string;
 }
 
+/**
+ * The store account that handed the job to the rider.
+ *
+ * An admin offers every job, so a rider asking "who sent me this?" gets a name
+ * rather than a bare id. Null on rows written before the assigner was recorded.
+ */
+export interface DeliveryAssigner {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 export interface DeliveryRecord {
   _id: string;
   orderId: string;
@@ -65,6 +78,8 @@ export interface DeliveryRecord {
   updatedAt: string;
   /** Null on the rider's own lists, filled in for the store and the buyer. */
   rider: DeliveryRider | null;
+  /** Who offered the job, so the rider sees the store account behind it. */
+  assignedBy: DeliveryAssigner | null;
   history: DeliveryEvent[];
   /**
    * The order behind the job.

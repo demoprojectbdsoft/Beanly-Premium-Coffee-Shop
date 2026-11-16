@@ -280,7 +280,7 @@ export default function DeliveryListClient({
                   <th className="px-4 py-3 font-bold">Drop-off</th>
                   <th className="px-4 py-3 font-bold">Fee</th>
                   <th className="px-4 py-3 font-bold">Status</th>
-                  <th className="px-4 py-3 font-bold">Assigned</th>
+                  <th className="px-4 py-3 font-bold">Assigned by</th>
                   <th className="px-4 py-3 font-bold">Last update</th>
                   <th className="px-5 py-3 font-bold text-right">Action</th>
                 </tr>
@@ -358,8 +358,13 @@ export default function DeliveryListClient({
                         )}
                       </td>
 
-                      <td className="px-4 py-4 text-[var(--foreground-muted)] whitespace-nowrap">
-                        {formatMoment(delivery.createdAt)}
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className="block font-semibold text-[var(--foreground)]">
+                          {delivery.assignedBy?.name || "The store"}
+                        </span>
+                        <span className="block text-[10px] text-[var(--foreground-muted)]">
+                          {formatMoment(delivery.createdAt)}
+                        </span>
                       </td>
 
                       <td className="px-4 py-4 text-[var(--foreground-muted)] whitespace-nowrap">

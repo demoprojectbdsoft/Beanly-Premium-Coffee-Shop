@@ -107,9 +107,12 @@ export default function RiderOverviewClient({
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // The answer windows that have already closed. Resolved after mount so the
-  // render itself stays pure — the clock only matters once we are on the client.
+  // render itself stays pure — the clock only matters once we are on the client,
+  // and reading it during render would let the server and the browser disagree
+  // about which offers are still open.
   const [expiredIds, setExpiredIds] = useState<string[]>([]);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setExpiredIds(expiredDeliveryIds(recent));
   }, [recent]);
 
@@ -462,6 +465,7 @@ export default function RiderOverviewClient({
                   <th className="px-4 py-3 font-bold">Drop-off</th>
                   <th className="px-4 py-3 font-bold">Fee</th>
                   <th className="px-4 py-3 font-bold">Status</th>
+                  <th className="px-4 py-3 font-bold">Assigned by</th>
                   <th className="px-4 py-3 font-bold">Last update</th>
                   <th className="px-6 py-3 font-bold text-right">Action</th>
                 </tr>
@@ -501,6 +505,14 @@ export default function RiderOverviewClient({
                         >
                           {DELIVERY_STATUS_LABELS[delivery.status]}
                         </Chip>
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <span className="block font-semibold text-[var(--foreground)]">
+                          {delivery.assignedBy?.name || "The store"}
+                        </span>
+                        <span className="block text-[10px] text-[var(--foreground-muted)]">
+                          {formatMoment(delivery.createdAt)}
+                        </span>
                       </td>
                       <td className="px-4 py-3.5 text-[var(--foreground-muted)] whitespace-nowrap">
                         {formatMoment(delivery.updatedAt)}
