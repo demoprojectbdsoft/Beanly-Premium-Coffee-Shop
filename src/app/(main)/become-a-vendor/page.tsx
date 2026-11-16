@@ -217,9 +217,9 @@ export default async function BecomeAVendorPage({ searchParams }: BecomeAVendorP
   const application = session?.id ? asApplication(await getMyVendorApplication()) : null;
 
   const params = await searchParams;
-  const requestedPlan = ["free", "premium", "advanced"].includes(params?.plan || "")
-    ? params?.plan
-    : undefined;
+  // The price list is editable, so the link's plan is honoured when it is one
+  // the store still sells rather than one the code happens to know.
+  const requestedPlan = plans.some((plan) => plan.id === params?.plan) ? params?.plan : undefined;
   const applyHref = requestedPlan
     ? `/become-a-vendor/apply?plan=${requestedPlan}`
     : "/become-a-vendor/apply";
@@ -633,7 +633,7 @@ export default async function BecomeAVendorPage({ searchParams }: BecomeAVendorP
           <VendorPricing plans={plans} currency={currency} />
         ) : (
           <p className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-6 text-center text-xs text-[var(--foreground-muted)]">
-            The plan table could not be loaded right now. Please refresh in a moment.
+            No plans are on offer right now. Please check back in a moment.
           </p>
         )}
 

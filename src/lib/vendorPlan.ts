@@ -41,3 +41,24 @@ export function planYearlySaving(plan: VendorPlan): number {
 export function isPaidPlan(plan: VendorPlan): boolean {
   return (Number(plan.monthlyPrice) || 0) > 0;
 }
+
+/** The cycles a plan is actually sold in; an empty list means both. */
+export function planCycles(plan: VendorPlan): BillingCycle[] {
+  const cycles = plan.billingCycles?.filter(
+    (cycle): cycle is BillingCycle => cycle === "monthly" || cycle === "yearly"
+  );
+  return cycles && cycles.length > 0 ? cycles : ["monthly", "yearly"];
+}
+
+/**
+ * The card the pricing page calls "Popular" once the ladder is editable: the
+ * cheapest paid rung, which is what a shop buys first.
+ */
+export function popularPlanId(plans: VendorPlan[]): string | null {
+  const paid = plans.filter(isPaidPlan);
+  if (paid.length === 0) return null;
+
+  return paid.reduce((best, plan) =>
+    (Number(plan.monthlyPrice) || 0) < (Number(best.monthlyPrice) || 0) ? plan : best
+  ).id;
+}

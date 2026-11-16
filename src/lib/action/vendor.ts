@@ -276,14 +276,58 @@ export const cancelVendorRenewal = async () => {
   return serverMutation("/vendor-subscription/cancel-renewal", {}, "POST");
 };
 
+/** Every field the store team may write on a plan; all of them are optional. */
+export interface VendorPlanPayload {
+  name?: string;
+  monthlyPrice?: number;
+  yearlyPrice?: number;
+  maxProducts?: number;
+  featuredProducts?: number;
+  featuredDurationDays?: number;
+  activeCoupons?: number;
+  analytics?: string;
+  salesReports?: string;
+  exports?: string;
+  storeCustomization?: string;
+  promotionalCampaigns?: string;
+  storeVisibility?: string;
+  support?: string;
+  highlights?: string[];
+  isActive?: boolean;
+  commissionPercent?: number;
+  gracePeriodDays?: number;
+  billingCycles?: BillingCycle[];
+  sortOrder?: number;
+}
+
+/** Adds a plan to the price list; the id is made from the name by the API. */
+export const createVendorPlan = async (data: VendorPlanPayload & { name: string }) => {
+  const user = await getUserSession();
+  if (!isAdminRole(user)) {
+    return { success: false as const, message: "Admin access required." };
+  }
+  return serverMutation("/vendor-plans", data, "POST");
+};
+
 /** The store team edits a plan's numbers; every limit check reads the result. */
-export const updateVendorPlan = async (
-  planId: VendorPlanId,
-  data: Record<string, unknown>
-) => {
+export const updateVendorPlan = async (planId: VendorPlanId, data: VendorPlanPayload) => {
   const user = await getUserSession();
   if (!isAdminRole(user)) {
     return { success: false as const, message: "Admin access required." };
   }
   return serverMutation(`/vendor-plans/${planId}`, data, "PATCH");
+};
+
+/**
+ * Removes a plan from the price list.
+ *
+ * The API refuses the free rung and any plan a vendor is still on, so a live
+ * period can never point at a plan that no longer exists.
+ */
+export const deleteVendorPlan = async (planId: VendorPlanId) => {
+  const user = await getUserSession();
+  if (!isAdminRole(user)) {
+    return { success: false as const, message: "Admin access required." };
+  }
+  return serverMutation(`/vendor-plans/${planId}`, {}, "DELETE");
 };

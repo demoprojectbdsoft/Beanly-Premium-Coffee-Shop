@@ -25,7 +25,7 @@ import { toast } from "react-toastify";
 import { cancelVendorRenewal, checkoutVendorSubscription } from "@/lib/action/vendor";
 import { formatPrice } from "@/lib/currency";
 import { formatOrderDate } from "@/lib/dateTime";
-import { planPrice } from "@/lib/vendorPlan";
+import { planCycles, planPrice, popularPlanId } from "@/lib/vendorPlan";
 import {
   buildDemoTransactionId,
   isTransactionIdValid,
@@ -34,7 +34,6 @@ import {
 import type {
   BillingCycle,
   VendorPlan,
-  VendorPlanId,
   VendorSubscriptionOverview,
 } from "@/types/vendor";
 
@@ -51,8 +50,6 @@ interface SubscriptionClientProps {
   overview: VendorSubscriptionOverview;
   currency: string;
 }
-
-const PLAN_RANK: Record<VendorPlanId, number> = { free: 0, premium: 1, advanced: 2 };
 
 const METHODS: { id: "wallet" | "bkash" | "nagad" | "rocket"; label: string; hint: string }[] = [
   { id: "wallet", label: "Demo wallet", hint: "Instant, no transaction id needed" },
@@ -145,6 +142,9 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
 
   const { plan, subscription, usage, plans } = overview;
   const style = statusStyle(overview.inGrace ? "grace" : overview.isLive ? "active" : "expired");
+  // The ladder is editable now, so "popular" is the cheapest paid rung rather
+  // than a plan id the code happens to know.
+  const popular = popularPlanId(plans);
 
   const usageRows = useMemo(
     () => [
@@ -162,13 +162,16 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
         ? { label: "Current plan", tone: "current" as const }
         : { label: "Reactivate", tone: "renew" as const };
     }
-    return PLAN_RANK[candidate.id] > PLAN_RANK[plan.id]
+    // Plans are not a fixed ladder any more, so a dearer plan is the upgrade.
+    return (Number(candidate.monthlyPrice) || 0) > (Number(plan.monthlyPrice) || 0)
       ? { label: "Upgrade", tone: "up" as const }
       : { label: "Downgrade", tone: "down" as const };
   };
 
   const openCheckout = (target: VendorPlan) => {
     setCheckoutPlan(target);
+    // A plan sold one way opens on the cycle it is sold in.
+    if (!planCycles(target).includes(cycle)) setCycle(planCycles(target)[0]);
     setMethod("wallet");
     setTransactionId("");
     setIdempotencyKey(newIdempotencyKey());
@@ -183,7 +186,7 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
   const pay = async () => {
     if (!checkoutPlan || paying) return;
 
-    const isFree = checkoutPlan.id === "free" || checkoutAmount === 0;
+    const isFree = checkoutAmount === 0;
 
     if (!isFree && method !== "wallet" && !isTransactionIdValid(transactionId)) {
       toast.warning("Paste the transaction id (8-20 characters) or click 'Use demo payment'.");
@@ -206,8 +209,8 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
       }
 
       toast.success(
-        checkoutPlan.id === "free"
-          ? "You are back on the Free plan"
+        isFree
+          ? `${checkoutPlan.name} is free — it is active now`
           : `${checkoutPlan.name} is active until ${formatOrderDate(
               res?.data?.subscription?.endDate
             )}`
@@ -454,7 +457,7 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
             const action = actionFor(candidate);
             const isCurrent = candidate.id === plan.id;
             const price = planPrice(candidate, cycle);
-            const highlight = candidate.id === "premium";
+            const highlight = candidate.id === popular;
 
             return (
               <article
@@ -679,13 +682,13 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-4 px-4 py-4">
               {/* Cycle switcher (Monthly / Yearly) inside checkout modal */}
-              {checkoutPlan.id !== "free" && (
+              {checkoutAmount > 0 && planCycles(checkoutPlan).length > 1 && (
                 <div>
                   <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
                     Billing cycle
                   </p>
                   <div className="grid grid-cols-2 gap-1.5">
-                    {(["monthly", "yearly"] as BillingCycle[]).map((option) => (
+                    {planCycles(checkoutPlan).map((option) => (
                       <button
                         key={option}
                         type="button"
@@ -717,15 +720,16 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
                 </span>
               </div>
 
-              {/* Free plan: No verification needed */}
-              {checkoutPlan.id === "free" || checkoutAmount === 0 ? (
+              {/* A zero-priced plan: no verification needed */}
+              {checkoutAmount === 0 ? (
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
                   <div className="flex items-center gap-2 font-bold text-emerald-900 dark:text-emerald-100">
                     <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                     No Verification Required
                   </div>
                   <p className="mt-1 text-[11px] leading-relaxed opacity-90">
-                    The Free plan has no subscription fee and requires no payment or transaction verification. It activates immediately.
+                    The free plan has no subscription fee and requires no payment or transaction
+                    verification. It activates immediately.
                   </p>
                 </div>
               ) : (

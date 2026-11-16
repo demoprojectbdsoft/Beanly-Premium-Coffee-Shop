@@ -27,6 +27,7 @@ import {
   Truck,
   Store,
   Bike,
+  Crown,
   type LucideIcon,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
@@ -52,6 +53,9 @@ const NAV_GROUPS = [
       { name: "Home Slider", href: "/dashboard/admin/home-slider", icon: SlidersHorizontal },
       { name: "Promo Banners", href: "/dashboard/admin/promo-banners", icon: Megaphone },
       { name: "Promotions", href: "/dashboard/admin/promotions", icon: Sparkles },
+      // The price list vendors buy from; it sits with the store's own catalogue
+      // settings because a change there reprices every shop immediately.
+      { name: "Vendor plans", href: "/dashboard/admin/vendor-plans", icon: Crown },
     ],
   },
   {

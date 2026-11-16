@@ -13,7 +13,11 @@ export type VendorApplicationStatus =
   | "rejected"
   | "cancelled";
 
-export type VendorPlanId = "free" | "premium" | "advanced";
+/**
+ * A plan id is whatever the store team named the plan — the three the code
+ * seeds are only the starting price list, and the board can add more.
+ */
+export type VendorPlanId = string;
 export type BillingCycle = "monthly" | "yearly";
 
 export interface VendorPlan {
@@ -34,6 +38,14 @@ export interface VendorPlan {
   support: "standard" | "priority";
   highlights: string[];
   isActive: boolean;
+  /** Taken from each delivered sale while the plan is live. */
+  commissionPercent?: number;
+  /** Days the benefits survive after a period ends. */
+  gracePeriodDays?: number;
+  /** The cycles this plan is sold in; empty means both. */
+  billingCycles?: BillingCycle[];
+  /** Where the card sits on the pricing page. */
+  sortOrder?: number;
 }
 
 export interface VendorApplicationEvent {

@@ -20,11 +20,13 @@ export type VendorApplicationQuery = {
 };
 
 /**
- * The three plans, in their fixed order.
+ * The price list, cheapest rung first.
  *
  * Public on purpose: the pricing cards are shown to a signed-out visitor before
  * they have an account, and the plan step of the application reads the same
- * table so a price can never be shown twice with two different numbers.
+ * table so a price can never be shown twice with two different numbers. The
+ * store team's board reads the same rows — including retired ones — so a plan
+ * it switched off can be switched back on.
  */
 export const getVendorPlans = async () => {
   return serverFetch("/vendor-plans");
@@ -55,7 +57,12 @@ export const asApplication = (payload: unknown): VendorApplication | null => {
   return (payload as { data?: VendorApplication } | null)?.data ?? null;
 };
 
-/** Narrowing helper for the pricing cards. */
-export const asPlans = (payload: unknown): VendorPlan[] => {
+/** Narrowing helper for the admin board: every plan, retired ones included. */
+export const asAllPlans = (payload: unknown): VendorPlan[] => {
   return (payload as { data?: VendorPlan[] } | null)?.data ?? [];
+};
+
+/** Narrowing helper for the pricing cards: only the plans still on offer. */
+export const asPlans = (payload: unknown): VendorPlan[] => {
+  return asAllPlans(payload).filter((plan) => plan.isActive !== false);
 };

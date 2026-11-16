@@ -5,10 +5,16 @@ import Link from "next/link";
 import { Check, Crown, Sparkles } from "lucide-react";
 import type { BillingCycle, VendorPlan, VendorPlanId } from "@/types/vendor";
 import { formatPrice } from "@/lib/currency";
-import { planMonthlyEquivalent, planPrice, planYearlySaving } from "@/lib/vendorPlan";
+import {
+  planCycles,
+  planMonthlyEquivalent,
+  planPrice,
+  planYearlySaving,
+  popularPlanId,
+} from "@/lib/vendorPlan";
 
 /**
- * The three pricing cards.
+ * The pricing cards, one per plan the store still offers.
  *
  * The same component prices the landing page and the plan step of the
  * application, so a visitor never sees one number before signing up and a
@@ -27,7 +33,13 @@ interface PlanCardsProps {
   hrefBase?: string;
 }
 
-/** Yearly-first wording, because that is the plan most stores should pick. */
+/**
+ * The billing switch, drawn from the cycles the plans actually offer.
+ *
+ * Once the store team can retire the yearly price of a plan, a card may only
+ * be sold one way; the switch narrows to those cycles instead of offering a
+ * price the API would refuse.
+ */
 const CYCLE_LABELS: { id: BillingCycle; label: string }[] = [
   { id: "monthly", label: "Monthly" },
   { id: "yearly", label: "Yearly" },
@@ -42,40 +54,49 @@ export default function PlanCards({
   onSelect,
   hrefBase = "/become-a-vendor/apply",
 }: PlanCardsProps) {
+  const cycles = Array.from(new Set(plans.flatMap(planCycles)));
+  const popular = popularPlanId(plans);
+
   return (
     <div className="space-y-6">
       {/* Billing switch */}
-      <div className="flex justify-center">
-        <div className="inline-flex items-center gap-1 p-1 rounded-xl border border-[var(--border-color)] bg-[var(--surface-elevated)] shadow-2xs">
-          {CYCLE_LABELS.map((option) => {
-            const active = cycle === option.id;
-            return (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => onCycleChange(option.id)}
-                aria-pressed={active}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  active
-                    ? "bg-brand-gradient text-[var(--on-grad-text)] shadow-xs"
-                    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                {option.label}
-              </button>
-            );
-          })}
+      {cycles.length > 1 && (
+        <div className="flex justify-center">
+          <div className="inline-flex items-center gap-1 p-1 rounded-xl border border-[var(--border-color)] bg-[var(--surface-elevated)] shadow-2xs">
+            {CYCLE_LABELS.filter((option) => cycles.includes(option.id)).map((option) => {
+              const active = cycle === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => onCycleChange(option.id)}
+                  aria-pressed={active}
+                  className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    active
+                      ? "bg-brand-gradient text-[var(--on-grad-text)] shadow-xs"
+                      : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="grid gap-5 md:grid-cols-3">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {plans.map((plan) => {
-          const price = planPrice(plan, cycle);
-          const monthly = planMonthlyEquivalent(plan, cycle);
-          const saving = cycle === "yearly" ? planYearlySaving(plan) : 0;
+          // A plan sold one way keeps its own price on screen even while the
+          // switch above is on the other cycle.
+          const offered = planCycles(plan);
+          const cardCycle = offered.includes(cycle) ? cycle : offered[0];
+          const price = planPrice(plan, cardCycle);
+          const monthly = planMonthlyEquivalent(plan, cardCycle);
+          const saving = cardCycle === "yearly" ? planYearlySaving(plan) : 0;
           const isSelected = selected === plan.id;
           const isFree = price === 0;
-          const popular = plan.id === "premium";
+          const isPopular = plan.id === popular;
 
           const body = (
             <>
@@ -90,18 +111,18 @@ export default function PlanCards({
                     </span>
                     {!isFree && (
                       <span className="text-[11px] font-semibold text-[var(--foreground-muted)]">
-                        / {cycle === "yearly" ? "year" : "month"}
+                        / {cardCycle === "yearly" ? "year" : "month"}
                       </span>
                     )}
                   </div>
-                  {!isFree && cycle === "yearly" && (
+                  {!isFree && cardCycle === "yearly" && (
                     <p className="text-[11px] text-[var(--foreground-muted)] mt-1">
                       ≈ {formatPrice(monthly, currency, { showDecimals: false })} a month
                     </p>
                   )}
                 </div>
 
-                {popular ? (
+                {isPopular ? (
                   <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand-flat)]/12 border border-[var(--brand-flat)]/25 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--brand-flat)]">
                     <Crown className="w-3 h-3" />
                     Popular
