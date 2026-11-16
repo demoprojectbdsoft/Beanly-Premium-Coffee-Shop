@@ -80,21 +80,24 @@ export default async function VendorOverviewPage() {
     <div className="space-y-5">
       {/* Store header with cover image just like profile page */}
       <section className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] shadow-2xs">
-        <div className="relative h-28 bg-[var(--surface-alt)]">
+        {/* The gradient stays behind the image, so an empty or broken URL
+            still leaves a branded band instead of a blank strip. The band is
+            tall enough to show the artwork instead of one cropped slice. */}
+        <div className="relative flex h-36 items-center justify-center bg-brand-gradient sm:h-44">
           {coverImage ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={coverImage} alt="Store cover" className="h-full w-full object-cover" />
+            <img src={coverImage} alt="" className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-brand-gradient text-[10px] font-semibold uppercase tracking-wider text-[var(--on-grad-text)]/80">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--on-grad-text)]/80">
               Cover image
-            </div>
+            </span>
           )}
         </div>
         <div className="px-5 pb-5">
           {/* Only the logo is lifted over the cover; the store name sits below
               the band so the image never covers it. */}
-          <div className="-mt-8 w-fit">
-            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border-4 border-[var(--surface-elevated)] bg-[var(--surface-alt)] text-[var(--brand-flat)] shadow-sm">
+          <div className="-mt-10 w-fit">
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border-4 border-[var(--surface-elevated)] bg-[var(--surface-alt)] text-[var(--brand-flat)] shadow-md">
               {logo ? (
                 // The logo is a URL the applicant supplied; next/image would
                 // need every host configured, so this stays a plain image.
@@ -106,7 +109,7 @@ export default async function VendorOverviewPage() {
             </div>
           </div>
 
-          <div className="mt-2 flex flex-wrap items-start justify-between gap-2">
+          <div className="mt-3 flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <h1 className="truncate text-lg font-bold leading-tight text-[var(--foreground)]">
                 {storeName}

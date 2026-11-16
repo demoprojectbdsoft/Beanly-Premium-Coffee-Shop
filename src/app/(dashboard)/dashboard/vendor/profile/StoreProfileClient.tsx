@@ -256,14 +256,23 @@ export default function StoreProfileClient({
 
       {/* Live preview */}
       <section className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] shadow-2xs">
-        <div className="relative h-28 bg-[var(--surface-alt)]">
+        {/* Keep the gradient behind the cover: a tall band shows the artwork,
+            and a slow or broken URL still shows the brand instead of a blank. */}
+        <div className="relative flex h-32 items-center justify-center bg-brand-gradient sm:h-40">
           {draft.coverImage ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={draft.coverImage} alt="Store cover" className="h-full w-full object-cover" />
+            <img
+              src={draft.coverImage}
+              alt=""
+              className="h-full w-full object-cover"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
           ) : (
-            <div className="flex h-full items-center justify-center text-[10px] font-semibold uppercase tracking-wider text-[var(--foreground-muted)]">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--on-grad-text)]/80">
               Cover image
-            </div>
+            </span>
           )}
         </div>
 
@@ -272,7 +281,7 @@ export default function StoreProfileClient({
               visibility chip stay below the band so the image never covers
               them. */}
           <div className="flex items-start justify-between gap-3">
-            <div className="-mt-6 flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-[var(--surface-elevated)] bg-[var(--surface-alt)] text-[var(--brand-flat)] shadow-xs">
+            <div className="-mt-8 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-[var(--surface-elevated)] bg-[var(--surface-alt)] text-[var(--brand-flat)] shadow-md">
               {draft.logo ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={draft.logo} alt={draft.name} className="h-full w-full object-cover" />
