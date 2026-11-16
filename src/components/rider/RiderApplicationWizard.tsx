@@ -267,12 +267,6 @@ export default function RiderApplicationWizard({
       if (needsPlate && !draft.vehicle.licenseNumber?.trim())
         return "Enter your driving licence number.";
     }
-    if (index === 4 && requiresVehicleDocs(draft.vehicle.type)) {
-      if (!draft.documents.drivingLicenseUrl?.trim())
-        return "Upload a photo of your driving licence.";
-      if (!draft.documents.vehicleDocsUrl?.trim())
-        return "Upload the vehicle registration papers.";
-    }
     return null;
   };
 
@@ -630,7 +624,7 @@ export default function RiderApplicationWizard({
                 required={needsVehicleDocs}
                 hint={
                   needsVehicleDocs
-                    ? "Must match the vehicle papers you upload in Documents."
+                    ? "Not needed — the papers are optional."
                     : "Not needed for a bicycle or on foot."
                 }
               >
@@ -685,21 +679,18 @@ export default function RiderApplicationWizard({
 
         return (
           <div className="space-y-4">
-            {/* Every document arrives as a file off the device. A licence photo
-                lives in a phone gallery or on a desk scanner, not on a hosting
-                site, so a bare link box was one an applicant could never fill.
-                A scan is as often a PDF as a photograph, so the picker takes
-                both and the store keeps whichever arrives. */}
+            {/* Every upload here is optional: a licence photo or a
+                registration paper is often not at hand when someone applies,
+                and the review desk asks for it later instead. */}
             <div className="grid gap-4 sm:grid-cols-2">
               <ImageUploader
                 label="Driving licence"
-                required={needsVehicleDocs}
                 compact
                 allowUrl={false}
                 accept="document"
                 hint={
                   needsVehicleDocs
-                    ? "Readable number and expiry — both sides if you have them."
+                    ? "Optional. Readable number and expiry — both sides if you have them."
                     : "Optional for a bicycle or on foot."
                 }
                 value={draft.documents.drivingLicenseUrl || ""}
@@ -716,13 +707,12 @@ export default function RiderApplicationWizard({
               />
               <ImageUploader
                 label="Vehicle registration papers"
-                required={needsVehicleDocs}
                 compact
                 allowUrl={false}
                 accept="document"
                 hint={
                   needsVehicleDocs
-                    ? "The plate on these papers must match the number in Vehicle."
+                    ? "Optional. The plate on these papers must match the number in Vehicle."
                     : "Optional for a bicycle or on foot."
                 }
                 value={draft.documents.vehicleDocsUrl || ""}
