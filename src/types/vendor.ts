@@ -555,7 +555,23 @@ export interface VendorAnalyticsReport {
     orders: number;
     revenueChange: number | null;
   };
-  series: { label: string; revenue: number; orders: number }[];
+  series: { label: string; revenue: number; orders: number; cost?: number; profit?: number }[];
+  /**
+   * The paid rungs' read: delivered revenue against the cost the seller recorded
+   * on each product. Null on the basic plan, which is what the page's teaser
+   * stands in for.
+   */
+  profit: {
+    revenue: number;
+    cost: number;
+    profit: number;
+    marginPercent: number | null;
+    previousProfit: number | null;
+    /** Units whose product carries no cost price, so they count as zero cost. */
+    missingCostUnits: number;
+    /** Products that earned less than they cost, worst first. */
+    losses: { title: string; units: number; revenue: number; cost: number; loss: number }[];
+  } | null;
   statusCounts: Record<string, number>;
   topProducts: { title: string; image: string; units: number; revenue: number }[];
   /** Present only on a plan whose analytics reach the advanced rung. */

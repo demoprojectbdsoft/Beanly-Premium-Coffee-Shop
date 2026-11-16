@@ -1181,6 +1181,46 @@ export async function downloadVendorAnalyticsPdf(
     });
   }
 
+  // Profit and loss is the paid rungs' read, so the report carries it exactly
+  // when the page behind it does.
+  if (data.profit) {
+    report.heading("Profit and loss");
+    report.tiles([
+      { label: "Cost of goods", value: money(data.profit.cost), note: `in ${currency}` },
+      { label: "Gross profit", value: money(data.profit.profit), note: `in ${currency}` },
+      {
+        label: "Gross margin",
+        value:
+          data.profit.marginPercent === null
+            ? "-"
+            : `${round(data.profit.marginPercent, 1)}%`,
+      },
+      {
+        label: "Units without cost",
+        value: String(data.profit.missingCostUnits),
+        note: "counted as zero cost",
+      },
+    ]);
+
+    if (data.profit.losses.length > 0) {
+      report.caption("Sold below cost");
+      report.table(
+        [
+          { label: "Product", width: 230 },
+          { label: "Units", width: 60, align: "right" },
+          { label: `Loss (${currency})`, width: 90, align: "right" },
+        ],
+        data.profit.losses.map((row) => [
+          row.title,
+          String(row.units),
+          String(round(row.loss, 2)),
+        ])
+      );
+    } else {
+      report.caption("No product sold below its recorded cost in this window.");
+    }
+  }
+
   const stageSlices: Slice[] = Object.entries(data.statusCounts)
     .filter(([, count]) => count > 0)
     .map(([status, count]) => ({ label: status.replace(/_/g, " "), value: count }));

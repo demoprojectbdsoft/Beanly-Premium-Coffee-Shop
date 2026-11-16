@@ -885,6 +885,16 @@ export interface VendorAnalyticsExportData {
     placed: number;
   };
   previous: { revenue: number; orders: number; revenueChange: number | null };
+  /** The paid rungs' read; absent or null when the plan has no P&L. */
+  profit?: {
+    revenue: number;
+    cost: number;
+    profit: number;
+    marginPercent: number | null;
+    previousProfit: number | null;
+    missingCostUnits: number;
+    losses: Array<{ title: string; units: number; revenue: number; cost: number; loss: number }>;
+  } | null;
   series: Array<{ label: string; revenue: number; orders: number }>;
   statusCounts: Record<string, number>;
   topProducts: Array<{ title: string; units: number; revenue: number }>;
@@ -958,6 +968,52 @@ export function exportVendorAnalyticsCsv(
       rows: statusRows,
     },
   ];
+
+  // The paid plans see what the earned money cost to make, so the export
+  // carries the same figures the page prints above the loss table.
+  if (data.profit) {
+    sections.push({
+      title: "Profit and loss",
+      note: "Costs are the invest price recorded on each product today.",
+      columns: ["Metric", "Value", "Note"],
+      rows: [
+        ["Revenue earned (delivered)", round2(data.profit.revenue), `in ${currency}`],
+        ["Cost of goods", round2(data.profit.cost), `in ${currency}`],
+        ["Gross profit", round2(data.profit.profit), `in ${currency}`],
+        [
+          "Gross margin",
+          data.profit.marginPercent === null ? "" : round2(data.profit.marginPercent),
+          "% of revenue",
+        ],
+        [
+          "Previous window gross profit",
+          data.profit.previousProfit === null ? "" : round2(data.profit.previousProfit),
+          `in ${currency}`,
+        ],
+        ["Units without a recorded cost", data.profit.missingCostUnits, "counted as zero cost"],
+      ],
+    });
+
+    if (data.profit.losses.length > 0) {
+      sections.push({
+        title: "Sold below cost",
+        columns: [
+          "Product",
+          "Units",
+          `Revenue (${currency})`,
+          `Cost (${currency})`,
+          `Loss (${currency})`,
+        ],
+        rows: data.profit.losses.map((row) => [
+          row.title,
+          row.units,
+          round2(row.revenue),
+          round2(row.cost),
+          round2(row.loss),
+        ]),
+      });
+    }
+  }
 
   if (data.full) {
     sections.push({

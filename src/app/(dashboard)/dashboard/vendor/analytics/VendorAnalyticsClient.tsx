@@ -20,9 +20,11 @@ import {
 import {
   Bar,
   CartesianGrid,
+  Cell,
   ComposedChart,
   Legend,
   Line,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -69,6 +71,7 @@ const PREMIUM_ADDS = [
   "90 days of history instead of 30",
   "Units sold and average order value",
   "Net payout after platform commission",
+  "Profit and loss against the cost you record",
   "Fulfilment rate, with rejected and cancelled counts",
   "The order pipeline by stage",
   "Top 10 products instead of 3",
@@ -266,6 +269,7 @@ export default function VendorAnalyticsClient({
 
   const symbol = getCurrencySymbol(currency);
   const { totals, previous } = report;
+  const profit = report.profit;
 
   // The three export rungs: none on free, CSV on premium, CSV + PDF on advanced.
   // The deeper tables (per product, per order) are the top rung's reward.
@@ -289,6 +293,17 @@ export default function VendorAnalyticsClient({
         label: formatBucketLabel(point.label, report.monthly),
         revenue: point.revenue,
         orders: point.orders,
+      })),
+    [report.series, report.monthly]
+  );
+
+  // The P&L graph: gross profit per bucket, drawn on its own so the revenue
+  // chart above keeps one job and this one answers a loss directly.
+  const profitChartData = useMemo(
+    () =>
+      report.series.map((point) => ({
+        label: formatBucketLabel(point.label, report.monthly),
+        profit: point.profit ?? 0,
       })),
     [report.series, report.monthly]
   );
@@ -327,6 +342,7 @@ export default function VendorAnalyticsClient({
     previous,
     series: report.series,
     statusCounts: report.statusCounts,
+    profit: report.profit,
     topProducts: report.topProducts.map((product) => ({
       title: product.title,
       units: product.units,
@@ -650,6 +666,178 @@ export default function VendorAnalyticsClient({
           </div>
         )}
       </section>
+
+      {/* ── Profit and loss: the paid rungs' read, teaser on basic ── */}
+      {profit ? (
+        <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-5 shadow-2xs">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="rounded-lg bg-[var(--surface-alt)] p-1.5 text-[var(--foreground-muted)]">
+                <Wallet className="h-4 w-4" />
+              </span>
+              <div>
+                <h2 className="text-sm font-bold text-[var(--foreground)]">Profit and loss</h2>
+                <p className="text-[11px] text-[var(--foreground-muted)]">
+                  Delivered revenue against the cost you recorded on each product
+                </p>
+              </div>
+            </div>
+            <span
+              className={`whitespace-nowrap rounded-lg px-2 py-1 text-[10px] font-bold ${
+                (profit.marginPercent ?? 0) >= 0
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+              }`}
+            >
+              {profit.marginPercent === null ? "No margin yet" : `${profit.marginPercent}% margin`}
+            </span>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <Tile
+              label="Cost of goods"
+              value={formatPrice(profit.cost, currency, { showDecimals: false })}
+              icon={ShoppingCart}
+              note={`${totals.units} delivered unit${totals.units === 1 ? "" : "s"} priced`}
+            />
+            <Tile
+              label="Gross profit"
+              value={formatPrice(profit.profit, currency, { showDecimals: false })}
+              icon={Wallet}
+              highlight
+              note={
+                profit.previousProfit === null
+                  ? "No delivered orders in the window before"
+                  : `Previous window ${formatPrice(profit.previousProfit, currency, { showDecimals: false })}`
+              }
+            />
+            <Tile
+              label="Selling below cost"
+              value={String(profit.losses.length)}
+              icon={TriangleAlert}
+              note={
+                profit.losses.length > 0
+                  ? "Products that earned less than they cost"
+                  : "Nothing sold at a loss"
+              }
+            />
+            <Tile
+              label="Units without a cost"
+              value={String(profit.missingCostUnits)}
+              icon={Package}
+              note="Counted at zero until you add a cost price"
+            />
+          </div>
+
+          <div className="mt-5 h-56 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart
+                data={profitChartData}
+                margin={{ top: 10, right: 4, left: -18, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#94a3b8", fontSize: 11 }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#94a3b8", fontSize: 11 }}
+                  tickFormatter={(value) => `${symbol}${Math.round(Number(value))}`}
+                />
+                <ReferenceLine y={0} stroke="var(--border-color)" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "var(--surface-elevated)",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: "14px",
+                    color: "var(--foreground)",
+                    fontSize: "12px",
+                  }}
+                  formatter={(value: ValueType | undefined) => [
+                    formatPrice(Number(value ?? 0), currency),
+                    "Gross profit",
+                  ]}
+                />
+                <Bar dataKey="profit" name="Gross profit" radius={[6, 6, 0, 0]} maxBarSize={26}>
+                  {profitChartData.map((point) => (
+                    <Cell
+                      key={point.label}
+                      fill={point.profit >= 0 ? "#10b981" : "#f43f5e"}
+                    />
+                  ))}
+                </Bar>
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+
+          {profit.missingCostUnits > 0 && (
+            <p className="mt-3 text-[10px] leading-relaxed text-[var(--foreground-muted)]">
+              {profit.missingCostUnits} delivered unit
+              {profit.missingCostUnits === 1 ? " has" : "s have"} no cost price on their product, so{" "}
+              {profit.missingCostUnits === 1 ? "it counts" : "they count"} as cost-free. Add an invest
+              price on those listings to sharpen this report —{" "}
+              <Link href="/dashboard/vendor/products" className="font-bold underline">
+                open products
+              </Link>
+              .
+            </p>
+          )}
+
+          {profit.losses.length > 0 && (
+            <div className="mt-5 border-t border-[var(--border-color)] pt-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+                Sold below cost this window
+              </p>
+              <ul className="mt-2 divide-y divide-[var(--border-color)]">
+                {profit.losses.map((row) => (
+                  <li
+                    key={row.title}
+                    className="flex items-center justify-between gap-3 py-2 text-[11px]"
+                  >
+                    <span className="min-w-0 flex-1 truncate font-semibold text-[var(--foreground)]">
+                      {row.title}
+                    </span>
+                    <span className="text-[var(--foreground-muted)]">
+                      {row.units} unit{row.units === 1 ? "" : "s"}
+                    </span>
+                    <span className="font-bold text-rose-600 dark:text-rose-400">
+                      -{formatPrice(row.loss, currency)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      ) : (
+        <section className="rounded-2xl border border-dashed border-[var(--brand-flat)]/45 bg-[var(--surface-elevated)] p-5 shadow-2xs">
+          <div className="flex items-start gap-3">
+            <span className="rounded-lg bg-[var(--surface-alt)] p-1.5 text-[var(--brand-flat)]">
+              <Lock className="h-4 w-4" />
+            </span>
+            <div>
+              <h2 className="text-sm font-bold text-[var(--foreground)]">Profit and loss</h2>
+              <p className="mt-0.5 max-w-xl text-[11px] leading-relaxed text-[var(--foreground-muted)]">
+                Record a cost price on each product and this panel compares it with what those units
+                earned: the cost of goods, your gross profit and margin, the graph across the window,
+                and every listing that sold below cost. It comes with Premium and Advanced.
+              </p>
+              <Link
+                href="/dashboard/vendor/subscription"
+                className="mt-3 inline-flex items-center gap-1 rounded-xl bg-brand-gradient px-3 py-2 text-[11px] font-bold text-[var(--on-grad-text)] transition-opacity hover:opacity-90"
+              >
+                See plans
+                <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className={`grid grid-cols-1 gap-5 ${isDetailed ? "lg:grid-cols-2" : ""}`}>
         {/* ── Pipeline ── */}
