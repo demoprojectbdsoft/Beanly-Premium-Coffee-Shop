@@ -62,20 +62,3 @@ export const getOrderDeliveries = async (orderId: string) => {
 export const getDeliveryTracking = async (orderId: string) => {
   return serverFetch(`/deliveries/tracking/${orderId}`, true);
 };
-
-// ─── Seller ───────────────────────────────────────────────────────────────────
-
-/** The seller's own board: the jobs carrying orders they are part of. */
-export const getVendorDeliveries = async (params?: Record<string, string | number | undefined>) => {
-  return serverFetch(withQuery("/deliveries/vendor", params), true);
-};
-
-/** The counters above the seller's board. */
-export const getVendorDeliveryOverview = async () => {
-  return serverFetch("/deliveries/vendor/overview", true);
-};
-
-/** What the riders carrying the seller's own orders were paid. */
-export const getVendorPayouts = async (params?: Record<string, string | number | undefined>) => {
-  return serverFetch(withQuery("/deliveries/vendor/payouts", params), true);
-};
