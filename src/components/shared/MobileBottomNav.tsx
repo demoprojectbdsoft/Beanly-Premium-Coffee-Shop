@@ -12,7 +12,7 @@ import {
   WORKSPACE_SETTINGS,
 } from "@/lib/core/roles";
 
-export default function MobileBottomNav() {
+export default function MobileBottomNav({ isHidden = false }: { isHidden?: boolean }) {
   const pathname = usePathname();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
@@ -39,7 +39,13 @@ export default function MobileBottomNav() {
   return (
     <nav
       aria-label="Mobile Navigation Bar"
-      className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-[var(--surface-elevated)]/90 backdrop-blur-lg border-t border-[var(--border-color)] shadow-[0_-4px_25px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_25px_rgba(0,0,0,0.3)] transition-colors duration-200"
+      // While the sidebar drawer is open the bar is taken out of the layout:
+      // both are fixed to the same bottom edge, and the bar was sitting on top
+      // of the drawer's account block and sign-out button.
+      aria-hidden={isHidden}
+      className={`fixed bottom-0 left-0 right-0 z-40 md:hidden bg-[var(--surface-elevated)]/90 backdrop-blur-lg border-t border-[var(--border-color)] shadow-[0_-4px_25px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_25px_rgba(0,0,0,0.3)] transition-colors duration-200 ${
+        isHidden ? "hidden" : ""
+      }`}
     >
       <div className="max-w-md mx-auto px-3 py-1.5 flex items-center justify-around relative">
         {NAV_ITEMS.map((item, idx) => {

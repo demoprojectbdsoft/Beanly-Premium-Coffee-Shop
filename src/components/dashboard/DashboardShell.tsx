@@ -81,8 +81,10 @@ export default function DashboardShell({ workspace, children }: DashboardShellPr
         </main>
       </div>
 
-      {/* Fixed Mobile Bottom Bar for responsive devices */}
-      <MobileBottomNav />
+      {/* Fixed Mobile Bottom Bar for responsive devices. It steps aside while
+          the drawer is open so the whole sidebar — including the account card
+          and sign-out — stays reachable. */}
+      <MobileBottomNav isHidden={sidebarOpen} />
     </div>
   );
 }
