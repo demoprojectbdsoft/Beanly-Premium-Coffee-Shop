@@ -7,7 +7,7 @@ import type { EngagementProductRow, ProductEngagementReport } from "@/types/vend
 import { formatPrice } from "@/lib/currency";
 
 /**
- * The store's attention report.
+ * The attention half of the analytics desk.
  *
  * Three numbers per listing, because each one answers a different question:
  * views are how many people found it, clicks are how many wanted it, and
@@ -90,13 +90,13 @@ export default function EngagementClient({ report, range, currency }: Engagement
   const clickRate = totals.views > 0 ? Math.round((totals.clicks / totals.views) * 100) : 0;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 border-t border-[var(--border-color)] pt-8">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <header>
-          <h1 className="text-lg font-bold text-[var(--foreground)]">Store analytics</h1>
+          <h2 className="text-lg font-bold text-[var(--foreground)]">Product attention</h2>
           <p className="text-[11px] text-[var(--foreground-muted)]">
-            How the catalogue is being shopped in the last {range} days — before a single order is
-            placed.
+            Views, clicks and wishlist saves in the last {range} days — the demand that has not
+            ordered yet.
           </p>
         </header>
 
