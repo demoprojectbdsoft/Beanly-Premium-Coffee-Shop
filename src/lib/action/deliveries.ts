@@ -18,12 +18,13 @@ export interface AssignDeliveryInput {
   /** What the rider is paid. Left out, the API uses the order's shipping. */
   fee?: number;
   distanceKm?: number;
-  /** Move the order to "shipped" in the same request. */
-  ship?: boolean;
   note?: string;
 }
 
-/** Offers an order to a rider, optionally shipping it at the same time. */
+/**
+ * Offers an order to a rider. The order does not ship here: it ships when the
+ * rider accepts, because an unanswered offer is not a parcel on the road.
+ */
 export const assignDelivery = async (data: AssignDeliveryInput) => {
   return serverMutation("/deliveries", data);
 };

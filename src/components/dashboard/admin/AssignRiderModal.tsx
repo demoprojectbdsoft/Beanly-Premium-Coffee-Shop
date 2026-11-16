@@ -35,12 +35,15 @@ import type { AssignableRiderFeed, DeliveryRecord } from "@/types/delivery";
 /**
  * The store's rider picker.
  *
- * One component serves every hand-off: giving an order to a rider (which also
- * ships it, so the two clicks that must agree can never disagree) and reporting
- * on a job that is already somebody's. The live job is read from the API rather
- * than passed in, so the same picker works from the orders page and the delivery
- * board. Offline riders stay on the list, greyed out, so an empty picker never
- * looks broken.
+ * One component serves every hand-off: offering an order to a rider and
+ * reporting on a job that is already somebody's. The live job is read from the
+ * API rather than passed in, so the same picker works from the orders page and
+ * the delivery board. Offline riders stay on the list, greyed out, so an empty
+ * picker never looks broken.
+ *
+ * Picking a rider is only an offer. The order keeps its stage until the rider
+ * accepts, which is where the API ships the parcel, so a decline or a lapsed
+ * window never leaves an order reading "shipped" with nobody carrying it.
  *
  * The picker locks while an order has a rider's name on it. A request the rider
  * has not answered, and any job they have accepted, both keep the order: the
@@ -55,7 +58,7 @@ export interface AssignRiderOrder {
   customerName?: string;
   city?: string;
   shippingFee?: number;
-  /** "shipped" or later means the order is already out, so nothing to ship. */
+  /** Kept for the header copy: a shipped order already left the store. */
   orderStatus?: string;
 }
 
@@ -214,14 +217,12 @@ export default function AssignRiderModal({
     try {
       const feeValue = fee.trim() === "" ? undefined : Number(fee);
       const distanceValue = distance.trim() === "" ? undefined : Number(distance);
-      const isShipped = order.orderStatus === "shipped";
 
       const res = await assignDelivery({
         orderId: order._id,
         riderId: selectedId,
         fee: feeValue,
         distanceKm: distanceValue,
-        ship: !isShipped,
         note: note.trim() || undefined,
       });
 
@@ -231,9 +232,9 @@ export default function AssignRiderModal({
       }
 
       toast.success(
-        `Assigned to ${selectedRider?.name ?? "the rider"}. ${
-          isShipped ? "The order already shipped." : "The order is shipped."
-        }${holder ? ` ${holder.riderName}'s unanswered request was closed.` : ""}`
+        `Offered to ${selectedRider?.name ?? "the rider"}. The order ships when they accept.${
+          holder ? ` ${holder.riderName}'s unanswered request was closed.` : ""
+        }`
       );
       onAssigned?.(res?.data);
       onOpenChange(false);
@@ -398,7 +399,7 @@ export default function AssignRiderModal({
                     ? "Nobody answered in time, so this order is unclaimed again."
                     : order?.orderStatus === "shipped"
                     ? "This order shipped without a rider. Assigning one now puts it on somebody's route."
-                    : "Assigning a rider also ships the order, so a parcel never leaves without one."}
+                    : "The rider is offered the job and the order ships once they accept."}
                 </p>
               </div>
               <Modal.CloseTrigger className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] cursor-pointer p-1 rounded-lg self-end sm:self-auto">
@@ -636,10 +637,8 @@ export default function AssignRiderModal({
                     awaitingAnswer
                       ? "Awaiting answer"
                       : "With the rider"
-                  ) : order?.orderStatus === "shipped" ? (
-                    "Assign rider"
                   ) : (
-                    "Assign & ship"
+                    "Assign rider"
                   )}
                 </Button>
               </div>

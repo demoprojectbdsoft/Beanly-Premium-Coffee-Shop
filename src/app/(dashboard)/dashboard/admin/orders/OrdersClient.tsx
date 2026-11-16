@@ -153,8 +153,8 @@ export default function OrdersClient({
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-  // Shipping is a rider decision now: choosing "shipped" opens the picker, and
-  // the order only leaves the store once a rider has the job.
+  // Shipping is the rider's word: choosing "shipped" opens the picker, and the
+  // order stays in processing until the rider actually accepts the offer.
   const [assignOrder, setAssignOrder] = useState<Order | null>(null);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
 
@@ -164,9 +164,10 @@ export default function OrdersClient({
   };
 
   const handleAssigned = (orderId: string, job?: DeliveryRecord | null) => {
-    // The rider now answers for the parcel, so the row needs its claim straight
-    // away: the backend sends it with the next page load, and until then the
-    // local copy keeps the status dropdown locked in this open modal.
+    // The rider has only been offered the job, so the order keeps its stage: the
+    // row just records the claim. That claim is what locks the status dropdown
+    // in the open modal until the rider answers, and the stage moves to shipped
+    // on the server the moment they accept.
     const claim: Order["delivery"] = {
       _id: job ? String(job._id) : "",
       status: job?.status || "assigned",
@@ -176,16 +177,10 @@ export default function OrdersClient({
       rider: job?.rider ? { name: job.rider.name } : null,
     };
     setOrders((prev) =>
-      prev.map((o) =>
-        (o._id || o.id) === orderId
-          ? { ...o, orderStatus: "shipped" as Order["orderStatus"], status: "shipped" as Order["status"], delivery: claim }
-          : o
-      )
+      prev.map((o) => ((o._id || o.id) === orderId ? { ...o, delivery: claim } : o))
     );
     setSelectedOrder((prev) =>
-      prev && (prev._id || prev.id) === orderId
-        ? { ...prev, orderStatus: "shipped" as Order["orderStatus"], status: "shipped" as Order["status"], delivery: claim }
-        : prev
+      prev && (prev._id || prev.id) === orderId ? { ...prev, delivery: claim } : prev
     );
     router.refresh();
   };
@@ -208,8 +203,9 @@ export default function OrdersClient({
     const orderId = selectedOrder._id || selectedOrder.id;
     if (!orderId) return;
 
-    // "Shipped" without a rider is a parcel nobody is carrying, so that choice
-    // hands over to the picker instead of calling the status endpoint.
+    // Nobody can type "shipped" into an order: the parcel leaves when the rider
+    // accepts. Picking it here just opens the picker, and the server refuses the
+    // status outright while the only rider on the job has not answered yet.
     if (newStatus === "shipped") {
       openAssignPicker(selectedOrder);
       return;
@@ -817,8 +813,10 @@ export default function OrdersClient({
 
                           {/* One rider panel tells the whole last-mile story: who
                               is carrying the parcel, and therefore which stages
-                              are still the store's to decide. */}
-                          {(isShipped || riderHolds) && (
+                              are still the store's to decide. A processing order
+                              shows it too, because that is where the store hands
+                              the job over now that assigning no longer ships. */}
+                          {(currentStatus === "processing" || isShipped || riderHolds) && (
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--surface-elevated)] border border-[var(--border-color)]">
                               <div className="flex items-start gap-2.5">
                                 <div
