@@ -71,7 +71,7 @@ const PREMIUM_ADDS = [
   "Net payout after platform commission",
   "Fulfilment rate, with rejected and cancelled counts",
   "The order pipeline by stage",
-  "Top 10 products and every recent order",
+  "Top 10 products instead of 3",
   "CSV report export",
 ];
 
