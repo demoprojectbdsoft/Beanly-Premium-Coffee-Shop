@@ -268,8 +268,11 @@ export default function StoreProfileClient({
         </div>
 
         <div className="relative px-4 pb-4">
-          <div className="-mt-6 flex items-end gap-3">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-[var(--surface-elevated)] bg-[var(--surface-alt)] text-[var(--brand-flat)] shadow-xs">
+          {/* Only the logo is lifted over the cover; the store name and the
+              visibility chip stay below the band so the image never covers
+              them. */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="-mt-6 flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-[var(--surface-elevated)] bg-[var(--surface-alt)] text-[var(--brand-flat)] shadow-xs">
               {draft.logo ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={draft.logo} alt={draft.name} className="h-full w-full object-cover" />
@@ -278,18 +281,8 @@ export default function StoreProfileClient({
               )}
             </div>
 
-            <div className="min-w-0 pb-1">
-              <p className="truncate text-sm font-bold text-[var(--foreground)]">
-                {draft.name || "Your store"}
-              </p>
-              <p className="flex items-center gap-1 text-[10px] text-[var(--foreground-muted)]">
-                <BadgeCheck className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                {draft.category || "Uncategorised"}
-              </p>
-            </div>
-
             <span
-              className={`mb-1 ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[9px] font-bold uppercase tracking-wider ${
+              className={`mt-2 inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[9px] font-bold uppercase tracking-wider ${
                 draft.isVisible && !suspended && !closed
                   ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200 dark:border-emerald-500/30"
                   : "bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-500/15 dark:text-slate-200 dark:border-slate-500/30"
@@ -302,6 +295,16 @@ export default function StoreProfileClient({
               )}
               {draft.isVisible && !suspended && !closed ? "Visible" : "Hidden"}
             </span>
+          </div>
+
+          <div className="mt-2 min-w-0">
+            <p className="truncate text-sm font-bold text-[var(--foreground)]">
+              {draft.name || "Your store"}
+            </p>
+            <p className="flex items-center gap-1 text-[10px] text-[var(--foreground-muted)]">
+              <BadgeCheck className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+              {draft.category || "Uncategorised"}
+            </p>
           </div>
 
           <p className="mt-2 line-clamp-2 text-[11px] leading-relaxed text-[var(--foreground-muted)]">
