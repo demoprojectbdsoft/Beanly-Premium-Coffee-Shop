@@ -7,7 +7,11 @@ import {
   ArrowUpRight,
   BarChart3,
   Download,
+  Eye,
   FileText,
+  Heart,
+  Lock,
+  MousePointerClick,
   Package,
   ShoppingCart,
   TriangleAlert,
@@ -26,7 +30,7 @@ import {
 } from "recharts";
 import { toast } from "react-toastify";
 import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
-import type { VendorAnalyticsReport } from "@/types/vendor";
+import type { VendorAnalyticsReport, EngagementProductRow } from "@/types/vendor";
 import type { VendorAnalyticsExportData } from "@/lib/csvExport";
 import { exportVendorAnalyticsCsv } from "@/lib/csvExport";
 import { downloadVendorAnalyticsPdf } from "@/lib/dashboardPdf";
@@ -53,6 +57,31 @@ interface VendorAnalyticsClientProps {
 }
 
 const RANGE_CHOICES = [7, 30, 90, 365];
+
+/**
+ * What the next rungs add, in the words the page would use for them.
+ *
+ * Kept beside the report so the teaser and the real section describe the same
+ * figures — a vendor reading "product clicks" here finds product clicks below
+ * once the plan reaches Advanced.
+ */
+const PREMIUM_ADDS = [
+  "90 days of history instead of 30",
+  "Units sold and average order value",
+  "Net payout after platform commission",
+  "Fulfilment rate, with rejected and cancelled counts",
+  "The order pipeline by stage",
+  "Top 10 products and every recent order",
+  "CSV report export",
+];
+
+const ADVANCED_ADDS = [
+  "A full year of history instead of 90 days",
+  "Product views and product clicks",
+  "Which of your products sit on the most wishlists",
+  "Money still on the way and the commission split",
+  "CSV + PDF report export",
+];
 
 /** The pipeline is drawn in fulfilment order, not alphabetically. */
 const PIPELINE_ORDER = [
@@ -118,6 +147,114 @@ function Tile({
   );
 }
 
+/**
+ * What the next plans add, next to what this one already has.
+ *
+ * The list is written from the plans themselves rather than from a fixed
+ * sentence, so a rung an admin renames or downgrades stops being promised here
+ * the moment it changes.
+ */
+function UpsellPanel({
+  planName,
+  groups,
+}: {
+  planName: string;
+  groups: { title: string; items: string[] }[];
+}) {
+  return (
+    <section className="rounded-2xl border border-dashed border-[var(--brand-flat)]/45 bg-[var(--surface-elevated)] p-5 shadow-2xs">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="flex items-center gap-1.5 text-sm font-bold text-[var(--foreground)]">
+            <Lock className="h-3.5 w-3.5 text-[var(--brand-flat)]" />
+            More than {planName} shows
+          </h2>
+          <p className="mt-0.5 text-[11px] text-[var(--foreground-muted)]">
+            These are the figures a higher plan folds into the same page.
+          </p>
+        </div>
+
+        <Link
+          href="/dashboard/vendor/subscription"
+          className="inline-flex items-center gap-1 rounded-xl bg-brand-gradient px-3 py-2 text-[11px] font-bold text-[var(--on-grad-text)] transition-opacity hover:opacity-90"
+        >
+          See plans
+          <ArrowUpRight className="h-3 w-3" />
+        </Link>
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        {groups.map((group) => (
+          <div key={group.title}>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+              {group.title}
+            </p>
+            <ul className="mt-2 space-y-1.5">
+              {group.items.map((item) => (
+                <li
+                  key={item}
+                  className="flex items-start gap-1.5 text-[11px] leading-relaxed text-[var(--foreground-muted)]"
+                >
+                  <Lock className="mt-0.5 h-2.5 w-2.5 shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** One product row inside the engagement tables. */
+function EngagementRow({
+  row,
+  rank,
+  currency,
+  byWishlist,
+}: {
+  row: EngagementProductRow;
+  rank: number;
+  currency: string;
+  byWishlist?: boolean;
+}) {
+  const leading = byWishlist ? row.wishlists : row.views;
+  const trailing = byWishlist ? row.views : row.clicks;
+
+  return (
+    <li className="flex items-center gap-3 py-2.5">
+      <span className="w-4 shrink-0 text-[11px] font-bold text-[var(--foreground-muted)]">
+        {rank}
+      </span>
+      {row.image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={row.image}
+          alt=""
+          className="h-9 w-9 shrink-0 rounded-lg border border-[var(--border-color)] object-cover"
+        />
+      ) : (
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--surface-alt)] text-[var(--foreground-muted)]">
+          <Package className="h-4 w-4" />
+        </span>
+      )}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[11px] font-semibold text-[var(--foreground)]">
+          {row.title}
+        </span>
+        <span className="block text-[10px] text-[var(--foreground-muted)]">
+          {leading.toLocaleString()} {byWishlist ? "on wishlists" : "views"} · {trailing.toLocaleString()}{" "}
+          {byWishlist ? "views" : "clicks"}
+        </span>
+      </span>
+      <span className="shrink-0 text-[11px] font-bold text-[var(--foreground)]">
+        {formatPrice(row.price, currency, { showDecimals: false })}
+      </span>
+    </li>
+  );
+}
+
 export default function VendorAnalyticsClient({
   report,
   requestedRange,
@@ -134,6 +271,17 @@ export default function VendorAnalyticsClient({
   // The deeper tables (per product, per order) are the top rung's reward.
   const canExportCsv = report.plan.exports === "csv" || report.plan.exports === "csv+pdf";
   const canExportPdf = report.plan.exports === "csv+pdf";
+
+  // The plan decides how deep the page goes: Free reads the headline sales,
+  // Premium adds the working detail, Advanced adds the traffic on top.
+  const isAdvanced = report.level === "advanced";
+  const isDetailed = isAdvanced || report.level === "detailed";
+
+  const engagement = report.engagement;
+  const clickRate =
+    engagement && engagement.totals.views > 0
+      ? Math.round((engagement.totals.clicks / engagement.totals.views) * 100)
+      : 0;
 
   const chartData = useMemo(
     () =>
@@ -351,51 +499,59 @@ export default function VendorAnalyticsClient({
           icon={Package}
           note={`${totals.placed} placed in this window`}
         />
-        <Tile
-          label="Units sold"
-          value={String(totals.units)}
-          icon={ShoppingCart}
-          note={
-            totals.orders > 0
-              ? `${Math.round((totals.units / totals.orders) * 10) / 10} per order on average`
-              : "Nothing delivered yet"
-          }
-        />
-        <Tile
-          label="Average order"
-          value={formatPrice(totals.avgOrderValue, currency)}
-          icon={BarChart3}
-          note={`Across ${totals.orders} delivered order${totals.orders === 1 ? "" : "s"}`}
-        />
-        <Tile
-          label="On the way"
-          value={formatPrice(totals.inFlight, currency, { showDecimals: false })}
-          icon={Package}
-          note="Ready or shipped — not earned yet"
-        />
-        <Tile
-          label="Platform commission"
-          value={`${totals.commission}%`}
-          icon={Wallet}
-          note={`${formatPrice(totals.commissionTaken, currency)} taken on earned revenue`}
-        />
-        <Tile
-          label="Net payout"
-          value={formatPrice(totals.netPayout, currency, { showDecimals: false })}
-          icon={Wallet}
-          highlight
-          note="What is yours after commission"
-        />
-        <Tile
-          label="Fulfilment rate"
-          value={`${totals.fulfilmentRate}%`}
-          icon={Package}
-          note={
-            totals.stopped > 0
-              ? `${totals.stopped} rejected or cancelled in this window`
-              : "Nothing rejected or cancelled"
-          }
-        />
+        {isDetailed && (
+          <>
+            <Tile
+              label="Units sold"
+              value={String(totals.units)}
+              icon={ShoppingCart}
+              note={
+                totals.orders > 0
+                  ? `${Math.round((totals.units / totals.orders) * 10) / 10} per order on average`
+                  : "Nothing delivered yet"
+              }
+            />
+            <Tile
+              label="Average order"
+              value={formatPrice(totals.avgOrderValue, currency)}
+              icon={BarChart3}
+              note={`Across ${totals.orders} delivered order${totals.orders === 1 ? "" : "s"}`}
+            />
+            <Tile
+              label="Net payout"
+              value={formatPrice(totals.netPayout, currency, { showDecimals: false })}
+              icon={Wallet}
+              highlight
+              note="What is yours after commission"
+            />
+            <Tile
+              label="Fulfilment rate"
+              value={`${totals.fulfilmentRate}%`}
+              icon={Package}
+              note={
+                totals.stopped > 0
+                  ? `${totals.stopped} rejected or cancelled in this window`
+                  : "Nothing rejected or cancelled"
+              }
+            />
+          </>
+        )}
+        {isAdvanced && (
+          <>
+            <Tile
+              label="On the way"
+              value={formatPrice(totals.inFlight, currency, { showDecimals: false })}
+              icon={Package}
+              note="Ready or shipped — not earned yet"
+            />
+            <Tile
+              label="Platform commission"
+              value={`${totals.commission}%`}
+              icon={Wallet}
+              note={`${formatPrice(totals.commissionTaken, currency)} taken on earned revenue`}
+            />
+          </>
+        )}
       </div>
 
       {/* ── Revenue chart ── */}
@@ -495,39 +651,41 @@ export default function VendorAnalyticsClient({
         )}
       </section>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div className={`grid grid-cols-1 gap-5 ${isDetailed ? "lg:grid-cols-2" : ""}`}>
         {/* ── Pipeline ── */}
-        <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-5 shadow-2xs">
-          <h2 className="text-sm font-bold text-[var(--foreground)]">Order pipeline</h2>
-          <p className="text-[11px] text-[var(--foreground-muted)]">
-            What you were asked to do in this window, by stage
-          </p>
-
-          {pipeline.length === 0 ? (
-            <p className="mt-6 text-[11px] text-[var(--foreground-muted)]">
-              Nothing has been ordered from your shop in this window.
+        {isDetailed && (
+          <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-5 shadow-2xs">
+            <h2 className="text-sm font-bold text-[var(--foreground)]">Order pipeline</h2>
+            <p className="text-[11px] text-[var(--foreground-muted)]">
+              What you were asked to do in this window, by stage
             </p>
-          ) : (
-            <ul className="mt-4 space-y-3">
-              {pipeline.map((row) => (
-                <li key={row.status}>
-                  <div className="flex items-center justify-between gap-3 text-[11px]">
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${row.badge}`}>
-                      {row.label}
-                    </span>
-                    <span className="font-bold text-[var(--foreground)]">{row.count}</span>
-                  </div>
-                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-alt)]">
-                    <div
-                      className={`h-full rounded-full ${row.dot}`}
-                      style={{ width: `${Math.max(row.share, 4)}%` }}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+
+            {pipeline.length === 0 ? (
+              <p className="mt-6 text-[11px] text-[var(--foreground-muted)]">
+                Nothing has been ordered from your shop in this window.
+              </p>
+            ) : (
+              <ul className="mt-4 space-y-3">
+                {pipeline.map((row) => (
+                  <li key={row.status}>
+                    <div className="flex items-center justify-between gap-3 text-[11px]">
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${row.badge}`}>
+                        {row.label}
+                      </span>
+                      <span className="font-bold text-[var(--foreground)]">{row.count}</span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-alt)]">
+                      <div
+                        className={`h-full rounded-full ${row.dot}`}
+                        style={{ width: `${Math.max(row.share, 4)}%` }}
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
 
         {/* ── Top products ── */}
         <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-5 shadow-2xs">
@@ -591,6 +749,122 @@ export default function VendorAnalyticsClient({
           )}
         </section>
       </div>
+
+      {/* ── Traffic: the advanced rung's own read ── */}
+      {isAdvanced && engagement && (
+        <section className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Tile
+              label="Product views"
+              value={engagement.totals.views.toLocaleString()}
+              icon={Eye}
+              note="Your listings opened in this window"
+            />
+            <Tile
+              label="Product clicks"
+              value={engagement.totals.clicks.toLocaleString()}
+              icon={MousePointerClick}
+              note={`${clickRate}% of views turned into a press`}
+            />
+            <Tile
+              label="Wishlist saves"
+              value={engagement.totals.wishlists.toLocaleString()}
+              icon={Heart}
+              highlight
+              note="Kept for later right now"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-5 shadow-2xs">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-bold text-[var(--foreground)]">Most viewed</h2>
+                  <p className="text-[11px] text-[var(--foreground-muted)]">
+                    Which listings people opened, and what they did next
+                  </p>
+                </div>
+                <span className="whitespace-nowrap rounded-lg bg-[var(--surface-alt)] px-2 py-1 text-[10px] font-bold text-[var(--foreground-muted)]">
+                  Top {engagement.top.length}
+                </span>
+              </div>
+
+              {engagement.top.length === 0 ? (
+                <p className="mt-6 text-[11px] text-[var(--foreground-muted)]">
+                  No traffic counted in this window yet. Views start the moment somebody opens a
+                  listing of yours.
+                </p>
+              ) : (
+                <ul className="mt-4 divide-y divide-[var(--border-color)]">
+                  {engagement.top.map((row, index) => (
+                    <EngagementRow
+                      key={row.id}
+                      row={row}
+                      rank={index + 1}
+                      currency={currency}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-5 shadow-2xs">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="flex items-center gap-1.5 text-sm font-bold text-[var(--foreground)]">
+                    <Heart className="h-3.5 w-3.5 text-rose-500" />
+                    On the most wishlists
+                  </h2>
+                  <p className="text-[11px] text-[var(--foreground-muted)]">
+                    Saved for later — demand that has not bought yet
+                  </p>
+                </div>
+                <span className="whitespace-nowrap rounded-lg bg-[var(--surface-alt)] px-2 py-1 text-[10px] font-bold text-[var(--foreground-muted)]">
+                  {engagement.topWishlisted.length > 0
+                    ? `Top ${engagement.topWishlisted.length}`
+                    : "None yet"}
+                </span>
+              </div>
+
+              {engagement.topWishlisted.length === 0 ? (
+                <p className="mt-6 text-[11px] text-[var(--foreground-muted)]">
+                  Nobody has saved one of your products yet. Wishlist saves appear here the moment a
+                  shopper taps the heart.
+                </p>
+              ) : (
+                <ul className="mt-4 divide-y divide-[var(--border-color)]">
+                  {engagement.topWishlisted.map((row, index) => (
+                    <EngagementRow
+                      key={row.id}
+                      row={row}
+                      rank={index + 1}
+                      currency={currency}
+                      byWishlist
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        </section>
+      )}
+
+      {/* ── What the next rung would add ── */}
+      {!isDetailed && (
+        <UpsellPanel
+          planName={report.plan.name}
+          groups={[
+            { title: "Premium adds", items: PREMIUM_ADDS },
+            { title: "Advanced adds", items: ADVANCED_ADDS },
+          ]}
+        />
+      )}
+      {isDetailed && !isAdvanced && (
+        <UpsellPanel
+          planName={report.plan.name}
+          groups={[{ title: "Advanced adds", items: ADVANCED_ADDS }]}
+        />
+      )}
 
       {/* ── Recent orders ── */}
       <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] shadow-2xs">
