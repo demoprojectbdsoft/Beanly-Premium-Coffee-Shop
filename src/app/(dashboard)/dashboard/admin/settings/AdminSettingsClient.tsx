@@ -31,6 +31,7 @@ import {
   Settings,
   ChevronRight,
   Gem,
+  Gift,
   Shirt,
   Utensils,
   Cake,
@@ -942,6 +943,19 @@ export default function AdminSettingsClient({
     current.shipping?.estimatedDeliveryDays || "2-4 business days"
   );
 
+  // ── 4b. Loyalty Points Rates ──
+  // Both directions are editable here and read by checkout and the order
+  // service, so the rate shown to the customer is the rate charged.
+  const [pointsEarnedPerDollar, setPointsEarnedPerDollar] = useState(
+    current.shipping?.pointsEarnedPerDollar ?? 1
+  );
+  const [pointsPerDollarRedeem, setPointsPerDollarRedeem] = useState(
+    current.shipping?.pointsPerDollarRedeem ?? 100
+  );
+  const [minPointsToRedeem, setMinPointsToRedeem] = useState(
+    current.shipping?.minPointsToRedeem ?? 100
+  );
+
   // ── 5. Top Bar State ──
   const [topBarEnabled, setTopBarEnabled] = useState(
     current.topBarEnabled ?? true
@@ -1245,6 +1259,9 @@ export default function AdminSettingsClient({
             standardDeliveryFee: Number(standardDeliveryFee) || 0,
             expressDeliveryFee: Number(expressDeliveryFee) || 0,
             estimatedDeliveryDays,
+            pointsEarnedPerDollar: Number(pointsEarnedPerDollar) || 0,
+            pointsPerDollarRedeem: Number(pointsPerDollarRedeem) || 1,
+            minPointsToRedeem: Number(minPointsToRedeem) || 0,
           },
           topBarEnabled,
           topBarText,
@@ -2015,6 +2032,81 @@ export default function AdminSettingsClient({
                 <p>• Standard orders → {currencySymbol}{standardDeliveryFee.toFixed(2)} Delivery</p>
                 <p>• Express upgrade → {currencySymbol}{expressDeliveryFee.toFixed(2)} Delivery</p>
               </div>
+            </Card>
+          </SettingCard>
+
+          <SettingCard
+            title="Loyalty Points Rates"
+            subtitle="What a customer earns per dollar, and how many points buy a dollar back at checkout"
+            icon={Gift}
+            className="lg:col-span-2"
+          >
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-[var(--foreground-secondary)]">
+                  Points earned per {currencySymbol}1
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={String(pointsEarnedPerDollar)}
+                  onChange={(e) => setPointsEarnedPerDollar(Number(e.target.value))}
+                  placeholder="1"
+                />
+                <p className="text-[11px] text-[var(--foreground-muted)]">
+                  Dollars to points: a {currencySymbol}100 order earns{" "}
+                  {Math.floor(100 * (Number(pointsEarnedPerDollar) || 0))} points.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-[var(--foreground-secondary)]">
+                  Points per {currencySymbol}1 discount
+                </label>
+                <Input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={String(pointsPerDollarRedeem)}
+                  onChange={(e) => setPointsPerDollarRedeem(Number(e.target.value))}
+                  placeholder="100"
+                />
+                <p className="text-[11px] text-[var(--foreground-muted)]">
+                  Points to dollars: {Number(pointsPerDollarRedeem) || 1} points take{" "}
+                  {currencySymbol}1.00 off.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-[var(--foreground-secondary)]">
+                  Minimum points to redeem
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={String(minPointsToRedeem)}
+                  onChange={(e) => setMinPointsToRedeem(Number(e.target.value))}
+                  placeholder="100"
+                />
+                <p className="text-[11px] text-[var(--foreground-muted)]">
+                  Below this the checkout hides the reward switch.
+                </p>
+              </div>
+            </div>
+
+            <Card className="p-4 rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/5 shadow-2xs">
+              <p className="text-xs font-bold text-primary flex items-center gap-2">
+                <Gift className="w-4 h-4" />
+                Worked example
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-[var(--foreground-secondary)]">
+                A {currencySymbol}120 order earns {Math.floor(120 * (Number(pointsEarnedPerDollar) || 0))}{" "}
+                points. {(Number(pointsPerDollarRedeem) || 1) * 10} of them take{" "}
+                {currencySymbol}10.00 off the next order; at least {Number(minPointsToRedeem) || 0}{" "}
+                points are needed before the switch appears.
+              </p>
             </Card>
           </SettingCard>
         </div>

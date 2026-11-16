@@ -63,9 +63,13 @@ import {
 } from "@/lib/walletPayment";
 
 // ── Loyalty Points Rates ────────────────────────────────────────────────────
-// Same rules as the backend: 100 points = 1 currency unit, 100 to start.
-const POINTS_PER_UNIT = 100;
-const MIN_POINTS_TO_REDEEM = 100;
+// The defaults match the backend; the live rates come from Site Settings
+// (Settings → Shipping & Delivery), so the owner can change what a point is
+// worth without a redeploy and this screen prices the switch the way the API
+// will charge it.
+const DEFAULT_POINTS_PER_UNIT = 100;
+const DEFAULT_MIN_POINTS_TO_REDEEM = 100;
+const DEFAULT_POINTS_EARNED_PER_UNIT = 1;
 
 // ── Payment Methods Definition ──────────────────────────────────────────────
 interface PaymentOption {
@@ -256,6 +260,26 @@ export default function CheckoutClient({
   const freeShippingThreshold = settings.shipping?.freeShippingThreshold ?? 50.0;
   const isFreeShippingEnabled = settings.shipping?.freeShippingEnabled !== false;
 
+  // Loyalty: how many points buy one currency unit, what the smallest
+  // redemption is, and what is collected per unit paid. A field the owner
+  // never saved reads as an empty string, which is not a rate — the defaults
+  // above cover that case.
+  const ratePointsPerUnit = Number(settings.shipping?.pointsPerDollarRedeem);
+  const pointsPerUnit =
+    Number.isFinite(ratePointsPerUnit) && ratePointsPerUnit > 0
+      ? ratePointsPerUnit
+      : DEFAULT_POINTS_PER_UNIT;
+  const rateMinimum = Number(settings.shipping?.minPointsToRedeem);
+  const minPointsToRedeem =
+    Number.isFinite(rateMinimum) && rateMinimum >= 0
+      ? rateMinimum
+      : DEFAULT_MIN_POINTS_TO_REDEEM;
+  const rateEarned = Number(settings.shipping?.pointsEarnedPerDollar);
+  const pointsEarnedPerUnit =
+    Number.isFinite(rateEarned) && rateEarned >= 0
+      ? rateEarned
+      : DEFAULT_POINTS_EARNED_PER_UNIT;
+
   const isFreeShippingEligible = isFreeShippingEnabled && subtotal >= freeShippingThreshold;
 
   const shippingCost = useMemo(() => {
@@ -284,14 +308,17 @@ export default function CheckoutClient({
   // in points - and never more than the customer actually owns.
   const maxRedeemablePoints = Math.min(
     availablePoints,
-    Math.floor(payableSubtotal) * POINTS_PER_UNIT
+    Math.floor(payableSubtotal * pointsPerUnit)
   );
-  const canRedeemPoints = maxRedeemablePoints >= MIN_POINTS_TO_REDEEM;
+  const canRedeemPoints = maxRedeemablePoints >= minPointsToRedeem;
   const pointsToRedeem =
     useRewardPoints && canRedeemPoints ? maxRedeemablePoints : 0;
-  const pointsDiscount = pointsToRedeem / POINTS_PER_UNIT;
+  // Rounded to the cent, the same way the order service prices the redemption.
+  const pointsDiscount = Math.round((pointsToRedeem / pointsPerUnit) * 100) / 100;
   // Points are earned on what is really paid for the products.
-  const pointsEarned = Math.floor(payableSubtotal - pointsDiscount);
+  const pointsEarned = Math.floor(
+    (payableSubtotal - pointsDiscount) * pointsEarnedPerUnit
+  );
 
   const grandTotal = Math.max(0, payableSubtotal + shippingCost - pointsDiscount);
   const isCartEmpty = items.length === 0;
@@ -1342,13 +1369,13 @@ export default function CheckoutClient({
                         </span>
                         <span className="mt-0.5 block text-[11px] text-[var(--foreground-muted)]">
                           {canRedeemPoints
-                            ? `Save ${formatPrice(maxRedeemablePoints / POINTS_PER_UNIT)} with ${maxRedeemablePoints} points`
-                            : `Collect ${MIN_POINTS_TO_REDEEM}+ points and keep products in the cart`}
+                            ? `Save ${formatPrice(maxRedeemablePoints / pointsPerUnit)} with ${maxRedeemablePoints} points`
+                            : `Collect ${minPointsToRedeem}+ points and keep products in the cart`}
                         </span>
                       </span>
                     </label>
                     <p className="mt-2 text-[10px] text-[var(--foreground-muted)]">
-                      Balance: {availablePoints} pts &middot; 100 pts ={" "}
+                      Balance: {availablePoints} pts &middot; {pointsPerUnit} pts ={" "}
                       {formatPrice(1)}
                     </p>
                   </div>

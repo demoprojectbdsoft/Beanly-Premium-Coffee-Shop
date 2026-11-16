@@ -263,6 +263,12 @@ export interface SiteShippingConfig {
   standardDeliveryFee: number;
   expressDeliveryFee: number;
   estimatedDeliveryDays: string;
+  /** Points collected for each currency unit actually paid. */
+  pointsEarnedPerDollar?: number;
+  /** Points needed to take one currency unit off the bill. */
+  pointsPerDollarRedeem?: number;
+  /** Below this many points checkout offers no redemption. */
+  minPointsToRedeem?: number;
 }
 
 export interface SiteTypographyConfig {
