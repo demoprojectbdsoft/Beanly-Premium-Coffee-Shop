@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Input, Modal, Switch } from "@heroui/react";
 import {
@@ -180,13 +180,12 @@ interface VendorPlansClientProps {
 export default function VendorPlansClient({ initialPlans, currency }: VendorPlansClientProps) {
   const router = useRouter();
 
-  const [plans, setPlans] = useState<VendorPlan[]>(
-    Array.isArray(initialPlans) ? initialPlans : []
+  // The board re-reads the list on every refresh, so the rows are the prop —
+  // no mirrored copy that a stale click could disagree with.
+  const plans = useMemo(
+    () => (Array.isArray(initialPlans) ? initialPlans : []),
+    [initialPlans]
   );
-
-  useEffect(() => {
-    setPlans(Array.isArray(initialPlans) ? initialPlans : []);
-  }, [initialPlans]);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
