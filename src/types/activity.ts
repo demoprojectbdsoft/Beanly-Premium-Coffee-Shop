@@ -13,7 +13,6 @@ export type NotificationType =
   | "user"
   | "user_deleted"
   | "order_cancelled"
-  | "warranty"
   | "message"
   | "review"
   | "delivery"

@@ -341,5 +341,4 @@ export * from "./storeLocator";
 export * from "./shop";
 export * from "./cart";
 export * from "./checkout";
-export * from "./warranty";
 export * from "./delivery";

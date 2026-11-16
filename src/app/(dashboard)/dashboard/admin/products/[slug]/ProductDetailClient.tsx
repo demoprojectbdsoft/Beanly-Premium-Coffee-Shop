@@ -854,13 +854,12 @@ export default function ProductDetailClient({ product, mode = "admin" }: Product
                   </span>
                 </div>
                 <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">
-                  When a customer buys this product and the order is delivered, a
-                  warranty record is automatically created for{" "}
+                  Every buyer is promised{" "}
                   <strong className="text-[var(--foreground)]">
                     {product.warrantyPeriodMonths} month{product.warrantyPeriodMonths === 1 ? "" : "s"}
                   </strong>{" "}
-                  starting from the delivery date. Customers can submit claims
-                  through their dashboard while the warranty is active.
+                  of cover, counted from the delivery date and stated on the
+                  product page.
                 </p>
                 {product.warrantyTerms && (
                   <div className="pt-3 border-t border-[var(--border-color)]">

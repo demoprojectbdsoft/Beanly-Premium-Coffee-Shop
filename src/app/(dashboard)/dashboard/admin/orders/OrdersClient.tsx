@@ -53,8 +53,8 @@ const STATUS_OPTIONS = [
  * The backend enforces the same rules, this map only hides illegal choices.
  *
  * Both ends of the story are closed. A cancelled order has been refunded, and a
- * delivered one changed hands — what happens after that is a refund or a
- * warranty claim, not a status that rewrites the sale.
+ * delivered one changed hands — what happens after that is a refund, not a
+ * status that rewrites the sale.
  */
 const ORDER_FLOW: Record<string, string[]> = {
   confirmed:  ["processing", "cancelled"],
@@ -743,7 +743,7 @@ export default function OrdersClient({
                               </p>
                               <p className="text-[11px] text-[var(--foreground-muted)]">
                                 {delivered
-                                  ? "The parcel was handed over and the sale is settled, so the rider's fee is booked. Refund the order or handle a warranty claim instead of rewriting the delivery."
+                                  ? "The parcel was handed over and the sale is settled, so the rider's fee is booked. Refund the order instead of rewriting the delivery."
                                   : "A cancelled order keeps its final status."}
                               </p>
                             </div>

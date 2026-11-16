@@ -5,8 +5,8 @@ import { getDb } from "../core/mongo";
 
 /**
  * Collects the caller's own site data — profile, orders, payments, reviews,
- * wishlist, cart and warranties — so the settings page can save it as a JSON
- * file before the account is deleted.
+ * wishlist and cart — so the settings page can save it as a JSON file before
+ * the account is deleted.
  *
  * The API decides whose data this is: it reads the id from the session token,
  * so this can only ever return the signed-in customer's records.

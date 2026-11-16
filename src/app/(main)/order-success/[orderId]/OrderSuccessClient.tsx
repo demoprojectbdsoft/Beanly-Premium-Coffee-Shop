@@ -368,7 +368,7 @@ export default function OrderSuccessClient({
                     </span>
                   </div>
                   <p className="text-[11px] text-[var(--foreground-muted)] font-medium">
-                    Official Purchase Receipt &amp; Warranty Certificate
+                    Official Purchase Receipt
                   </p>
                 </div>
 

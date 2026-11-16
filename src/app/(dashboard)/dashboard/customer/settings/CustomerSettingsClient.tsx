@@ -811,7 +811,7 @@ export default function CustomerSettingsClient({
                     Export Account Data
                   </h3>
                   <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
-                    Download a JSON file containing your profile, orders, payments, reviews, wishlist, cart and warranties.
+                    Download a JSON file containing your profile, orders, payments, reviews, wishlist and cart.
                   </p>
                 </div>
                 <Button

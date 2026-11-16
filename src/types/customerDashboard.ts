@@ -62,8 +62,6 @@ export interface CustomerOrderItem {
   inStock?: boolean;
   /** null means the product is not stock-tracked. */
   stockQuantity?: number | null;
-  /** Warranty record attached to this order item, when one exists. */
-  warranty?: CustomerWarranty;
 }
 
 export interface CustomerOrder {
@@ -106,58 +104,6 @@ export interface CustomerOrder {
   estimatedDelivery?: string;
   shippingAddress: string;
   timeline: OrderTimelineStep[];
-}
-
-export interface CustomerWarranty {
-  id: string;
-  productId: string;
-  orderId: string;
-  activationDate: string | Date;
-  expiryDate: string | Date;
-  status:
-    | "active"
-    | "expired"
-    | "claim_submitted"
-    | "under_review"
-    | "resolved";
-  /** Why the record is closed: the date ran out, a claim was rejected, or it voided. */
-  closedReason?: "date" | "rejected" | "void";
-  /** The terms copied onto the record at delivery, so they survive a product edit. */
-  warrantyType?: string;
-  warrantyPeriodMonths?: number;
-  warrantyTerms?: string;
-  /** Every extra period the store has granted, oldest first. */
-  extensions?: {
-    months: number;
-    previousExpiryDate: string | Date;
-    newExpiryDate: string | Date;
-    reason?: string;
-    extendedBy?: string;
-    createdAt?: string | Date;
-  }[];
-  /** What went wrong, picked from the claim form. */
-  claimProblem?: string;
-  claimReason?: string;
-  claimDescription?: string;
-  claimImages?: string[];
-  claimAdminNote?: string;
-  resolutionDetails?: string;
-  product?: {
-    id?: string;
-    title?: string;
-    slug?: string;
-    image?: string;
-    price?: number;
-    warrantyPeriodMonths?: number;
-    warrantyType?: string;
-    warrantyTerms?: string;
-  };
-  order?: {
-    id?: string;
-    orderNumber?: string;
-    orderStatus?: string;
-    totalAmount?: number;
-  };
 }
 
 export interface CustomerWishlistItem {

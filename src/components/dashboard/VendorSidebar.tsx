@@ -13,7 +13,6 @@ import {
   MessageSquare,
   Package,
   Settings,
-  ShieldCheck,
   ShoppingBag,
   Sparkles,
   Store,
@@ -65,7 +64,6 @@ const NAV_GROUPS: { title: string; items: { name: string; href: string; icon: Lu
     title: "Sales & Marketing",
     items: [
       { name: "Orders", href: "/dashboard/vendor/orders", icon: ShoppingBag },
-      { name: "Warranties", href: "/dashboard/vendor/warranties", icon: ShieldCheck },
       { name: "Reviews", href: "/dashboard/vendor/reviews", icon: MessageSquare },
       { name: "Transactions", href: "/dashboard/vendor/transactions", icon: CreditCard },
       { name: "Coupons", href: "/dashboard/vendor/coupons", icon: Ticket },

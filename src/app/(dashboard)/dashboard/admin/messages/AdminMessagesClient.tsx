@@ -689,7 +689,7 @@ export default function AdminMessagesClient({
 
       {/* ════════════════════════════════════════════════════════
           REPLY MODAL
-          Sits above the details modal, like the warranty screen. The subject and
+          Sits above the details modal, stacked like the other screens. The subject and
           the visitor's own words are already in the box, so the admin only
           writes the answer.
       ════════════════════════════════════════════════════════ */}

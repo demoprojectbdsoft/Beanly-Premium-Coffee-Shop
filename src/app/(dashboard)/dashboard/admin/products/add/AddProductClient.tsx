@@ -754,10 +754,9 @@ export default function AddProductClient({
                     }
                   />
                   <p className="text-[10px] text-[var(--foreground-muted)] mt-1">
-                    When a customer buys this product and the order is delivered, a
-                    warranty record is automatically created for this number of months.
-                    A period of 0 issues nothing, and <span className="font-semibold">No
-                    Warranty</span> means a claim can never be filed.
+                    The cover promised on the product page, counted from the delivery
+                    date. A period of 0 means <span className="font-semibold">No
+                    Warranty</span>.
                   </p>
                 </div>
 
@@ -828,7 +827,7 @@ export default function AddProductClient({
                     rows={3}
                   />
                   <p className="text-[10px] text-[var(--foreground-muted)] mt-1">
-                    Shown to customers on the product page and on the warranty record.
+                    Shown to customers on the product page.
                     Required when the type is <span className="font-semibold">Other warranty</span>.
                   </p>
                 </div>

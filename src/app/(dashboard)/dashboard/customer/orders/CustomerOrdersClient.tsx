@@ -9,8 +9,6 @@ import {
   Input,
   Select,
   ListBox,
-  Modal,
-  TextArea,
 } from "@heroui/react";
 import {
   ShoppingBag,
@@ -30,37 +28,20 @@ import {
   Star,
   Copy,
   XCircle,
-  X,
   PackageCheck,
   AlertTriangle,
-  ShieldCheck,
-  ShieldAlert,
-  ShieldX,
-  FileText,
-  ImagePlus,
   Loader2,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { authClient } from "@/lib/auth-client";
 import SuspendedAccountModal from "@/components/shared/SuspendedAccountModal";
-import { CustomerOrder, CustomerOrderItem, CustomerWarranty } from "@/types/customerDashboard";
+import { CustomerOrder, CustomerOrderItem } from "@/types/customerDashboard";
 import { submitCustomerOrderResponse } from "@/lib/action/orders";
 import { addToCart } from "@/lib/action/cart";
-import { submitWarrantyClaim } from "@/lib/action/warranty";
 import { downloadOrderInvoicePdf } from "@/lib/orderInvoicePdf";
 import OrderStatusBadge from "@/components/shared/OrderStatusBadge";
 import { formatOrderDateTime } from "@/lib/dateTime";
 import { isProductOutOfStock } from "@/lib/stock";
-import {
-  claimProblemLabel,
-  closedReasonText,
-  extensionUsageText,
-  formatWarrantyDuration,
-  hasWarrantyCoverage,
-  totalCoverageMonths,
-  warrantyTypeInfo,
-  warrantyTypeLabel,
-} from "@/lib/warranty";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { fetchTrackingAction } from "@/lib/action/deliveries";
 import UserAvatar from "@/components/shared/UserAvatar";
@@ -143,59 +124,7 @@ function canReportOrder(order: CustomerOrder): boolean {
   return order.status !== "Cancelled";
 }
 
-// ── Warranty helpers ─────────────────────────────────────────────────────────
-
-const DAY_MS = 86_400_000;
-
-/** Format a warranty date for display, tolerating nulls and bad input. */
-function formatWarrantyDate(value?: string | Date): string {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-/** Whole days left before expiry. Negative once lapsed, null when unknown. */
-function daysUntilExpiry(warranty: CustomerWarranty): number | null {
-  if (!warranty.expiryDate) return null;
-  const end = new Date(warranty.expiryDate).getTime();
-  if (Number.isNaN(end)) return null;
-  return Math.ceil((end - Date.now()) / DAY_MS);
-}
-
-/** The type and period the record promised: the live product, else the copy. */
-function coverageOf(warranty: CustomerWarranty) {
-  return {
-    type: warranty.product?.warrantyType || warranty.warrantyType,
-    months:
-      warranty.product?.warrantyPeriodMonths ?? warranty.warrantyPeriodMonths,
-  };
-}
-
-/** A warranty takes one claim, and only while it is still active. */
-function canClaim(warranty: CustomerWarranty | null): boolean {
-  if (!warranty) return false;
-  // A record with no coverage can never be claimed, whatever its status says.
-  const { type, months } = coverageOf(warranty);
-  if (!hasWarrantyCoverage(type, months)) return false;
-  if (warranty.status !== "active") return false;
-  const days = daysUntilExpiry(warranty);
-  return days === null || days > 0;
-}
-
-/** True while the coverage is still being honoured: not closed, not past its date. */
-function isWarrantyLive(warranty?: CustomerWarranty | null): boolean {
-  if (!warranty) return false;
-  if (warranty.status === "expired" || warranty.status === "resolved") return false;
-  // The nightly sweep can lag behind the date, so the date is checked here too.
-  const days = daysUntilExpiry(warranty);
-  return days === null || days > 0;
-}
-
-/** An order counts as covered while at least one of its items still is. */
-function orderHasLiveWarranty(order: CustomerOrder): boolean {
-  return order.items.some((item) => isWarrantyLive(item.warranty));
-}
+// ── Order helpers ────────────────────────────────────────────────────────────
 
 /** Milliseconds since the epoch, used to order the cards; a bad date sorts last. */
 function orderTimestamp(order: CustomerOrder): number {
@@ -204,104 +133,11 @@ function orderTimestamp(order: CustomerOrder): number {
 }
 
 /**
- * Claim and Review are revealed by the same rule: only a delivered order can be
- * reviewed or have coverage, so both buttons share this single check.
+ * The Review button is revealed by this rule: only a delivered order can be
+ * reviewed, so it carries the one check every delivered-only action shares.
  */
 function isDeliveredOrder(order: CustomerOrder): boolean {
   return order.status === "Delivered";
-}
-
-/** Badge presentation for each warranty status. */
-function warrantyStatusMeta(warranty: CustomerWarranty) {
-  switch (warranty.status) {
-    case "active":
-      return {
-        label: "Active",
-        icon: ShieldCheck,
-        className:
-          "border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400",
-      };
-    case "claim_submitted":
-      return {
-        label: "Claim Submitted",
-        icon: ShieldAlert,
-        className:
-          "border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400",
-      };
-    case "under_review":
-      return {
-        label: "Under Review",
-        icon: ShieldAlert,
-        className: "border-primary/25 bg-primary/10 text-primary",
-      };
-    case "resolved":
-      return {
-        label: "Resolved",
-        icon: ShieldCheck,
-        className:
-          "border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400",
-      };
-    default:
-      return {
-        label: "Expired",
-        icon: ShieldX,
-        className:
-          "border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400",
-      };
-  }
-}
-
-/** Why a warranty can no longer be claimed, phrased for the customer. */
-function warrantyBlockReason(warranty: CustomerWarranty): string {
-  switch (warranty.status) {
-    case "claim_submitted":
-      return "You already submitted a claim for this warranty. Our team will review it and get back to you.";
-    case "under_review":
-      return "Your claim is under review. We will contact you as soon as a decision is made.";
-    case "resolved":
-      return "This claim has already been resolved. The outcome is shown below.";
-    case "expired":
-      // Rejected and voided records also read "expired", so use the stored
-      // reason instead of always blaming the calendar.
-      return warranty.closedReason === "date" || !warranty.closedReason
-        ? `This warranty expired on ${formatWarrantyDate(warranty.expiryDate)} and can no longer be claimed.`
-        : closedReasonText(warranty);
-    default: {
-      const days = daysUntilExpiry(warranty);
-      if (days !== null && days <= 0) {
-        return `This warranty expired on ${formatWarrantyDate(warranty.expiryDate)} and can no longer be claimed.`;
-      }
-      // Active, unexpired, and still not claimable: the product promised nothing.
-      if (!hasWarrantyCoverage(coverageOf(warranty).type, coverageOf(warranty).months)) {
-        return "This item was sold without warranty coverage, so there is nothing to claim.";
-      }
-      return "This warranty cannot be claimed right now.";
-    }
-  }
-}
-
-/** One cell in the warranty detail grid. */
-function WarrantyDetail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="p-2.5 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)]">
-      <p className="text-[10px] uppercase font-bold text-[var(--foreground-muted)]">{label}</p>
-      <p className="text-xs font-semibold text-[var(--foreground)] mt-0.5 break-words">{value}</p>
-    </div>
-  );
-}
-
-/** Status pill for a warranty record. */
-function WarrantyStatusBadge({ warranty }: { warranty: CustomerWarranty }) {
-  const meta = warrantyStatusMeta(warranty);
-  const Icon = meta.icon;
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${meta.className}`}
-    >
-      <Icon className="w-3.5 h-3.5" />
-      {meta.label}
-    </span>
-  );
 }
 
 interface CustomerOrdersClientProps {
@@ -323,9 +159,7 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
   );
   const [selectedTab, setSelectedTab] = useState("All Orders");
   const [searchQuery, setSearchQuery] = useState(initialSearch);
-  // Six tabs used to eat the whole toolbar, so the three filters live in one
-  // row: a status select, a sort select and an on/off switch for coverage.
-  const [warrantyOnly, setWarrantyOnly] = useState(false);
+  // The toolbar keeps the status select and the sort select on one row.
   const [sortBy, setSortBy] = useState("newest");
   const [page, setPage] = useState(1);
   const [trackingModalOrder, setTrackingModalOrder] = useState<CustomerOrder | null>(null);
@@ -341,18 +175,6 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
   const [selectedResponse, setSelectedResponse] = useState<ResponseChoice>("not_received");
   const [responseNote, setResponseNote] = useState("");
   const [isSubmittingResponse, setIsSubmittingResponse] = useState(false);
-
-  // Warranty Claim State
-  const [selectedWarranty, setSelectedWarranty] = useState<CustomerWarranty | null>(null);
-  const [selectedWarrantyItem, setSelectedWarrantyItem] = useState<CustomerOrderItem | null>(null);
-  const [selectedWarrantyOrderNumber, setSelectedWarrantyOrderNumber] = useState("");
-  const [isWarrantyModalOpen, setIsWarrantyModalOpen] = useState(false);
-  const [claimReason, setClaimReason] = useState("");
-  const [claimDescription, setClaimDescription] = useState("");
-  const [claimImages, setClaimImages] = useState<string[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isSubmittingClaim, setIsSubmittingClaim] = useState(false);
-  const IMGBB_API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY ?? "";
 
   // ── Track Shipment modal: live delivery ────────────────────────────────────
   // Fetches the delivery behind an order when the modal opens, so the rider and
@@ -418,114 +240,6 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
     }
   };
 
-  const openWarrantyModal = (
-    warranty: CustomerWarranty | null,
-    item: CustomerOrderItem | null,
-    orderNumber = ""
-  ) => {
-    setSelectedWarranty(warranty);
-    setSelectedWarrantyItem(item);
-    setSelectedWarrantyOrderNumber(orderNumber);
-    // A fresh form every time, so a claim typed for one item is never sent for
-    // another.
-    setClaimReason("");
-    setClaimDescription("");
-    setClaimImages([]);
-    setIsWarrantyModalOpen(true);
-  };
-
-  const handleClaimImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    if (claimImages.length + files.length > 5) {
-      toast.warning("Maximum 5 images per claim.");
-      return;
-    }
-    if (!IMGBB_API_KEY) {
-      toast.error("Image upload is not configured. Please submit the claim without photos.");
-      return;
-    }
-    setIsUploading(true);
-    try {
-      const uploaded: string[] = [];
-      for (const file of files) {
-        const body = new FormData();
-        body.append("image", file);
-        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-          method: "POST",
-          body,
-        });
-        const data = await res.json();
-        if (data.success) uploaded.push(data.data.url as string);
-      }
-      setClaimImages((prev) => [...prev, ...uploaded]);
-    } catch {
-      toast.error("Failed to upload image(s).");
-    } finally {
-      setIsUploading(false);
-      e.target.value = "";
-    }
-  };
-
-  const handleSubmitClaim = async () => {
-    if (!selectedWarranty) return;
-    if (!claimReason.trim() || !claimDescription.trim()) {
-      toast.warning("Please provide a reason and description for your claim.");
-      return;
-    }
-    setIsSubmittingClaim(true);
-    try {
-      const res = await submitWarrantyClaim(selectedWarranty.id, {
-        reason: claimReason.trim(),
-        description: claimDescription.trim(),
-        images: claimImages,
-      });
-      if (res?.success !== false) {
-        toast.success("Warranty claim submitted successfully!");
-        setIsWarrantyModalOpen(false);
-
-        // Mirror the claim locally so the row and a reopened modal stay accurate
-        // without waiting for a round-trip.
-        const submitted = {
-          reason: claimReason.trim(),
-          description: claimDescription.trim(),
-          images: claimImages,
-        };
-        setClaimReason("");
-        setClaimDescription("");
-        setClaimImages([]);
-
-        // A first claim simply writes the description.
-        const mirroredWarranty = (warranty: CustomerWarranty): CustomerWarranty => ({
-          ...warranty,
-          status: "claim_submitted",
-          claimReason: submitted.reason,
-          claimDescription: submitted.description,
-        });
-
-        setSelectedWarranty((prev) => (prev ? mirroredWarranty(prev) : prev));
-        setOrders((prev) =>
-          prev.map((order) => ({
-            ...order,
-            items: order.items.map((item) =>
-              item.warranty?.id === selectedWarranty.id && item.warranty
-                ? { ...item, warranty: mirroredWarranty(item.warranty) }
-                : item
-            ),
-          }))
-        );
-      } else {
-        toast.error(res?.message || "Failed to submit claim.");
-      }
-    } catch {
-      toast.error("Failed to submit claim.");
-    } finally {
-      setIsSubmittingClaim(false);
-    }
-  };
-
-  // Orders that still carry live coverage, used by the switch and its count.
-  const liveWarrantyCount = orders.filter(orderHasLiveWarranty).length;
   const query = searchQuery.trim().toLowerCase();
 
   // Filter first, then order, then cut the page, so the count shown in the
@@ -539,8 +253,7 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
         !query ||
         order.orderNumber.toLowerCase().includes(query) ||
         order.items.some((item) => item.name.toLowerCase().includes(query));
-      const matchesWarranty = !warrantyOnly || orderHasLiveWarranty(order);
-      return matchesTab && matchesSearch && matchesWarranty;
+      return matchesTab && matchesSearch;
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -731,9 +444,6 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
     }
   };
 
-  const activeWarrantyDaysLeft = selectedWarranty ? daysUntilExpiry(selectedWarranty) : null;
-  const activeWarrantyClaimable = canClaim(selectedWarranty);
-
   return (
     <>
     <SuspendedAccountModal
@@ -790,7 +500,7 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
           />
         </div>
 
-        {/* Status, sort and coverage now share one row instead of a long strip */}
+        {/* Status and sort share one row instead of a long strip */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="w-40">
             <Select
@@ -878,33 +588,6 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
               </Select.Popover>
             </Select>
           </div>
-
-          {/* Only orders that still carry a warranty */}
-          <button
-            type="button"
-            aria-pressed={warrantyOnly}
-            onClick={() => {
-              setWarrantyOnly((prev) => !prev);
-              setPage(1);
-            }}
-            className={`h-10 px-3.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer border ${
-              warrantyOnly
-                ? "bg-primary text-white border-primary shadow-xs"
-                : "bg-[var(--surface-alt)] text-[var(--foreground-muted)] border-[var(--border-color)] hover:text-[var(--foreground)]"
-            }`}
-          >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Active warranty</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                warrantyOnly
-                  ? "bg-[var(--surface-elevated)]/20 text-white"
-                  : "bg-[var(--surface-elevated)] text-[var(--foreground-muted)] border border-[var(--border-color)]/50"
-              }`}
-            >
-              {liveWarrantyCount}
-            </span>
-          </button>
         </div>
       </div>
 
@@ -921,8 +604,6 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
             <p className="text-xs text-[var(--foreground-muted)]">
               {searchQuery
                 ? "No orders matched your search keyword."
-                : warrantyOnly
-                ? "None of your orders has an active warranty right now."
                 : `You do not have any ${selectedTab !== "All Orders" ? selectedTab.toLowerCase() : ""} orders yet.`}
             </p>
           </div>
@@ -1067,24 +748,6 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50">
                           Out of Stock
                         </span>
-                      )}
-                      {/* Claim sits first; revealed on delivery, exactly like Review. */}
-                      {isDeliveredOrder(order) && item.warranty && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onPress={() =>
-                            openWarrantyModal(item.warranty!, item, order.orderNumber)
-                          }
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer h-8 ${
-                            canClaim(item.warranty)
-                              ? "border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                              : "border-[var(--border-color)] text-[var(--foreground-muted)] hover:bg-[var(--surface-alt)]"
-                          }`}
-                        >
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                          <span>Claim</span>
-                        </Button>
                       )}
 
                       <Button
@@ -1799,332 +1462,6 @@ export default function CustomerOrdersClient({ initialOrders = [], initialSearch
           </Card>
         </div>
       )}
-
-      {/* Warranty Detail & Claim Modal */}
-      <Modal isOpen={isWarrantyModalOpen} onOpenChange={setIsWarrantyModalOpen}>
-        {/*
-          Never put onClick on Modal.Backdrop: it is the react-aria overlay that
-          WRAPS the dialog, so clicks inside the form bubble up and close the
-          modal. Outside-click dismissal is already built in; we only switch it
-          off while a claim is uploading or being submitted so typed text is
-          not lost.
-        */}
-        <Modal.Backdrop isDismissable={!isSubmittingClaim && !isUploading}>
-          <Modal.Container size="lg">
-            <Modal.Dialog className="bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-3xl p-6 shadow-2xl space-y-5 max-h-[85dvh] overflow-y-auto">
-              <div className="flex items-start justify-between gap-3 border-b border-[var(--border-color)] pb-4">
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
-                    <ShieldCheck className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="text-base sm:text-lg font-bold text-[var(--foreground)]">
-                      Warranty Details
-                    </h2>
-                    <p className="text-[11px] text-[var(--foreground-muted)] truncate">
-                      {selectedWarrantyItem?.name || selectedWarranty?.product?.title || "Order item"}
-                      {selectedWarrantyOrderNumber ? ` • ${selectedWarrantyOrderNumber}` : ""}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsWarrantyModalOpen(false)}
-                  className="p-1.5 rounded-lg hover:bg-[var(--surface-alt)] transition-colors cursor-pointer text-[var(--foreground-muted)]"
-                  aria-label="Close warranty details"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {selectedWarranty ? (
-                <div className="space-y-5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <WarrantyStatusBadge warranty={selectedWarranty} />
-                    {selectedWarranty.status === "active" && activeWarrantyDaysLeft !== null && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold border border-[var(--border-color)] bg-[var(--surface-alt)] text-[var(--foreground-muted)]">
-                        <Clock className="w-3.5 h-3.5" />
-                        {activeWarrantyDaysLeft > 0
-                          ? `${activeWarrantyDaysLeft} day${activeWarrantyDaysLeft === 1 ? "" : "s"} remaining`
-                          : "Expired"}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    <WarrantyDetail
-                      label="Duration"
-                      value={`${formatWarrantyDuration(
-                        totalCoverageMonths(
-                          coverageOf(selectedWarranty).months,
-                          selectedWarranty.extensions
-                        )
-                      )}${
-                        selectedWarranty.extensions?.length
-                          ? ` (+${formatWarrantyDuration(
-                              totalCoverageMonths(0, selectedWarranty.extensions)
-                            )} extended)`
-                          : ""
-                      }`}
-                    />
-                    <WarrantyDetail
-                      label="Type"
-                      value={warrantyTypeLabel(coverageOf(selectedWarranty).type)}
-                    />
-                    <WarrantyDetail
-                      label="Activated"
-                      value={formatWarrantyDate(selectedWarranty.activationDate)}
-                    />
-                    <WarrantyDetail
-                      label="Expires"
-                      value={formatWarrantyDate(selectedWarranty.expiryDate)}
-                    />
-                  </div>
-
-                  {/* Who carries the repair, in the same words the store uses
-                      internally, so the customer knows where to turn. */}
-                  <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed">
-                    <span className="font-semibold text-[var(--foreground)]">
-                      Covered by {warrantyTypeInfo(coverageOf(selectedWarranty).type).coveredBy}.
-                    </span>{" "}
-                    {warrantyTypeInfo(coverageOf(selectedWarranty).type).customerAction}
-                  </p>
-
-                  {/* Extra months the store has granted, shown so an extended
-                      date never appears without an explanation. */}
-                  {!!selectedWarranty.extensions?.length && (
-                    <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 space-y-1">
-                      <p className="text-[10px] font-bold uppercase text-emerald-800 dark:text-emerald-300">
-                        Extended by the store{" "}
-                        <span className="font-semibold normal-case">
-                          ({extensionUsageText(selectedWarranty.extensions.length)})
-                        </span>
-                      </p>
-                      {selectedWarranty.extensions.map((entry, i) => (
-                        <p
-                          key={i}
-                          className="text-[11px] text-emerald-800 dark:text-emerald-300 leading-relaxed"
-                        >
-                          +{formatWarrantyDuration(entry.months)} on{" "}
-                          {formatWarrantyDate(entry.createdAt)} — now valid until{" "}
-                          {formatWarrantyDate(entry.newExpiryDate)}
-                          {entry.reason ? `. ${entry.reason}` : "."}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="p-3 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)] space-y-1">
-                    <p className="text-[10px] font-bold uppercase text-[var(--foreground-muted)]">
-                      Warranty Terms
-                    </p>
-                    {/* Shown even when the product has no terms, so the customer
-                        always knows what is covered before claiming. */}
-                    <p className="text-[11px] leading-relaxed text-[var(--foreground-muted)] whitespace-pre-line">
-                      {selectedWarranty.product?.warrantyTerms ||
-                        selectedWarranty.warrantyTerms ||
-                        "Covers manufacturing defects within the warranty period. Keep your order number as proof of purchase."}
-                    </p>
-                  </div>
-
-                  {(selectedWarranty.claimProblem ||
-                    selectedWarranty.claimReason ||
-                    selectedWarranty.claimDescription) && (
-                    <div className="p-3.5 rounded-2xl bg-[var(--surface-alt)] border border-[var(--border-color)] space-y-2">
-                      <p className="text-[10px] font-bold uppercase text-[var(--foreground-muted)]">
-                        Your submitted claim
-                      </p>
-                      {selectedWarranty.claimProblem && (
-                        <p className="text-xs text-[var(--foreground)]">
-                          <span className="font-semibold">Problem: </span>
-                          {claimProblemLabel(selectedWarranty.claimProblem)}
-                        </p>
-                      )}
-                      {selectedWarranty.claimReason && (
-                        <p className="text-xs text-[var(--foreground)]">
-                          <span className="font-semibold">Reason: </span>
-                          {selectedWarranty.claimReason}
-                        </p>
-                      )}
-                      {selectedWarranty.claimDescription && (
-                        <p className="text-xs text-[var(--foreground-muted)] whitespace-pre-line">
-                          {selectedWarranty.claimDescription}
-                        </p>
-                      )}
-                      {!!selectedWarranty.claimImages?.length && (
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          {selectedWarranty.claimImages.map((img, i) => (
-                            <a
-                              key={i}
-                              href={img}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="w-14 h-14 rounded-lg overflow-hidden border border-[var(--border-color)] bg-white"
-                            >
-                              <img
-                                src={img}
-                                alt={`Claim evidence ${i + 1}`}
-                                className="w-full h-full object-cover"
-                              />
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {selectedWarranty.claimAdminNote && (
-                    <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60">
-                      <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5 mb-1">
-                        <FileText className="w-3.5 h-3.5" />
-                        Note from our team
-                      </p>
-                      <p className="text-xs text-amber-800 dark:text-amber-300">
-                        {selectedWarranty.claimAdminNote}
-                      </p>
-                    </div>
-                  )}
-
-                  {selectedWarranty.resolutionDetails && (
-                    <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60">
-                      <p className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 mb-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Resolution
-                      </p>
-                      <p className="text-xs text-emerald-800 dark:text-emerald-300">
-                        {selectedWarranty.resolutionDetails}
-                      </p>
-                    </div>
-                  )}
-
-                  {activeWarrantyClaimable ? (
-                    <div className="space-y-4 pt-1">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs font-semibold text-[var(--foreground)]">
-                          Claim Reason
-                        </label>
-                        <Input
-                          placeholder="e.g. Defective battery, Not turning on..."
-                          value={claimReason}
-                          maxLength={200}
-                          onChange={(e) => setClaimReason(e.target.value)}
-                          className="bg-[var(--surface-alt)]"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs font-semibold text-[var(--foreground)]">
-                          Description
-                        </label>
-                        <TextArea
-                          placeholder="Describe the issue in detail..."
-                          value={claimDescription}
-                          maxLength={2000}
-                          onChange={(e) => setClaimDescription(e.target.value)}
-                          className="bg-[var(--surface-alt)]"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold text-[var(--foreground)] flex items-center gap-1.5">
-                            <ImagePlus className="w-4 h-4 text-primary" />
-                            Evidence Photos
-                          </p>
-                          <span className="text-[10px] font-bold text-[var(--foreground-muted)]">
-                            {claimImages.length}/5
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2 p-3 bg-[var(--surface-alt)] rounded-2xl border border-dashed border-[var(--border-color)]">
-                          {claimImages.map((img, i) => (
-                            <div
-                              key={i}
-                              className="w-16 h-16 relative bg-white border border-[var(--border-color)] rounded-xl overflow-hidden group"
-                            >
-                              <img
-                                src={img}
-                                className="w-full h-full object-cover"
-                                alt={`Evidence ${i + 1}`}
-                              />
-                              <button
-                                onClick={() =>
-                                  setClaimImages((prev) => prev.filter((_, idx) => idx !== i))
-                                }
-                                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity cursor-pointer"
-                                aria-label={`Remove evidence ${i + 1}`}
-                              >
-                                <X size={16} />
-                              </button>
-                            </div>
-                          ))}
-                          {claimImages.length < 5 && (
-                            <label
-                              className={`w-16 h-16 flex flex-col items-center justify-center border-2 border-dashed border-[var(--border-color)]/60 rounded-xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all ${
-                                isUploading ? "opacity-50 pointer-events-none" : ""
-                              }`}
-                            >
-                              {isUploading ? (
-                                <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                              ) : (
-                                <ImagePlus className="w-5 h-5 text-[var(--foreground-muted)]" />
-                              )}
-                              <input
-                                type="file"
-                                className="hidden"
-                                multiple
-                                accept="image/*"
-                                onChange={handleClaimImageUpload}
-                                disabled={isUploading}
-                              />
-                            </label>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-center">
-                      <ShieldX className="w-7 h-7 mx-auto mb-2 text-amber-500 dark:text-amber-400" />
-                      <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
-                        {warrantyBlockReason(selectedWarranty)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="p-4 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)] text-center text-xs text-[var(--foreground-muted)]">
-                  <ShieldX className="w-7 h-7 mx-auto mb-2 opacity-60" />
-                  No warranty record is attached to this item.
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-color)]">
-                <Button
-                  variant="ghost"
-                  onClick={() => setIsWarrantyModalOpen(false)}
-                  className="h-9 px-6 text-xs font-bold rounded-xl cursor-pointer text-[var(--foreground)]"
-                >
-                  Close
-                </Button>
-                {activeWarrantyClaimable && (
-                  <Button
-                    onClick={handleSubmitClaim}
-                    isDisabled={
-                      isSubmittingClaim ||
-                      isUploading ||
-                      !claimReason.trim() ||
-                      !claimDescription.trim()
-                    }
-                    className="h-9 px-6 bg-primary text-white text-xs font-bold rounded-xl shadow-lg shadow-primary/20 cursor-pointer"
-                  >
-                    {isSubmittingClaim ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      "Submit Claim"
-                    )}
-                  </Button>
-                )}
-              </div>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
     </div>
     </>
   );

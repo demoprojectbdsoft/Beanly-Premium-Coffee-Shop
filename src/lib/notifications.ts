@@ -43,7 +43,6 @@ export const NOTIFICATION_ICONS: Record<NotificationType, LucideIcon> = {
   user: UserPlus,
   user_deleted: UserX,
   order_cancelled: CircleX,
-  warranty: ShieldCheck,
   message: Mail,
   review: Star,
   delivery: Truck,
@@ -83,7 +82,6 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   user: "New accounts",
   user_deleted: "Deleted accounts",
   order_cancelled: "Cancellations",
-  warranty: "Warranties",
   message: "Messages",
   review: "Reviews",
   delivery: "Deliveries",
@@ -158,8 +156,6 @@ export function notificationHref(
         return `/dashboard/admin/users${ref ? `?search=${ref}` : ""}`;
       case "user_deleted":
         return "/dashboard/admin/users";
-      case "warranty":
-        return `/dashboard/admin/warranties?status=all${ref ? `&orderId=${ref}` : ""}`;
       case "message":
         return `/dashboard/admin/messages${ref ? `?search=${ref}` : ""}`;
       case "review":
@@ -257,7 +253,7 @@ export const NOTIFICATION_EMPTY: Record<NotificationView, string> = {
   customer: "Order and delivery updates show up here.",
   rider: "Delivery requests and delivery updates show up here.",
   vendor: "Seller updates show up here.",
-  store: "Orders, payments, new users, warranties, messages and deliveries show up here.",
+  store: "Orders, payments, new users, messages and deliveries show up here.",
 };
 
 /** Where the "see everything" link under the bell points for each view. */
@@ -287,7 +283,7 @@ export const NOTIFICATION_PAGE_COPY: Record<
   },
   store: {
     title: "Notifications",
-    description: "Every order, payment, account, warranty, message and delivery the store handled.",
+    description: "Every order, payment, account, message and delivery the store handled.",
   },
 };
 

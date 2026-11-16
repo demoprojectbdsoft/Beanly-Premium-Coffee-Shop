@@ -19,7 +19,6 @@ import {
   ArrowLeft,
   LogOut,
   Star,
-  Shield,
   Bell,
   Mail,
   Megaphone,
@@ -95,7 +94,6 @@ const NAV_GROUPS = [
     items: [
       { name: "Notifications", href: "/dashboard/admin/notifications", icon: Bell },
       { name: "Reviews", href: "/dashboard/admin/reviews", icon: Star },
-      { name: "Warranties", href: "/dashboard/admin/warranties", icon: Shield },
       { name: "Messages", href: "/dashboard/admin/messages", icon: Mail },
     ],
   },

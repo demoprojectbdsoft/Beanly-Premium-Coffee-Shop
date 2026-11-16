@@ -439,7 +439,7 @@ export const CONTENT_PAGES: Record<ContentDoc["slug"], ContentDoc> = {
       {
         icon: "safety",
         heading: "Warranty cover",
-        body: "Every product carries the manufacturer's warranty stated on its page, and it is tracked against your order rather than a paper receipt you have to keep. Your dashboard shows, for each item, whether it is covered and until when.",
+        body: "Every product carries the manufacturer's warranty stated on its page, so you can read the length and the terms before you buy. It is tied to the order rather than a paper receipt you have to keep.",
         bullets: [
           "Cover follows the item, so a gift is still covered in the recipient's hands.",
           "Faults present from new are covered from the delivery date.",
@@ -453,7 +453,7 @@ export const CONTENT_PAGES: Record<ContentDoc["slug"], ContentDoc> = {
         heading: "Repair or replacement",
         body: "When a check does turn up a real fault, there are two routes and the choice is yours: a replacement, sent once the faulty item is collected, or a repair through the manufacturer's service network.",
         bullets: [
-          "Raise it from the order in your dashboard, or write to {email} with the order number.",
+          "Write to {email} with the order number, and the desk will start the repair or replacement.",
           "Photographs or a short video of the fault speed up approval considerably.",
           "Collection of the faulty item is free while it is under warranty.",
           "A replacement is dispatched as soon as the fault is confirmed, not when the old one is inspected.",
@@ -472,7 +472,7 @@ export const CONTENT_PAGES: Record<ContentDoc["slug"], ContentDoc> = {
         icon: "safety",
         question: "How do I check my warranty?",
         answer:
-          "Open the order in your dashboard: each item shows its cover and the date it runs to. The length comes from the product page at the time of purchase, so it is the same figure you agreed to.",
+          "The length and the terms are on the product page you bought from, and the cover starts on the delivery date printed on your order. Write to {email} with the order number and the desk will confirm it.",
       },
       {
         icon: "package",
