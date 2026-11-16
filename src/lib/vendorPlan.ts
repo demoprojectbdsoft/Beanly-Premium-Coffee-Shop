@@ -78,23 +78,13 @@ export const EXPORT_LABELS: Record<VendorPlan["exports"], string> = {
   "csv+pdf": "CSV + PDF report export",
 };
 
-export const CUSTOMIZATION_LABELS: Record<VendorPlan["storeCustomization"], string> = {
-  basic: "Basic storefront",
-  enhanced: "Enhanced storefront",
-  full: "Full storefront customisation",
-};
-
-export const CAMPAIGN_LABELS: Record<VendorPlan["promotionalCampaigns"], string> = {
-  none: "No promotional campaigns",
-  limited: "Limited promotional campaigns",
-  priority: "Priority promotional campaigns",
-};
-
-export const VISIBILITY_LABELS: Record<VendorPlan["storeVisibility"], string> = {
-  standard: "Standard store visibility",
-  enhanced: "Enhanced store visibility",
-  priority: "Priority store visibility",
-};
+/**
+ * Only the rungs the platform actually enforces are written down.
+ *
+ * A storefront or campaign switch that no check reads would be a promise on a
+ * price list, not a feature, so those columns stay in the database for the rows
+ * that already carry them and never reach a card.
+ */
 
 export const SUPPORT_LABELS: Record<VendorPlan["support"], string> = {
   standard: "Standard support",
@@ -123,9 +113,9 @@ export function planFeatureList(plan: VendorPlan): string[] {
     );
   }
   list.push(coupons > 0 ? `${coupons} active coupons` : "No active coupons");
+  list.push(`${Number(plan.commissionPercent) || 0}% platform commission`);
   list.push(ANALYTICS_LABELS[plan.analytics] ?? "Basic analytics");
   list.push(EXPORT_LABELS[plan.exports] ?? "No report export");
-  list.push(CUSTOMIZATION_LABELS[plan.storeCustomization] ?? "Basic storefront");
   list.push(SUPPORT_LABELS[plan.support] ?? "Standard support");
 
   return list;

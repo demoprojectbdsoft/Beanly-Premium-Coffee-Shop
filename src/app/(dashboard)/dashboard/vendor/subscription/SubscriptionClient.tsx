@@ -112,13 +112,15 @@ function newIdempotencyKey(): string {
 }
 
 function planFacts(plan: VendorPlan): { label: string; value: string | number }[] {
+  // Every row here is a service the platform checks on this vendor's behalf, so
+  // nothing on the price list can be a sentence with no code behind it.
   return [
     { label: "Active products", value: plan.maxProducts },
     { label: "Featured products", value: plan.featuredProducts },
     { label: "Active coupons", value: plan.activeCoupons },
+    { label: "Commission", value: `${Number(plan.commissionPercent) || 0}%` },
     { label: "Analytics", value: titleCase(plan.analytics) },
     { label: "Exports", value: EXPORT_LABELS[plan.exports] ?? "None" },
-    { label: "Sales reports", value: titleCase(plan.salesReports) },
     { label: "Support", value: titleCase(plan.support) },
   ];
 }

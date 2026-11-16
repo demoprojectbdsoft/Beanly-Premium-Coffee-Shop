@@ -49,6 +49,14 @@ import type { BillingCycle, VendorPlan } from "@/types/vendor";
  * those periods end — the API enforces both and says so in the toast.
  */
 
+/**
+ * The switches that decide what a plan actually does.
+ *
+ * Only services the platform enforces are listed. Storefront styling and
+ * campaign labels used to sit here too, but nothing read them, so a plan could
+ * promise something no screen or check delivered — those columns keep their
+ * stored values and stay off the board.
+ */
 const CAPABILITY_FIELDS = [
   {
     key: "analytics",
@@ -66,41 +74,6 @@ const CAPABILITY_FIELDS = [
       { value: "none", label: "No export" },
       { value: "csv", label: "CSV only" },
       { value: "csv+pdf", label: "CSV + PDF" },
-    ],
-  },
-  {
-    key: "salesReports",
-    label: "Sales reports",
-    options: [
-      { value: "basic", label: "Basic totals" },
-      { value: "advanced", label: "Advanced breakdowns" },
-    ],
-  },
-  {
-    key: "storeCustomization",
-    label: "Storefront",
-    options: [
-      { value: "basic", label: "Basic" },
-      { value: "enhanced", label: "Enhanced" },
-      { value: "full", label: "Full customisation" },
-    ],
-  },
-  {
-    key: "promotionalCampaigns",
-    label: "Campaigns",
-    options: [
-      { value: "none", label: "None" },
-      { value: "limited", label: "Limited" },
-      { value: "priority", label: "Priority" },
-    ],
-  },
-  {
-    key: "storeVisibility",
-    label: "Visibility",
-    options: [
-      { value: "standard", label: "Standard" },
-      { value: "enhanced", label: "Enhanced" },
-      { value: "priority", label: "Priority" },
     ],
   },
   {
@@ -148,11 +121,7 @@ const BLANK_FORM: PlanForm = {
   billingCycles: ["monthly", "yearly"],
   capabilities: {
     analytics: "basic",
-    salesReports: "basic",
     exports: "none",
-    storeCustomization: "basic",
-    promotionalCampaigns: "none",
-    storeVisibility: "standard",
     support: "standard",
   },
 };
@@ -174,11 +143,7 @@ function formFromPlan(plan: VendorPlan): PlanForm {
     billingCycles: planCycles(plan),
     capabilities: {
       analytics: plan.analytics || "basic",
-      salesReports: plan.salesReports || "basic",
       exports: plan.exports || "none",
-      storeCustomization: plan.storeCustomization || "basic",
-      promotionalCampaigns: plan.promotionalCampaigns || "none",
-      storeVisibility: plan.storeVisibility || "standard",
       support: plan.support || "standard",
     },
   };
