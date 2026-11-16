@@ -546,6 +546,10 @@ export interface VendorAnalyticsReport {
     commission: number;
     commissionTaken: number;
     netPayout: number;
+    /** The delivery fee this window's parcels carried, split by who paid it. */
+    deliveryFee: number;
+    deliveryFeeBilled: number;
+    deliveryFeeAbsorbed: number;
     fulfilmentRate: number;
     stopped: number;
     placed: number;
@@ -573,6 +577,16 @@ export interface VendorAnalyticsReport {
     losses: { title: string; units: number; revenue: number; cost: number; loss: number }[];
   } | null;
   statusCounts: Record<string, number>;
+  /**
+   * Who paid the courier on this window's parcels. A paid plan covers the fee;
+   * the free plan takes it out of the income, capped at what the parcel earned.
+   */
+  delivery: {
+    covered: boolean;
+    billed: number;
+    deducted: number;
+    absorbed: number;
+  };
   topProducts: { title: string; image: string; units: number; revenue: number }[];
   /** Present only on a plan whose analytics reach the advanced rung. */
   engagement: ProductEngagementReport | null;

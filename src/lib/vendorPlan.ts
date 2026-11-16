@@ -43,6 +43,18 @@ export function isPaidPlan(plan: VendorPlan): boolean {
 }
 
 /**
+ * Whether the store team pays the courier on this plan.
+ *
+ * A plan that takes money from the shop bundles last-mile delivery; the free
+ * rung does not, so its fee comes out of what the order earned. The server
+ * applies the same rule to the analytics, so the cards and the report cannot
+ * disagree about who paid.
+ */
+export function planCoversDelivery(plan: VendorPlan): boolean {
+  return (Number(plan.monthlyPrice) || 0) > 0 || (Number(plan.yearlyPrice) || 0) > 0;
+}
+
+/**
  * True while a plan's price offer is running.
  *
  * The API decides it when the plan is read (`offerActive`), so a card renders
@@ -114,6 +126,11 @@ export function planFeatureList(plan: VendorPlan): string[] {
   }
   list.push(coupons > 0 ? `${coupons} active coupons` : "No active coupons");
   list.push(`${Number(plan.commissionPercent) || 0}% platform commission`);
+  list.push(
+    planCoversDelivery(plan)
+      ? "Delivery fee covered by the store team"
+      : "Delivery fee from your income, never below zero"
+  );
   list.push(ANALYTICS_LABELS[plan.analytics] ?? "Basic analytics");
   list.push(EXPORT_LABELS[plan.exports] ?? "No report export");
   list.push(SUPPORT_LABELS[plan.support] ?? "Standard support");

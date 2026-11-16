@@ -25,7 +25,7 @@ import { toast } from "react-toastify";
 import { cancelVendorRenewal, checkoutVendorSubscription } from "@/lib/action/vendor";
 import { formatPrice } from "@/lib/currency";
 import { formatOrderDate } from "@/lib/dateTime";
-import { EXPORT_LABELS, planCycles, planEffectivePrice, planOfferLive, planPrice, popularPlanId } from "@/lib/vendorPlan";
+import { EXPORT_LABELS, planCoversDelivery, planCycles, planEffectivePrice, planOfferLive, planPrice, popularPlanId } from "@/lib/vendorPlan";
 import {
   buildDemoTransactionId,
   isTransactionIdValid,
@@ -119,6 +119,10 @@ function planFacts(plan: VendorPlan): { label: string; value: string | number }[
     { label: "Featured products", value: plan.featuredProducts },
     { label: "Active coupons", value: plan.activeCoupons },
     { label: "Commission", value: `${Number(plan.commissionPercent) || 0}%` },
+    {
+      label: "Delivery fee",
+      value: planCoversDelivery(plan) ? "Covered by us" : "From your income",
+    },
     { label: "Analytics", value: titleCase(plan.analytics) },
     { label: "Exports", value: EXPORT_LABELS[plan.exports] ?? "None" },
     { label: "Support", value: titleCase(plan.support) },

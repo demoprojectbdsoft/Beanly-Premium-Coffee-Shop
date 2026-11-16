@@ -15,6 +15,7 @@ import {
   Package,
   ShoppingCart,
   TriangleAlert,
+  Truck,
   Wallet,
 } from "lucide-react";
 import {
@@ -538,7 +539,7 @@ export default function VendorAnalyticsClient({
               value={formatPrice(totals.netPayout, currency, { showDecimals: false })}
               icon={Wallet}
               highlight
-              note="What is yours after commission"
+              note="What is yours after commission and any delivery fee"
             />
             <Tile
               label="Fulfilment rate"
@@ -1128,6 +1129,59 @@ export default function VendorAnalyticsClient({
         )}
       </section>
 
+      {/* ── Delivery fee: who pays the courier ── */}
+      <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-5 shadow-2xs">
+        <div className="flex items-start gap-2">
+          <span className="rounded-lg bg-[var(--surface-alt)] p-1.5 text-[var(--foreground-muted)]">
+            <Truck className="h-4 w-4" />
+          </span>
+          <div>
+            <h2 className="text-sm font-bold text-[var(--foreground)]">Delivery fee</h2>
+            <p className="text-[11px] text-[var(--foreground-muted)]">
+              {report.delivery.covered
+                ? `Your ${report.plan.name} plan includes last-mile delivery`
+                : `On ${report.plan.name}, the courier is paid out of what the parcel earned`}
+            </p>
+          </div>
+        </div>
+
+        <dl className="mt-4 grid gap-2 sm:grid-cols-3">
+          <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)] p-3">
+            <dt className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+              Charged on delivered parcels
+            </dt>
+            <dd className="mt-1 text-sm font-bold text-[var(--foreground)]">
+              {formatPrice(report.delivery.billed, currency)}
+            </dd>
+          </div>
+          <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)] p-3">
+            <dt className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+              Taken from your income
+            </dt>
+            <dd className="mt-1 text-sm font-bold text-[var(--foreground)]">
+              {formatPrice(report.delivery.deducted, currency)}
+            </dd>
+          </div>
+          <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)] p-3">
+            <dt className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+              Carried by the store team
+            </dt>
+            <dd className="mt-1 text-sm font-bold text-[var(--foreground)]">
+              {formatPrice(report.delivery.absorbed, currency)}
+            </dd>
+          </div>
+        </dl>
+
+        <p className="mt-3 text-[11px] leading-relaxed text-[var(--foreground-muted)]">
+          {report.delivery.covered
+            ? "A paid plan bundles the delivery fee, so the store team pays the courier and nothing comes off this window. "
+            : "The fee is taken from what its own lines earned and stops at that figure: a parcel that cost more to deliver than it made is the store team's loss, never a debt on your shop. "}
+          {report.delivery.billed === 0
+            ? "No delivery fee was charged on this window's parcels."
+            : `${formatPrice(report.delivery.billed, currency, { showDecimals: false })} was charged across the parcels this window earned.`}
+        </p>
+      </section>
+
       {/* ── Settlement note ── */}
       <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-alt)] p-5 shadow-2xs">
         <h2 className="text-sm font-bold text-[var(--foreground)]">How this window settles</h2>
@@ -1135,7 +1189,10 @@ export default function VendorAnalyticsClient({
           {formatPrice(totals.revenue, currency, { showDecimals: false })} earned ·{" "}
           {totals.commission}% platform commission is {formatPrice(totals.commissionTaken, currency)},
           leaving <span className="font-bold text-[var(--foreground)]">{formatPrice(totals.netPayout, currency)}</span>{" "}
-          for your shop. {formatPrice(totals.inFlight, currency, { showDecimals: false })} worth of
+          for your shop.
+          {totals.deliveryFee > 0 &&
+            ` The delivery fee took ${formatPrice(totals.deliveryFee, currency)} of that, with ${formatPrice(totals.deliveryFeeAbsorbed, currency)} carried by the store team.`}{" "}
+          {formatPrice(totals.inFlight, currency, { showDecimals: false })} worth of
           groups are still on the way and are not counted here. Settlement runs on the schedule in{" "}
           <Link href="/dashboard/vendor/subscription" className="font-bold underline">
             Plan &amp; billing
