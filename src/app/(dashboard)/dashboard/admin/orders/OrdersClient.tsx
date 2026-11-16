@@ -73,6 +73,18 @@ const SORT_OPTIONS = [
   { key: "total_asc", label: "Total: Low to High" },
 ];
 
+/**
+ * What the sellers on an order have answered. Accepting is the step that puts
+ * a parcel in the queue, so this is the shortest way to the orders waiting for
+ * a rider.
+ */
+const VENDOR_FILTER_OPTIONS = [
+  { key: "all", label: "All sellers" },
+  { key: "pending", label: "Waiting on seller" },
+  { key: "accepted", label: "Accepted by seller" },
+  { key: "rejected", label: "Rejected by seller" },
+];
+
 interface PaginationMeta {
   page: number;
   limit: number;
@@ -105,6 +117,7 @@ export default function OrdersClient({
     : "All";
   const currentSearch = searchParams.get("search") || "";
   const currentSort = searchParams.get("sort") || "newest";
+  const currentVendor = searchParams.get("vendor") || "all";
 
   const [searchInput, setSearchInput] = useState(currentSearch);
 
@@ -332,6 +345,37 @@ export default function OrdersClient({
           </form>
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
+            {/* Seller answer: the accepted ones are the orders waiting for a rider */}
+            <div className="w-48">
+              <Select
+                aria-label="Filter by seller answer"
+                selectedKey={currentVendor}
+                onSelectionChange={(key) =>
+                  updateParams({ vendor: key && String(key) !== "all" ? String(key) : undefined })
+                }
+              >
+                <Select.Trigger className="h-10 w-full px-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)] dark:bg-[var(--surface)] text-xs font-semibold text-[var(--foreground-secondary)] flex items-center justify-between gap-1.5 cursor-pointer hover:border-primary transition-colors shadow-xs [&>span]:text-xs [&>span]:font-semibold">
+                  <Select.Value className="text-xs font-semibold truncate" />
+                  <Select.Indicator className="[&>svg]:w-3.5 [&>svg]:h-3.5 text-[var(--foreground-muted)] shrink-0" />
+                </Select.Trigger>
+                <Select.Popover className="w-52 p-1.5 bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-xl shadow-xl z-50">
+                  <ListBox>
+                    {VENDOR_FILTER_OPTIONS.map((opt) => (
+                      <ListBox.Item
+                        key={opt.key}
+                        id={opt.key}
+                        textValue={opt.label}
+                        className="text-xs font-medium px-3 py-2 rounded-lg hover:bg-primary/10 dark:hover:bg-[var(--surface)] text-[var(--foreground)] cursor-pointer flex items-center justify-between"
+                      >
+                        {opt.label}
+                        <ListBox.ItemIndicator />
+                      </ListBox.Item>
+                    ))}
+                  </ListBox>
+                </Select.Popover>
+              </Select>
+            </div>
+
             {/* Sort Select */}
             <div className="w-48">
               <Select
@@ -361,7 +405,10 @@ export default function OrdersClient({
               </Select>
             </div>
 
-            {(currentSearch || currentTab !== "All" || currentSort !== "newest") && (
+            {(currentSearch ||
+              currentTab !== "All" ||
+              currentSort !== "newest" ||
+              currentVendor !== "all") && (
               <Button
                 size="sm"
                 onPress={handleResetFilters}
@@ -396,7 +443,7 @@ export default function OrdersClient({
                 : `There are currently no ${currentTab !== "All" ? currentTab.toLowerCase() : ""} orders.`}
             </p>
           </div>
-          {(currentSearch || currentTab !== "All") && (
+          {(currentSearch || currentTab !== "All" || currentVendor !== "all") && (
             <Button
               onPress={handleResetFilters}
               className="px-4 py-2 text-xs font-semibold text-white bg-primary hover:bg-primary-hover rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5"
@@ -491,6 +538,30 @@ export default function OrdersClient({
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
                         <div className="flex flex-col items-center gap-1">
                           {getStatusBadge(order.orderStatus || order.status)}
+                          {/*
+                            The seller answers first, and only an accepted parcel
+                            is the store's to ship. Showing that answer on the row
+                            saves opening every order to find out who replied.
+                          */}
+                          {order.vendor && order.vendor.status !== "settled" && (
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                order.vendor.status === "accepted"
+                                  ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40"
+                                  : order.vendor.status === "rejected"
+                                    ? "bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200/50 dark:border-rose-800/40"
+                                    : "bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/40"
+                              }`}
+                            >
+                              {order.vendor.status === "accepted" &&
+                                (order.vendor.groups > 1
+                                  ? `${order.vendor.accepted}/${order.vendor.groups} sellers accepted`
+                                  : "✓ Seller accepted")}
+                              {order.vendor.status === "rejected" && "✕ Seller rejected"}
+                              {order.vendor.status === "pending" && "⏳ Seller deciding"}
+                              {order.vendor.status === "mixed" && "◐ Partly accepted"}
+                            </span>
+                          )}
                           {order.customerResponse ? (
                             <span
                               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${

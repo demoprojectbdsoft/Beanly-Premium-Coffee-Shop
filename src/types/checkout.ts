@@ -105,6 +105,18 @@ export interface Order {
     holds?: boolean;
     rider?: { name?: string } | null;
   } | null;
+  /**
+   * What the sellers on this order have answered. One order can hold several
+   * shops, so "status" is the summary: a single shop's answer when they all
+   * agree, and "mixed" when some accepted and some did not.
+   */
+  vendor?: {
+    status: "pending" | "accepted" | "rejected" | "settled" | "mixed";
+    groups: number;
+    pending: number;
+    accepted: number;
+    rejected: number;
+  } | null;
   pointsEarned?: number;
   /** Points this order used up, and the money they took off the total. */
   pointsRedeemed?: number;

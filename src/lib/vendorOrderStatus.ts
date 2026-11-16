@@ -34,8 +34,10 @@ const BASE: Record<
 > = {
   pending: { label: "New", tone: "pending", icon: Clock },
   accepted: { label: "Accepted", tone: "confirmed", icon: CircleCheck },
-  processing: { label: "Preparing", tone: "processing", icon: PackageSearch },
-  ready_for_shipment: { label: "Ready", tone: "shipped", icon: PackageCheck },
+  // Legacy stages: a seller used to drive these. Old rows still carry them, so
+  // the palette keeps a label, but no button offers them any more.
+  processing: { label: "Processing", tone: "processing", icon: PackageSearch },
+  ready_for_shipment: { label: "Ready to ship", tone: "shipped", icon: PackageCheck },
   shipped: { label: "Shipped", tone: "shipped", icon: Truck },
   delivered: { label: "Delivered", tone: "delivered", icon: CheckCircle2 },
   rejected: { label: "Rejected", tone: "cancelled", icon: XCircle },
@@ -60,19 +62,19 @@ export function getVendorOrderStatusStyle(status?: string | null): VendorOrderSt
   };
 }
 
-/** The steps a seller can take from a status, in the order the buttons show. */
+/**
+ * The steps a seller can take from a status, in the order the buttons show.
+ *
+ * Saying yes is the seller's whole job: once the order is accepted the parcel
+ * is the store team's to ship, so the seller only follows the tracking page
+ * from there like the customer does.
+ */
 export function vendorOrderActions(status?: string | null) {
-  switch (status) {
-    case "pending":
-      return [
-        { status: "accepted" as const, label: "Accept order" },
-        { status: "rejected" as const, label: "Reject" },
-      ];
-    case "accepted":
-      return [{ status: "processing" as const, label: "Start preparing" }];
-    case "processing":
-      return [{ status: "ready_for_shipment" as const, label: "Mark ready for shipment" }];
-    default:
-      return [];
+  if (status === "pending") {
+    return [
+      { status: "accepted" as const, label: "Accept order" },
+      { status: "rejected" as const, label: "Reject" },
+    ];
   }
+  return [];
 }

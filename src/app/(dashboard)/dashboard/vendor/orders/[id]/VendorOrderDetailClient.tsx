@@ -28,10 +28,11 @@ import { formatPrice } from "@/lib/currency";
 /**
  * One seller's slice of an order.
  *
- * The right column is the only place that writes. Every button here is a move
- * the API also checks, so a stale tab gets the API's explanation rather than
- * silently skipping a stage. Rejecting is deliberate: it needs a reason, puts
- * the lines back in stock and tells the store team to settle the money.
+ * The right column is the only place that writes, and there is one answer to
+ * give: accept or reject. Once accepted the parcel belongs to the store team,
+ * so the seller only follows it from the tracking page like the customer does.
+ * Rejecting is deliberate: it needs a reason, puts the lines back in stock and
+ * tells the store team to settle the money.
  */
 
 interface VendorOrderDetailClientProps {
@@ -39,7 +40,7 @@ interface VendorOrderDetailClientProps {
   currency: string;
 }
 
-type MoveStatus = "accepted" | "processing" | "ready_for_shipment" | "rejected";
+type MoveStatus = "accepted" | "rejected";
 
 /** The next-step buttons carry a status; the labels come from the shared palette. */
 function actionIntent(status: string): MoveStatus {
@@ -76,9 +77,7 @@ export default function VendorOrderDetailClient({ order, currency }: VendorOrder
       toast.success(
         status === "rejected"
           ? "Order rejected and the stock is back"
-          : status === "ready_for_shipment"
-            ? "Marked ready — the store team is asked for a rider"
-            : "Order updated"
+          : "Order accepted — the store team is asked for a rider"
       );
       setRejecting(false);
       setReason("");
@@ -121,12 +120,21 @@ export default function VendorOrderDetailClient({ order, currency }: VendorOrder
       );
     }
 
-    if (order.pickupRequestedAt || order.status === "ready_for_shipment") {
+    if (order.pickupRequestedAt || order.status === "accepted") {
       return (
         <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-[var(--foreground-muted)]">
           <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
-          Pickup requested{order.pickupRequestedAt ? ` on ${formatOrderMoment(order.pickupRequestedAt)}` : ""}.
-          The store team assigns the rider and the order moves to shipped.
+          Accepted{order.pickupRequestedAt ? ` on ${formatOrderMoment(order.pickupRequestedAt)}` : ""}.
+          The store team assigns the rider now, and the order ships once they say yes.
+        </p>
+      );
+    }
+
+    if (order.status === "pending") {
+      return (
+        <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-[var(--foreground-muted)]">
+          <Truck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          Accept the order and the store team takes the parcel from there.
         </p>
       );
     }
@@ -134,7 +142,7 @@ export default function VendorOrderDetailClient({ order, currency }: VendorOrder
     return (
       <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-[var(--foreground-muted)]">
         <Truck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        Mark the order ready for shipment and the store team will assign a rider.
+        These lines are not being shipped.
       </p>
     );
   };
@@ -325,11 +333,11 @@ export default function VendorOrderDetailClient({ order, currency }: VendorOrder
 
             {actions.length === 0 ? (
               <p className="mt-2 text-[11px] leading-relaxed text-[var(--foreground-muted)]">
-                {order.status === "shipped" || order.status === "delivered"
-                  ? "The parcel is with the rider or already delivered. Nothing is waiting on you."
-                  : order.status === "rejected"
-                    ? "You rejected these lines. The store team settles the customer's money and the stock is back on the shelf."
-                    : "This order is closed. Nothing is waiting on you."}
+                {order.status === "rejected"
+                  ? "You rejected these lines. The store team settles the money and the stock is back on the shelf."
+                  : order.status === "cancelled"
+                    ? "This order was cancelled. Nothing is waiting on you."
+                    : "You accepted these lines, so the store team ships them. From here you only follow the parcel."}
               </p>
             ) : (
               <div className="mt-2 space-y-2">
@@ -395,6 +403,18 @@ export default function VendorOrderDetailClient({ order, currency }: VendorOrder
                   </button>
                 </div>
               </div>
+            )}
+
+            {/* Accepted parcels are the store team's to ship, so the seller follows
+                them on the same tracking page the customer uses. */}
+            {!["pending", "rejected", "cancelled"].includes(order.status) && (
+              <Link
+                href={`/track-order/${order.orderId}`}
+                className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--border-color)] px-3 py-2 text-[11px] font-bold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-alt)]"
+              >
+                <Truck className="h-3.5 w-3.5" />
+                Track this parcel
+              </Link>
             )}
 
             <p className="mt-3 flex items-center gap-1.5 text-[10px] leading-relaxed text-[var(--foreground-muted)]">

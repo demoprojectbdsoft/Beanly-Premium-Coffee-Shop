@@ -24,9 +24,10 @@ import { formatPrice } from "@/lib/currency";
  * The seller's order board.
  *
  * A row is one seller's fulfilment group, not a whole checkout: the same order
- * number can appear twice when two shops are in it, and each shop advances its
- * own row. Accepting is offered inline because it is the one decision that
- * cannot wait; every later step lives on the order itself.
+ * number can appear twice when two shops are in it, and each shop answers its
+ * own row. Accepting is offered inline because it is the whole decision; after
+ * that the parcel belongs to the store team and the seller follows it on the
+ * tracking page.
  */
 
 interface VendorOrdersClientProps {
@@ -40,7 +41,7 @@ interface VendorOrdersClientProps {
 const TABS = [
   { key: "all", label: "All" },
   { key: "pending", label: "New" },
-  { key: "active", label: "In progress" },
+  { key: "active", label: "Accepted" },
   { key: "completed", label: "Completed" },
   { key: "rejected", label: "Rejected" },
 ];

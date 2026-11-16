@@ -257,7 +257,7 @@ export const checkoutVendorSubscription = async (data: {
  */
 export const updateVendorOrderStatus = async (
   orderId: string,
-  status: "accepted" | "processing" | "ready_for_shipment" | "rejected",
+  status: "accepted" | "rejected",
   reason?: string
 ) => {
   const user = await getUserSession();
