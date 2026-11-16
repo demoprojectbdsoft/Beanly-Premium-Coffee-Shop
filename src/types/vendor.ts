@@ -295,6 +295,12 @@ export interface VendorProductDraft {
   brand: string;
   description: string;
   specifications: Record<string, string>;
+  /** Display badges and the after-sale terms the admin form also writes. */
+  badges?: string[];
+  offerEndDate?: string | null;
+  warrantyPeriodMonths?: number;
+  warrantyType?: string;
+  warrantyTerms?: string;
   variantOptions: VendorProductVariant[];
   shippingInfo: VendorProductShipping;
   isVisible: boolean;

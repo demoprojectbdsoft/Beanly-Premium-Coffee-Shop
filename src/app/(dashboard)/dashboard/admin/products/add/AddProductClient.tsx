@@ -29,18 +29,24 @@ import { Category, SubCategory } from "@/types";
 import ImageUploader from "@/components/shared/ImageUploader";
 import HeroUIDateTimePicker from "@/components/shared/HeroUIDateTimePicker";
 import { addProduct } from "@/lib/action/products";
+import { createVendorProduct } from "@/lib/action/vendor";
 import { WARRANTY_TYPE_OPTIONS } from "@/lib/warranty";
 import { hasOfferDiscount } from "@/lib/offer";
 import { hasBrandSpec } from "@/lib/productSpecs";
 import { recalcPricing } from "@/lib/pricing";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-import { useDemoAdmin } from "@/hooks/useDemoAdmin";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 
 interface AddProductClientProps {
   categories?: Category[];
   subcategories?: SubCategory[];
+  /**
+   * `vendor` keeps the form identical but saves the row as the signed-in
+   * seller's listing and returns to the vendor board. The two controls the
+   * vendor cannot own — the cost price and the featured flag — stay hidden.
+   */
+  mode?: "admin" | "vendor";
 }
 
 const AVAILABLE_BADGES = [
@@ -88,9 +94,11 @@ interface SpecRow {
 export default function AddProductClient({
   categories = [],
   subcategories = [],
+  mode = "admin",
 }: AddProductClientProps) {
   const router = useRouter();
   const { currencySymbol } = useSiteSettings();
+  const isVendor = mode === "vendor";
 
   // ── Basic product fields ────────────────────────────────────────────────────
   const [formState, setFormState] = useState({
@@ -337,10 +345,41 @@ export default function AddProductClient({
     };
 
     try {
-      const result = await addProduct(payload);
+      // A vendor saves the same answers through the seller endpoint: the store,
+      // the status and the plan limit are resolved there from the session. The
+      // cost price and the featured flag are not part of a listing a seller
+      // owns, so they are left out of this payload.
+      const result = isVendor
+        ? await createVendorProduct(
+            {
+              title: payload.title,
+              slug: payload.slug,
+              categoryId: payload.categoryId,
+              subCategoryIds: payload.subCategoryIds,
+              price: payload.price,
+              originalPrice: payload.originalPrice ?? null,
+              stockQuantity: payload.stockQuantity,
+              sku: payload.sku,
+              brand: Object.entries(specObj).find(
+                ([key]) => key.toLowerCase() === "brand"
+              )?.[1],
+              description: payload.description,
+              image: payload.image,
+              additionalImages: payload.additionalImages,
+              badges: payload.badges,
+              specifications: payload.specifications,
+              offerEndDate: payload.offerEndDate ?? null,
+              warrantyPeriodMonths: payload.warrantyPeriodMonths,
+              warrantyType: payload.warrantyType,
+              warrantyTerms: payload.warrantyTerms,
+            },
+            true
+          )
+        : await addProduct(payload);
+
       if (result?.success) {
         toast.success("Product added successfully!");
-        router.push("/dashboard/admin/products");
+        router.push(isVendor ? "/dashboard/vendor/products" : "/dashboard/admin/products");
         router.refresh();
       } else {
         toast.error(result?.message || "Failed to add product");
@@ -838,22 +877,24 @@ export default function AddProductClient({
                   />
                 </div>
 
-                <div className={fieldClass}>
-                  <label className={labelClass}>
-                    Invest / Cost Price ({currencySymbol})
-                    <span className="ml-1 text-[10px] font-normal text-amber-500">(admin only)</span>
-                  </label>
-                  <Input
-                    name="investPrice"
-                    type="number"
-                    step="0.01"
-                    placeholder="8.99"
-                    value={formState.investPrice}
-                    onChange={(e) =>
-                      setFormState((prev) => ({ ...prev, investPrice: e.target.value }))
-                    }
-                  />
-                </div>
+                {!isVendor && (
+                  <div className={fieldClass}>
+                    <label className={labelClass}>
+                      Invest / Cost Price ({currencySymbol})
+                      <span className="ml-1 text-[10px] font-normal text-amber-500">(admin only)</span>
+                    </label>
+                    <Input
+                      name="investPrice"
+                      type="number"
+                      step="0.01"
+                      placeholder="8.99"
+                      value={formState.investPrice}
+                      onChange={(e) =>
+                        setFormState((prev) => ({ ...prev, investPrice: e.target.value }))
+                      }
+                    />
+                  </div>
+                )}
 
                 <div className={fieldClass}>
                   <label className={labelClass}>Discount (%)</label>
@@ -1125,29 +1166,33 @@ export default function AddProductClient({
                 </div>
 
                 {/* Featured toggle */}
-                <div className={switchRowClass}>
-                  <div>
-                    <p className="text-xs font-bold text-[var(--foreground)]">
-                      Featured
-                    </p>
-                    <p className="text-[10px] text-[var(--foreground-muted)]">
-                      Promote in featured grids
-                    </p>
+                {/* Featured placement is bought or granted by the store team,
+                    not set from a listing form. */}
+                {!isVendor && (
+                  <div className={switchRowClass}>
+                    <div>
+                      <p className="text-xs font-bold text-[var(--foreground)]">
+                        Featured
+                      </p>
+                      <p className="text-[10px] text-[var(--foreground-muted)]">
+                        Promote in featured grids
+                      </p>
+                    </div>
+                    <Switch
+                      isSelected={formState.isFeatured}
+                      onChange={(val) =>
+                        setFormState((prev) => ({ ...prev, isFeatured: val }))
+                      }
+                      className="cursor-pointer"
+                    >
+                      <Switch.Content className="cursor-pointer">
+                        <Switch.Control className="cursor-pointer">
+                          <Switch.Thumb className="cursor-pointer" />
+                        </Switch.Control>
+                      </Switch.Content>
+                    </Switch>
                   </div>
-                  <Switch
-                    isSelected={formState.isFeatured}
-                    onChange={(val) =>
-                      setFormState((prev) => ({ ...prev, isFeatured: val }))
-                    }
-                    className="cursor-pointer"
-                  >
-                    <Switch.Content className="cursor-pointer">
-                      <Switch.Control className="cursor-pointer">
-                        <Switch.Thumb className="cursor-pointer" />
-                      </Switch.Control>
-                    </Switch.Content>
-                  </Switch>
-                </div>
+                )}
               </Card.Content>
             </Card>
 

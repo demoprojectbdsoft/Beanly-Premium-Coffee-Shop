@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   ChevronLeft,
   ChevronRight,
+  Eye,
   Loader2,
   Package,
   Pencil,
@@ -256,6 +257,14 @@ export default function VendorProductsClient({
                   </span>
 
                   <div className="flex items-center gap-1">
+                    <Link
+                      href={`/dashboard/vendor/products/${product._id}/view`}
+                      className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-color)] px-2 py-1.5 text-[10px] font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-alt)]"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      View
+                    </Link>
+
                     <Link
                       href={`/dashboard/vendor/products/${product._id}`}
                       className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-color)] px-2 py-1.5 text-[10px] font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-alt)]"

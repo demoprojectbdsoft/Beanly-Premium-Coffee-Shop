@@ -41,6 +41,8 @@ import { hasOfferDiscount } from "@/lib/offer";
 
 interface ProductDetailClientProps {
   product: Product;
+  /** `vendor` keeps the same page but reads it as the seller's own listing. */
+  mode?: "admin" | "vendor";
 }
 
 function formatDate(dateValue?: string | Date | null) {
@@ -60,8 +62,11 @@ function formatDate(dateValue?: string | Date | null) {
   }
 }
 
-export default function ProductDetailClient({ product }: ProductDetailClientProps) {
+export default function ProductDetailClient({ product, mode = "admin" }: ProductDetailClientProps) {
   const { formatPrice, currencySymbol } = useSiteSettings();
+  const isVendor = mode === "vendor";
+  const boardHref = isVendor ? "/dashboard/vendor" : "/dashboard/admin";
+  const productsHref = isVendor ? "/dashboard/vendor/products" : "/dashboard/admin/products";
   const allImages = [
     product.image,
     ...(product.additionalImages || []),
@@ -165,11 +170,11 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
       {/* ── Breadcrumb & Action Bar ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-xs font-semibold text-[var(--foreground-muted)]">
-          <Link href="/dashboard/admin" className="hover:text-primary transition-colors">
-            Admin
+          <Link href={boardHref} className="hover:text-primary transition-colors">
+            {isVendor ? "Vendor" : "Admin"}
           </Link>
           <span>/</span>
-          <Link href="/dashboard/admin/products" className="hover:text-primary transition-colors">
+          <Link href={productsHref} className="hover:text-primary transition-colors">
             Products
           </Link>
           <span>/</span>
@@ -190,7 +195,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           </Link>
 
           <Link
-            href="/dashboard/admin/products"
+            href={productsHref}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-elevated)] text-xs font-semibold text-[var(--foreground)] hover:bg-[var(--surface-alt)] transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />

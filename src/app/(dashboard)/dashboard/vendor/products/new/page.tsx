@@ -2,28 +2,27 @@ import React from "react";
 import { getRequiredRole } from "@/lib/core/session";
 import { getCategories } from "@/lib/api/categories";
 import { getSubCategories } from "@/lib/api/subCategories";
-import { asProductList, getMyProducts } from "@/lib/api/vendorProducts";
 import type { Category, SubCategory } from "@/types";
-import type { VendorProductPlan } from "@/types/vendor";
-import VendorProductForm from "../VendorProductForm";
+import AddProductClient from "@/app/(dashboard)/dashboard/admin/products/add/AddProductClient";
 
 export const dynamic = "force-dynamic";
 
 /**
- * "Add product".
+ * "Add product" for a vendor.
+ *
+ * This is the admin form itself, not a copy: the same fields, the same uploads
+ * and the same checks, with `mode="vendor"` so the row is saved as this
+ * seller's listing and the board it returns to is the vendor's own.
  *
  * The categories come from the same read the shop uses, so a vendor can only
- * file a product under a category shoppers can already browse. The plan summary
- * is read here rather than passed down from the list, because this page can be
- * opened directly.
+ * file a product under a category shoppers can already browse.
  */
 export default async function NewVendorProductPage() {
   await getRequiredRole("vendor");
 
-  const [categoriesRes, subCategoriesRes, listRes] = await Promise.all([
+  const [categoriesRes, subCategoriesRes] = await Promise.all([
     getCategories(),
     getSubCategories(),
-    getMyProducts({ limit: 1 }),
   ]);
 
   const categories: Category[] = Array.isArray(categoriesRes?.data)
@@ -38,21 +37,11 @@ export default async function NewVendorProductPage() {
       ? subCategoriesRes
       : [];
 
-  const plan: VendorProductPlan = asProductList(listRes)?.plan ?? {
-    id: "free",
-    name: "Free",
-    maxProducts: 10,
-    used: 0,
-    isLive: false,
-    effectiveUntil: null,
-  };
-
   return (
-    <VendorProductForm
-      mode="create"
+    <AddProductClient
+      mode="vendor"
       categories={categories.filter((category) => category.isActive !== false)}
-      subCategories={subCategories}
-      plan={plan}
+      subcategories={subCategories}
     />
   );
 }
