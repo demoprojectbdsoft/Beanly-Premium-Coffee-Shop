@@ -295,6 +295,8 @@ export interface VendorProductDraft {
   subCategoryIds: string[];
   price: number;
   originalPrice?: number | null;
+  /** The seller's own cost per unit; buyers never see it. */
+  investPrice?: number | null;
   image: string;
   additionalImages: string[];
   stockQuantity: number | null;
@@ -321,6 +323,11 @@ export interface VendorProduct {
   slug: string;
   price: number;
   originalPrice?: number | null;
+  /**
+   * The seller's own cost per unit, returned to them only. It feeds the
+   * profit, margin and loss figures on the seller's analytics.
+   */
+  investPrice?: number | null;
   image: string;
   additionalImages?: string[];
   stockQuantity?: number | null;

@@ -43,8 +43,9 @@ interface AddProductClientProps {
   subcategories?: SubCategory[];
   /**
    * `vendor` keeps the form identical but saves the row as the signed-in
-   * seller's listing and returns to the vendor board. The two controls the
-   * vendor cannot own — the cost price and the featured flag — stay hidden.
+   * seller's listing and returns to the vendor board. The featured flag stays
+   * with the store; the cost price belongs to whoever owns the listing, because
+   * the profit and loss is read back to them.
    */
   mode?: "admin" | "vendor";
 }
@@ -347,8 +348,8 @@ export default function AddProductClient({
     try {
       // A vendor saves the same answers through the seller endpoint: the store,
       // the status and the plan limit are resolved there from the session. The
-      // cost price and the featured flag are not part of a listing a seller
-      // owns, so they are left out of this payload.
+      // featured flag is not part of a listing a seller owns, so it is left out
+      // of this payload.
       const result = isVendor
         ? await createVendorProduct(
             {
@@ -358,6 +359,7 @@ export default function AddProductClient({
               subCategoryIds: payload.subCategoryIds,
               price: payload.price,
               originalPrice: payload.originalPrice ?? null,
+              investPrice: payload.investPrice,
               stockQuantity: payload.stockQuantity,
               sku: payload.sku,
               brand: Object.entries(specObj).find(
@@ -877,24 +879,21 @@ export default function AddProductClient({
                   />
                 </div>
 
-                {!isVendor && (
-                  <div className={fieldClass}>
-                    <label className={labelClass}>
-                      Invest / Cost Price ({currencySymbol})
-                      <span className="ml-1 text-[10px] font-normal text-amber-500">(admin only)</span>
-                    </label>
-                    <Input
-                      name="investPrice"
-                      type="number"
-                      step="0.01"
-                      placeholder="8.99"
-                      value={formState.investPrice}
-                      onChange={(e) =>
-                        setFormState((prev) => ({ ...prev, investPrice: e.target.value }))
-                      }
-                    />
-                  </div>
-                )}
+                <div className={fieldClass}>
+                  <label className={labelClass}>
+                    Invest / Cost Price ({currencySymbol})
+                  </label>
+                  <Input
+                    name="investPrice"
+                    type="number"
+                    step="0.01"
+                    placeholder="8.99"
+                    value={formState.investPrice}
+                    onChange={(e) =>
+                      setFormState((prev) => ({ ...prev, investPrice: e.target.value }))
+                    }
+                  />
+                </div>
 
                 <div className={fieldClass}>
                   <label className={labelClass}>Discount (%)</label>

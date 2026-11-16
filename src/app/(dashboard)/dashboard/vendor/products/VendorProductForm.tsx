@@ -125,6 +125,11 @@ export default function VendorProductForm({
   const [originalPrice, setOriginalPrice] = useState(
     product?.originalPrice != null ? String(product.originalPrice) : ""
   );
+  // The seller's own cost, returned only on their own listing. It is what the
+  // profit and loss on their analytics is worked out from.
+  const [investPrice, setInvestPrice] = useState(
+    product?.investPrice != null ? String(product.investPrice) : ""
+  );
   const [stockQuantity, setStockQuantity] = useState(
     product?.stockQuantity != null ? String(product.stockQuantity) : ""
   );
@@ -190,6 +195,7 @@ export default function VendorProductForm({
       subCategoryIds: selectedSubs,
       price: Number(price),
       originalPrice: originalPrice ? Number(originalPrice) : null,
+      investPrice: investPrice === "" ? null : Number(investPrice),
       image,
       additionalImages: gallery,
       stockQuantity: stockQuantity === "" ? null : Number(stockQuantity),
@@ -395,6 +401,19 @@ export default function VendorProductForm({
                   step="0.01"
                   value={originalPrice}
                   onChange={(event) => setOriginalPrice(event.target.value)}
+                  className={inputClass}
+                />
+              </Field>
+              <Field
+                label="Invest / cost price"
+                hint="Your own cost per unit. Buyers never see it; your profit and loss is worked out from it."
+              >
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={investPrice}
+                  onChange={(event) => setInvestPrice(event.target.value)}
                   className={inputClass}
                 />
               </Field>
