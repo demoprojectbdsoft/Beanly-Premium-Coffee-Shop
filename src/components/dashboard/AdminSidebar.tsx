@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   LayoutDashboard,
+  BarChart3,
   ShoppingBag,
   Users,
   Banknote,
@@ -61,6 +62,8 @@ const NAV_GROUPS = [
   {
     title: "Sales",
     items: [
+      // Views, clicks and wishlist saves: the demand that has not ordered yet.
+      { name: "Analytics", href: "/dashboard/admin/analytics", icon: BarChart3 },
       { name: "Orders", href: "/dashboard/admin/orders", icon: ShoppingBag },
       { name: "Deliveries", href: "/dashboard/admin/deliveries", icon: Truck },
       { name: "Rider payouts", href: "/dashboard/admin/payouts", icon: Banknote },

@@ -49,6 +49,7 @@ import { hasOfferDiscount } from "@/lib/offer";
 import { padCountdown, parseCountdownTarget } from "@/lib/countdown";
 import { useCountdown } from "@/hooks/useCountdown";
 import { isProductOutOfStock, unitsLeft } from "@/lib/stock";
+import { trackProductEngagement } from "@/lib/engagement";
 import {
   addToWishlist,
   removeFromWishlist,
@@ -183,6 +184,10 @@ export default function ProductDetailsPage({
   useEffect(() => {
     if (!product?.id) return;
 
+    // Every open of a listing is one view in the seller's traffic report. The
+    // helper remembers the visit for the session, so a reload is not a second one.
+    trackProductEngagement(product.id, "view");
+
     // Load wishlist status
     const loadWishlist = () => {
       checkIsWishlistedAction(product.id)
@@ -312,6 +317,8 @@ export default function ProductDetailsPage({
     }
 
     try {
+      // Pressing buy is the click a seller's report counts.
+      trackProductEngagement(product.id, "click");
       const res = await addToCart(product.id, quantity);
       if (res?.success !== false) {
         setIsInCart(true);

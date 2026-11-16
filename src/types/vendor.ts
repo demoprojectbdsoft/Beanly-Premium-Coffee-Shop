@@ -493,6 +493,28 @@ export interface VendorOrderSummary {
   total: number;
 }
 
+/** One listing's attention inside a window. */
+export interface EngagementProductRow {
+  id: string;
+  title: string;
+  slug: string;
+  image: string;
+  price: number;
+  views: number;
+  clicks: number;
+  wishlists: number;
+  /** Clicks as a share of views, whole percent. */
+  clickRate: number;
+}
+
+/** Views, clicks and wishlist placement — the advanced rung's own read. */
+export interface ProductEngagementReport {
+  range: number;
+  totals: { views: number; clicks: number; wishlists: number; products: number };
+  top: EngagementProductRow[];
+  topWishlisted: EngagementProductRow[];
+}
+
 /** One seller's report, folded from their own fulfilment groups. */
 export interface VendorAnalyticsReport {
   /** The window actually used, which is the request capped by the plan. */
@@ -529,6 +551,8 @@ export interface VendorAnalyticsReport {
   series: { label: string; revenue: number; orders: number }[];
   statusCounts: Record<string, number>;
   topProducts: { title: string; image: string; units: number; revenue: number }[];
+  /** Present only on a plan whose analytics reach the advanced rung. */
+  engagement: ProductEngagementReport | null;
   recent: {
     id: string;
     orderNumber: string;
