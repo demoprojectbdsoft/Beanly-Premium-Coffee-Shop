@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Button, Card, Chip, Input, Modal } from "@heroui/react";
 import {
   AlertTriangle,
@@ -78,7 +78,15 @@ export default function AdminDeliveriesClient({
   filters,
 }: AdminDeliveriesClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { formatPrice } = useSiteSettings();
+
+  // The store assigns riders; a seller only watches the parcels they sold. The
+  // URL decides which of the two boards this is, so the same page feeds both.
+  const isVendorBoard = Boolean(pathname?.startsWith("/dashboard/vendor"));
+  const basePath = isVendorBoard ? "/dashboard/vendor/deliveries" : "/dashboard/admin/deliveries";
+  const homePath = isVendorBoard ? "/dashboard/vendor" : "/dashboard/admin";
+  const homeLabel = isVendorBoard ? "Vendor Dashboard" : "Admin Dashboard";
 
   const [search, setSearch] = useState(filters.search);
   const [status, setStatus] = useState(filters.status);
@@ -108,7 +116,7 @@ export default function AdminDeliveriesClient({
     if (page > 1) params.set("page", String(page));
 
     const query = params.toString();
-    router.push(query ? `/dashboard/admin/deliveries?${query}` : "/dashboard/admin/deliveries");
+    router.push(query ? `${basePath}?${query}` : basePath);
   };
 
   const openAssign = (delivery: DeliveryRecord) => {
@@ -198,7 +206,7 @@ export default function AdminDeliveriesClient({
       value: overview.onlineRiders,
       icon: Wifi,
       tone: "text-indigo-600 dark:text-indigo-400",
-      note: "Available for new jobs",
+      note: isVendorBoard ? "Carrying your parcels now" : "Available for new jobs",
     },
   ];
 
@@ -208,8 +216,8 @@ export default function AdminDeliveriesClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-[var(--foreground-muted)] mb-1">
-            <Link href="/dashboard/admin" className="hover:text-primary transition-colors">
-              Admin Dashboard
+            <Link href={homePath} className="hover:text-primary transition-colors">
+              {homeLabel}
             </Link>
             <span>/</span>
             <span className="text-primary">Deliveries</span>
@@ -218,34 +226,38 @@ export default function AdminDeliveriesClient({
             Delivery <span className="text-primary">Board</span>
           </h1>
           <p className="text-xs md:text-sm text-[var(--foreground-muted)] mt-1">
-            Who is carrying what, where it is, and which parcels still need a rider.
+            {isVendorBoard
+              ? "Where the parcels from your orders are, from the offer to the door."
+              : "Who is carrying what, where it is, and which parcels still need a rider."}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            onPress={handleSweep}
-            isDisabled={isSweeping}
-            className="h-9 px-3 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)] text-[var(--foreground)] text-[11px] font-bold"
-          >
-            <span className="inline-flex items-center gap-1.5">
-              {isSweeping ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="w-3.5 h-3.5" />
-              )}
-              Close stale offers
-            </span>
-          </Button>
-          <Link
-            href="/dashboard/admin/orders"
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-brand-gradient text-[var(--on-grad-text)] text-[11px] font-bold shadow-xs"
-          >
-            <Package className="w-3.5 h-3.5" />
-            Orders
-          </Link>
-        </div>
+        {!isVendorBoard && (
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onPress={handleSweep}
+              isDisabled={isSweeping}
+              className="h-9 px-3 rounded-xl bg-[var(--surface-alt)] border border-[var(--border-color)] text-[var(--foreground)] text-[11px] font-bold"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                {isSweeping ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5" />
+                )}
+                Close stale offers
+              </span>
+            </Button>
+            <Link
+              href="/dashboard/admin/orders"
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-brand-gradient text-[var(--on-grad-text)] text-[11px] font-bold shadow-xs"
+            >
+              <Package className="w-3.5 h-3.5" />
+              Orders
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* ── Counters ── */}
@@ -280,15 +292,17 @@ export default function AdminDeliveriesClient({
                 {overview.shippedWithoutRider === 1 ? "" : "s"} with no rider
               </p>
               <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 mt-0.5">
-                Open the order and assign a rider so somebody is actually carrying it.
+                {isVendorBoard
+                  ? "The store team makes the assignment; your parcel is waiting in their queue."
+                  : "Open the order and assign a rider so somebody is actually carrying it."}
               </p>
             </div>
           </div>
           <Link
-            href="/dashboard/admin/orders?status=shipped"
+            href={isVendorBoard ? "/dashboard/vendor/orders" : "/dashboard/admin/orders?status=shipped"}
             className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl bg-amber-500 text-white text-[11px] font-bold shrink-0"
           >
-            Review shipped orders
+            {isVendorBoard ? "Your orders" : "Review shipped orders"}
           </Link>
         </div>
       )}
@@ -387,7 +401,7 @@ export default function AdminDeliveriesClient({
                   setStatus("all");
                   setSort("newest");
                   setLimit("10");
-                  router.push("/dashboard/admin/deliveries");
+                  router.push(basePath);
                 }}
                 className="h-9 text-[11px] font-bold rounded-xl bg-[var(--surface-alt)] text-[var(--foreground)] border border-[var(--border-color)]"
               >
@@ -405,7 +419,9 @@ export default function AdminDeliveriesClient({
             <Inbox className="w-10 h-10 text-[var(--foreground-muted)]" />
             <p className="text-sm font-semibold text-[var(--foreground)]">No deliveries here</p>
             <p className="text-xs text-[var(--foreground-muted)] max-w-md">
-              Assign a rider from an order to start a delivery. Every parcel gets one row here.
+              {isVendorBoard
+                ? "Once the store assigns a rider to one of your orders, the job appears here."
+                : "Assign a rider from an order to start a delivery. Every parcel gets one row here."}
             </p>
           </div>
         ) : (
@@ -507,7 +523,7 @@ export default function AdminDeliveriesClient({
                           >
                             <LocateFixed className="w-[18px] h-[18px]" />
                           </Link>
-                          {live && (
+                          {live && !isVendorBoard && (
                             <>
                               <Button
                                 size="sm"
@@ -715,7 +731,7 @@ export default function AdminDeliveriesClient({
                     </Link>
 
                     <div className="flex items-center gap-2">
-                      {LIVE_STATUSES.includes(detail.status) && (
+                      {LIVE_STATUSES.includes(detail.status) && !isVendorBoard && (
                         <>
                           <Button
                             size="sm"
@@ -736,7 +752,7 @@ export default function AdminDeliveriesClient({
                           </Button>
                         </>
                       )}
-                      {!LIVE_STATUSES.includes(detail.status) && (
+                      {(!LIVE_STATUSES.includes(detail.status) || isVendorBoard) && (
                         <Button
                           size="sm"
                           onPress={() => setDetail(null)}

@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Button, Card, Chip } from "@heroui/react";
 import {
   BarChart3,
@@ -39,7 +39,7 @@ import type { NameType, ValueType } from "recharts/types/component/DefaultToolti
 import AppSelect from "@/components/shared/AppSelect";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { formatOrderDate, formatOrderDateTime } from "@/lib/dateTime";
-import { getAdminPayouts } from "@/lib/api/deliveries";
+import { getAdminPayouts, getVendorPayouts } from "@/lib/api/deliveries";
 import { exportPayoutsCsv, type PayoutsExportData } from "@/lib/csvExport";
 import { downloadPayoutsPdf } from "@/lib/dashboardPdf";
 import type { PayoutRange, PayoutRecord, PayoutsFeed } from "@/types/delivery";
@@ -107,7 +107,16 @@ function paidViaLabel(paidVia: string): string {
 
 export default function PayoutsClient({ feed, filters }: PayoutsClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { settings, currencySymbol, formatPrice } = useSiteSettings();
+
+  // One record, two desks. The URL says whose board this is, so the paging, the
+  // export walk and the breadcrumb all stay on the seller's side of the app.
+  const isVendorBoard = Boolean(pathname?.startsWith("/dashboard/vendor"));
+  const basePath = isVendorBoard ? "/dashboard/vendor/payouts" : "/dashboard/admin/payouts";
+  const homePath = isVendorBoard ? "/dashboard/vendor" : "/dashboard/admin";
+  const homeLabel = isVendorBoard ? "Vendor Dashboard" : "Admin Dashboard";
+  const readPayouts = isVendorBoard ? getVendorPayouts : getAdminPayouts;
 
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -166,7 +175,7 @@ export default function PayoutsClient({ feed, filters }: PayoutsClientProps) {
     if (nextPage > 1) params.set("page", String(nextPage));
 
     const query = params.toString();
-    router.push(query ? `/dashboard/admin/payouts?${query}` : "/dashboard/admin/payouts");
+    router.push(query ? `${basePath}?${query}` : basePath);
   };
 
   /**
@@ -188,7 +197,7 @@ export default function PayoutsClient({ feed, filters }: PayoutsClientProps) {
     );
 
     for (let index = 1; index <= pages; index += 1) {
-      const res = await getAdminPayouts({
+      const res = await readPayouts({
         range,
         sort,
         page: index,
@@ -314,8 +323,8 @@ export default function PayoutsClient({ feed, filters }: PayoutsClientProps) {
       <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-[var(--foreground-muted)] mb-1">
-            <Link href="/dashboard/admin" className="hover:text-primary transition-colors">
-              Admin Dashboard
+            <Link href={homePath} className="hover:text-primary transition-colors">
+              {homeLabel}
             </Link>
             <span>/</span>
             <span className="text-primary">Rider Payouts</span>
@@ -324,10 +333,9 @@ export default function PayoutsClient({ feed, filters }: PayoutsClientProps) {
             Rider <span className="text-gradient-primary">Payout Record</span>
           </h1>
           <p className="text-xs md:text-sm text-[var(--foreground-muted)] mt-1 max-w-2xl">
-            Every fee a delivered job paid a rider, and the share of the sale it was
-            deducted from. A fee is booked the moment the parcel is handed over — by the
-            customer&apos;s code or the customer&apos;s own answer — so this record is the
-            same money the overview has already taken off Net Profit.
+            {isVendorBoard
+              ? "What the riders who carried your orders were paid, and the sale each fee came out of. The fee is the store's own charge for the job, shown against your delivered subtotal."
+              : "Every fee a delivered job paid a rider, and the share of the sale it was deducted from. A fee is booked the moment the parcel is handed over — by the customer's code or the customer's own answer — so this record is the same money the overview has already taken off Net Profit."}
           </p>
           {selectedRider && (
             <div className="inline-flex items-center gap-2 mt-2 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-[11px] font-bold text-primary">
@@ -420,11 +428,11 @@ export default function PayoutsClient({ feed, filters }: PayoutsClientProps) {
           the parcel reaches the door.
         </p>
         <Link
-          href="/dashboard/admin"
+          href={isVendorBoard ? "/dashboard/vendor" : "/dashboard/admin"}
           className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border-color)] text-[var(--foreground)] text-[11px] font-bold shrink-0 hover:text-primary transition-colors"
         >
           <Link2 className="w-3.5 h-3.5" />
-          See it cut Net Profit
+          {isVendorBoard ? "Back to your overview" : "See it cut Net Profit"}
         </Link>
       </div>
 
@@ -693,7 +701,7 @@ export default function PayoutsClient({ feed, filters }: PayoutsClientProps) {
             {hasFilters && (
               <Button
                 size="sm"
-                onPress={() => router.push("/dashboard/admin/payouts")}
+                onPress={() => router.push(basePath)}
                 className="h-9 text-[11px] font-bold rounded-xl bg-[var(--surface-alt)] text-[var(--foreground)] border border-[var(--border-color)]"
               >
                 Reset

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useTransition, useCallback } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   Card,
   Input,
@@ -62,7 +62,17 @@ export default function TransactionsClient({
   const { formatPrice } = useSiteSettings();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
+
+  // The same ledger serves the store and a seller; the URL decides whose rows
+  // are on it, so paging and the reset button stay inside that dashboard.
+  const isVendorBoard = Boolean(pathname?.startsWith("/dashboard/vendor"));
+  const basePath = isVendorBoard
+    ? "/dashboard/vendor/transactions"
+    : "/dashboard/admin/transactions";
+  const homePath = isVendorBoard ? "/dashboard/vendor" : "/dashboard/admin";
+  const homeLabel = isVendorBoard ? "Vendor Dashboard" : "Admin Dashboard";
 
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
 
@@ -105,10 +115,10 @@ export default function TransactionsClient({
 
       const qs = params.toString();
       startTransition(() => {
-        router.push(`/dashboard/admin/transactions${qs ? `?${qs}` : ""}`, { scroll: false });
+        router.push(`${basePath}${qs ? `?${qs}` : ""}`, { scroll: false });
       });
     },
-    [router, searchParams]
+    [router, searchParams, basePath]
   );
 
   const handleSearchSubmit = (e?: React.FormEvent) => {
@@ -119,7 +129,7 @@ export default function TransactionsClient({
   const handleResetFilters = () => {
     setSearchInput("");
     startTransition(() => {
-      router.push("/dashboard/admin/transactions", { scroll: false });
+      router.push(basePath, { scroll: false });
     });
   };
 
@@ -201,8 +211,8 @@ export default function TransactionsClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-[var(--foreground-muted)] mb-1">
-            <Link href="/dashboard/admin" className="hover:text-primary transition-colors">
-              Admin Dashboard
+            <Link href={homePath} className="hover:text-primary transition-colors">
+              {homeLabel}
             </Link>
             <span>/</span>
             <span className="text-primary">Transactions</span>
@@ -214,7 +224,9 @@ export default function TransactionsClient({
             </span>
           </h1>
           <p className="text-xs md:text-sm text-[var(--foreground-muted)] mt-1">
-            Read-only ledger of all gateway settlements, COD orders, and wallet transaction logs.
+            {isVendorBoard
+              ? "Payments for the orders you are part of. Each amount is your own subtotal on that order, not the whole cart."
+              : "Read-only ledger of all gateway settlements, COD orders, and wallet transaction logs."}
           </p>
         </div>
 

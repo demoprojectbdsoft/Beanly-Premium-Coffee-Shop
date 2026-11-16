@@ -13,3 +13,8 @@ export const getReviewsByUserId = async (userId: string) => {
 export const getAllReviews = async (query?: string) => {
   return serverFetch(`/reviews${query ? `?${query}` : ""}`, true);
 };
+
+/** The seller's own feed, scoped on the server to the listings they own. */
+export const getVendorReviews = async (query?: string) => {
+  return serverFetch(`/reviews/vendor${query ? `?${query}` : ""}`, true);
+};

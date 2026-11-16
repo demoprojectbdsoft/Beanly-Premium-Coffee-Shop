@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useTransition, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   Card,
   Input,
@@ -82,7 +82,15 @@ export default function ReviewsClient({
   const { formatPrice } = useSiteSettings();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
+
+  // The same board serves the store and a seller; the URL says which one it is,
+  // so every link on the page stays inside the dashboard it was opened from.
+  const isVendorBoard = Boolean(pathname?.startsWith("/dashboard/vendor"));
+  const basePath = isVendorBoard ? "/dashboard/vendor/reviews" : "/dashboard/admin/reviews";
+  const homePath = isVendorBoard ? "/dashboard/vendor" : "/dashboard/admin";
+  const homeLabel = isVendorBoard ? "Vendor Dashboard" : "Admin Dashboard";
 
   const [reviews, setReviews] = useState<ReviewItem[]>(initialReviews);
   const [selectedReview, setSelectedReview] = useState<ReviewItem | null>(null);
@@ -126,10 +134,10 @@ export default function ReviewsClient({
 
       const qs = params.toString();
       startTransition(() => {
-        router.push(`/dashboard/admin/reviews${qs ? `?${qs}` : ""}`, { scroll: false });
+        router.push(`${basePath}${qs ? `?${qs}` : ""}`, { scroll: false });
       });
     },
-    [router, searchParams]
+    [router, searchParams, basePath]
   );
 
   const handleSearchSubmit = (e?: React.FormEvent) => {
@@ -140,7 +148,7 @@ export default function ReviewsClient({
   const handleResetFilters = () => {
     setSearchInput("");
     startTransition(() => {
-      router.push("/dashboard/admin/reviews", { scroll: false });
+      router.push(basePath, { scroll: false });
     });
   };
 
@@ -226,8 +234,8 @@ export default function ReviewsClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-[var(--foreground-muted)] mb-1">
-            <Link href="/dashboard/admin" className="hover:text-primary transition-colors">
-              Admin Dashboard
+            <Link href={homePath} className="hover:text-primary transition-colors">
+              {homeLabel}
             </Link>
             <span>/</span>
             <span className="text-primary">Reviews</span>
@@ -239,7 +247,9 @@ export default function ReviewsClient({
             </span>
           </h1>
           <p className="text-xs md:text-sm text-[var(--foreground-muted)] mt-1">
-            Manage and inspect user feedback, ratings, and testimonials across the store.
+            {isVendorBoard
+              ? "What customers said about your listings, and the ones that need an answer."
+              : "Manage and inspect user feedback, ratings, and testimonials across the store."}
           </p>
         </div>
 
@@ -716,7 +726,7 @@ export default function ReviewsClient({
                         <span>Review Comment:</span>
                       </div>
                       <div className="p-4 rounded-2xl bg-[var(--surface-alt)] dark:bg-[var(--surface-alt)]/60 border border-[var(--border-color)]/80 dark:border-[var(--border-color)] text-xs leading-relaxed text-[var(--foreground)] italic">
-                        "{selectedReview.comment}"
+                        &ldquo;{selectedReview.comment}&rdquo;
                       </div>
                     </div>
 
@@ -826,7 +836,7 @@ export default function ReviewsClient({
                     </div>
                     {reviewToDelete.comment && (
                       <p className="text-[11px] text-[var(--foreground-muted)] italic line-clamp-2">
-                        "{reviewToDelete.comment}"
+                        &ldquo;{reviewToDelete.comment}&rdquo;
                       </p>
                     )}
                   </div>

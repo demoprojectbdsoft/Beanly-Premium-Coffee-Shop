@@ -1,7 +1,7 @@
 import { serverFetch } from "../core/server";
 import { withQuery } from "../core/query";
 
-export const getTransactions = async (params?: Record<string, any>) => {
+export const getTransactions = async (params?: Record<string, string | number | undefined>) => {
   return serverFetch(withQuery("/transactions", params), true);
 };
 
@@ -13,4 +13,9 @@ export const getTransactionsByUserId = async (userId: string) => {
 
 export const getTransactionsByOrderId = async (orderId: string) => {
   return serverFetch(withQuery("/transactions", { orderId }), true);
+};
+
+/** The seller's ledger: payments for the orders they are part of, their share only. */
+export const getVendorTransactions = async (params?: Record<string, string | number | undefined>) => {
+  return serverFetch(withQuery("/transactions/vendor", params), true);
 };
