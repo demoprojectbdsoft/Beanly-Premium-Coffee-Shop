@@ -25,7 +25,7 @@ import { toast } from "react-toastify";
 import { cancelVendorRenewal, checkoutVendorSubscription } from "@/lib/action/vendor";
 import { formatPrice } from "@/lib/currency";
 import { formatOrderDate } from "@/lib/dateTime";
-import { planCycles, planPrice, popularPlanId } from "@/lib/vendorPlan";
+import { EXPORT_LABELS, planCycles, planEffectivePrice, planOfferLive, planPrice, popularPlanId } from "@/lib/vendorPlan";
 import {
   buildDemoTransactionId,
   isTransactionIdValid,
@@ -117,6 +117,7 @@ function planFacts(plan: VendorPlan): { label: string; value: string | number }[
     { label: "Featured products", value: plan.featuredProducts },
     { label: "Active coupons", value: plan.activeCoupons },
     { label: "Analytics", value: titleCase(plan.analytics) },
+    { label: "Exports", value: EXPORT_LABELS[plan.exports] ?? "None" },
     { label: "Sales reports", value: titleCase(plan.salesReports) },
     { label: "Support", value: titleCase(plan.support) },
   ];
@@ -244,7 +245,7 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
     }
   };
 
-  const checkoutAmount = checkoutPlan ? planPrice(checkoutPlan, cycle) : 0;
+  const checkoutAmount = checkoutPlan ? planEffectivePrice(checkoutPlan, cycle) : 0;
   const periodEnd = subscription?.endDate ? formatOrderDate(subscription.endDate) : "—";
 
   return (
@@ -277,7 +278,7 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
               <p className="text-xs font-bold text-[var(--foreground)]">{plan.name} plan</p>
               <p className="text-[10px] text-[var(--foreground-muted)]">
                 {planPrice(plan, subscription?.billingCycle || cycle) > 0
-                  ? `${money(planPrice(plan, subscription?.billingCycle || cycle))} / ${
+                  ? `${money(planEffectivePrice(plan, subscription?.billingCycle || cycle))} / ${
                       subscription?.billingCycle === "yearly" ? "year" : "month"
                     }`
                   : "No charge"}
@@ -456,7 +457,9 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
           {plans.map((candidate) => {
             const action = actionFor(candidate);
             const isCurrent = candidate.id === plan.id;
-            const price = planPrice(candidate, cycle);
+            const listPrice = planPrice(candidate, cycle);
+            const price = planEffectivePrice(candidate, cycle);
+            const offer = planOfferLive(candidate) && price < listPrice;
             const highlight = candidate.id === popular;
 
             return (
@@ -486,14 +489,25 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
                   )}
                 </div>
 
-                <p className="mt-2 text-lg font-bold text-[var(--foreground)]">
+                <p className="mt-2 flex flex-wrap items-baseline gap-1.5 text-lg font-bold text-[var(--foreground)]">
                   {price > 0 ? money(price) : "Free"}
+                  {price > 0 && offer && (
+                    <span className="text-[10px] font-semibold text-[var(--foreground-muted)] line-through">
+                      {money(listPrice)}
+                    </span>
+                  )}
                   {price > 0 && (
-                    <span className="ml-1 text-[10px] font-semibold text-[var(--foreground-muted)]">
+                    <span className="text-[10px] font-semibold text-[var(--foreground-muted)]">
                       / {cycle === "yearly" ? "year" : "month"}
                     </span>
                   )}
                 </p>
+                {price > 0 && offer && (
+                  <p className="mt-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                    {Number(candidate.offerPercent) || 0}% off
+                    {candidate.offerReason ? ` · ${candidate.offerReason}` : ""}
+                  </p>
+                )}
 
                 <ul className="mt-3 space-y-1.5">
                   {planFacts(candidate).map((fact) => (
@@ -703,7 +717,7 @@ export default function SubscriptionClient({ overview, currency }: SubscriptionC
                           {option}
                         </span>
                         <span className="block text-[9px] text-[var(--foreground-muted)]">
-                          {money(planPrice(checkoutPlan, option))} / {option === "yearly" ? "year" : "month"}
+                          {money(planEffectivePrice(checkoutPlan, option))} / {option === "yearly" ? "year" : "month"}
                         </span>
                       </button>
                     ))}

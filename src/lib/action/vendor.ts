@@ -298,6 +298,10 @@ export interface VendorPlanPayload {
   gracePeriodDays?: number;
   billingCycles?: BillingCycle[];
   sortOrder?: number;
+  /** A dated price offer; `null` clears the deadline, 0 runs no offer. */
+  offerPercent?: number;
+  offerReason?: string;
+  offerEndsAt?: string | null;
 }
 
 /** Adds a plan to the price list; the id is made from the name by the API. */

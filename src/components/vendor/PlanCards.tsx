@@ -7,7 +7,10 @@ import type { BillingCycle, VendorPlan, VendorPlanId } from "@/types/vendor";
 import { formatPrice } from "@/lib/currency";
 import {
   planCycles,
+  planEffectivePrice,
+  planFeatureList,
   planMonthlyEquivalent,
+  planOfferLive,
   planPrice,
   planYearlySaving,
   popularPlanId,
@@ -91,9 +94,11 @@ export default function PlanCards({
           // switch above is on the other cycle.
           const offered = planCycles(plan);
           const cardCycle = offered.includes(cycle) ? cycle : offered[0];
-          const price = planPrice(plan, cardCycle);
+          const listPrice = planPrice(plan, cardCycle);
+          const price = planEffectivePrice(plan, cardCycle);
           const monthly = planMonthlyEquivalent(plan, cardCycle);
           const saving = cardCycle === "yearly" ? planYearlySaving(plan) : 0;
+          const offer = planOfferLive(plan) && price < listPrice;
           const isSelected = selected === plan.id;
           const isFree = price === 0;
           const isPopular = plan.id === popular;
@@ -105,16 +110,27 @@ export default function PlanCards({
                   <p className="text-xs font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
                     {plan.name}
                   </p>
-                  <div className="mt-2 flex items-baseline gap-1.5">
+                  <div className="mt-2 flex flex-wrap items-baseline gap-1.5">
                     <span className="text-2xl font-bold text-[var(--foreground)]">
                       {isFree ? "Free" : formatPrice(price, currency, { showDecimals: false })}
                     </span>
+                    {!isFree && offer && (
+                      <span className="text-[11px] font-semibold text-[var(--foreground-muted)] line-through">
+                        {formatPrice(listPrice, currency, { showDecimals: false })}
+                      </span>
+                    )}
                     {!isFree && (
                       <span className="text-[11px] font-semibold text-[var(--foreground-muted)]">
                         / {cardCycle === "yearly" ? "year" : "month"}
                       </span>
                     )}
                   </div>
+                  {!isFree && offer && (
+                    <p className="mt-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                      {Number(plan.offerPercent) || 0}% off
+                      {plan.offerReason ? ` · ${plan.offerReason}` : ""}
+                    </p>
+                  )}
                   {!isFree && cardCycle === "yearly" && (
                     <p className="text-[11px] text-[var(--foreground-muted)] mt-1">
                       ≈ {formatPrice(monthly, currency, { showDecimals: false })} a month
@@ -127,6 +143,10 @@ export default function PlanCards({
                     <Crown className="w-3 h-3" />
                     Popular
                   </span>
+                ) : offer ? (
+                  <span className="rounded-lg bg-emerald-500/12 border border-emerald-500/25 px-2 py-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                    −{Number(plan.offerPercent) || 0}%
+                  </span>
                 ) : saving > 0 ? (
                   <span className="rounded-lg bg-emerald-500/12 border border-emerald-500/25 px-2 py-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
                     −{saving}%
@@ -135,10 +155,10 @@ export default function PlanCards({
               </div>
 
               <ul className="mt-4 space-y-2">
-                {plan.highlights.map((highlight) => (
-                  <li key={highlight} className="flex items-start gap-2 text-[11px] text-[var(--foreground-muted)]">
+                {planFeatureList(plan).map((feature) => (
+                  <li key={feature} className="flex items-start gap-2 text-[11px] text-[var(--foreground-muted)]">
                     <Check className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                    <span>{highlight}</span>
+                    <span>{feature}</span>
                   </li>
                 ))}
               </ul>

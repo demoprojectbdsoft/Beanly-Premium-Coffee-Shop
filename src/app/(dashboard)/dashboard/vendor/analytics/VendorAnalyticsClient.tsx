@@ -130,6 +130,11 @@ export default function VendorAnalyticsClient({
   const symbol = getCurrencySymbol(currency);
   const { totals, previous } = report;
 
+  // The three export rungs: none on free, CSV on premium, CSV + PDF on advanced.
+  // The deeper tables (per product, per order) are the top rung's reward.
+  const canExportCsv = report.plan.exports === "csv" || report.plan.exports === "csv+pdf";
+  const canExportPdf = report.plan.exports === "csv+pdf";
+
   const chartData = useMemo(
     () =>
       report.series.map((point) => ({
@@ -187,7 +192,7 @@ export default function VendorAnalyticsClient({
       city: order.city,
       placedAt: formatOrderDate(order.placedAt),
     })),
-    full: report.plan.exports === "full",
+    full: canExportPdf,
   };
 
   const exportOptions = { siteName, currency };
@@ -254,24 +259,46 @@ export default function VendorAnalyticsClient({
             })}
           </div>
 
-          <button
-            type="button"
-            onClick={handleExportPdf}
-            disabled={isExportingPdf}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-elevated)] px-3 py-2 text-[11px] font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-alt)] disabled:cursor-wait disabled:opacity-60"
-          >
-            <FileText className="h-3.5 w-3.5" />
-            {isExportingPdf ? "Building..." : "Export PDF"}
-          </button>
+          {canExportPdf ? (
+            <button
+              type="button"
+              onClick={handleExportPdf}
+              disabled={isExportingPdf}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-elevated)] px-3 py-2 text-[11px] font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-alt)] disabled:cursor-wait disabled:opacity-60"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              {isExportingPdf ? "Building..." : "Export PDF"}
+            </button>
+          ) : (
+            <Link
+              href="/dashboard/vendor/subscription"
+              title="PDF reports come with Advanced"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-[var(--border-color)] px-3 py-2 text-[11px] font-semibold text-[var(--foreground-muted)] transition-colors hover:text-[var(--foreground)]"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              PDF on Advanced
+            </Link>
+          )}
 
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-brand-gradient px-3 py-2 text-[11px] font-bold text-[var(--on-grad-text)] transition-opacity hover:opacity-90"
-          >
-            <Download className="h-3.5 w-3.5" />
-            Export CSV
-          </button>
+          {canExportCsv ? (
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-brand-gradient px-3 py-2 text-[11px] font-bold text-[var(--on-grad-text)] transition-opacity hover:opacity-90"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export CSV
+            </button>
+          ) : (
+            <Link
+              href="/dashboard/vendor/subscription"
+              title="CSV reports start on Premium"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-[var(--border-color)] px-3 py-2 text-[11px] font-semibold text-[var(--foreground-muted)] transition-colors hover:text-[var(--foreground)]"
+            >
+              <Download className="h-3.5 w-3.5" />
+              CSV on Premium
+            </Link>
+          )}
         </div>
       </div>
 
@@ -555,10 +582,11 @@ export default function VendorAnalyticsClient({
             </ul>
           )}
 
-          {report.plan.exports === "limited" && (
+          {!canExportPdf && (
             <p className="mt-3 text-[10px] leading-relaxed text-[var(--foreground-muted)]">
-              Your plan exports the totals and the chart data. Per-product and per-order tables come
-              with full exports.
+              {canExportCsv
+                ? "Your CSV carries the totals, the chart data and the tables on this page. The PDF report comes with Advanced."
+                : "Reporting exports start on Premium, where the CSV carries every table on this page. PDF joins them on Advanced."}
             </p>
           )}
         </section>

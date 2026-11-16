@@ -31,7 +31,8 @@ export interface VendorPlan {
   activeCoupons: number;
   analytics: "basic" | "detailed" | "advanced";
   salesReports: "basic" | "advanced";
-  exports: "limited" | "full";
+  /** No file, the CSV only, or both the CSV and the PDF report. */
+  exports: "none" | "csv" | "csv+pdf";
   storeCustomization: "basic" | "enhanced" | "full";
   promotionalCampaigns: "none" | "limited" | "priority";
   storeVisibility: "standard" | "enhanced" | "priority";
@@ -46,6 +47,12 @@ export interface VendorPlan {
   billingCycles?: BillingCycle[];
   /** Where the card sits on the pricing page. */
   sortOrder?: number;
+  /** A price offer, applied while `offerEndsAt` has not passed. */
+  offerPercent?: number;
+  offerReason?: string;
+  offerEndsAt?: string | null;
+  /** Set by the API when the plan is read; the cards never compute it. */
+  offerActive?: boolean;
 }
 
 export interface VendorApplicationEvent {
@@ -497,7 +504,7 @@ export interface VendorAnalyticsReport {
     id: string;
     name: string;
     analytics: "basic" | "detailed" | "advanced";
-    exports: "limited" | "full";
+    exports: "none" | "csv" | "csv+pdf";
   };
   isLive: boolean;
   totals: {

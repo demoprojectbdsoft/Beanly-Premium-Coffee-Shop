@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Input, Modal, Switch } from "@heroui/react";
+import { Button, Card, Input, ListBox, Modal, Select, Switch } from "@heroui/react";
 import {
   AlertTriangle,
   BadgeCheck,
@@ -12,8 +12,10 @@ import {
   EyeOff,
   Layers,
   Pencil,
+  Percent,
   Plus,
   Sparkles,
+  Timer,
   Trash2,
 } from "lucide-react";
 import { toast } from "react-toastify";
@@ -23,8 +25,18 @@ import {
   updateVendorPlan,
   type VendorPlanPayload,
 } from "@/lib/action/vendor";
+import HeroUIDateTimePicker from "@/components/shared/HeroUIDateTimePicker";
 import { formatPrice } from "@/lib/currency";
-import { isPaidPlan, planCycles } from "@/lib/vendorPlan";
+import { formatOrderDate } from "@/lib/dateTime";
+import {
+  EXPORT_LABELS,
+  isPaidPlan,
+  planCycles,
+  planEffectivePrice,
+  planFeatureList,
+  planOfferLive,
+  planPrice,
+} from "@/lib/vendorPlan";
 import type { BillingCycle, VendorPlan } from "@/types/vendor";
 
 /**
@@ -38,13 +50,67 @@ import type { BillingCycle, VendorPlan } from "@/types/vendor";
  */
 
 const CAPABILITY_FIELDS = [
-  { key: "analytics", label: "Analytics", options: ["basic", "detailed", "advanced"] },
-  { key: "salesReports", label: "Sales reports", options: ["basic", "advanced"] },
-  { key: "exports", label: "Data exports", options: ["limited", "full"] },
-  { key: "storeCustomization", label: "Storefront", options: ["basic", "enhanced", "full"] },
-  { key: "promotionalCampaigns", label: "Campaigns", options: ["none", "limited", "priority"] },
-  { key: "storeVisibility", label: "Visibility", options: ["standard", "enhanced", "priority"] },
-  { key: "support", label: "Support", options: ["standard", "priority"] },
+  {
+    key: "analytics",
+    label: "Analytics depth",
+    options: [
+      { value: "basic", label: "Basic — last 30 days" },
+      { value: "detailed", label: "Detailed — last 90 days" },
+      { value: "advanced", label: "Advanced — last 12 months" },
+    ],
+  },
+  {
+    key: "exports",
+    label: "Report exports",
+    options: [
+      { value: "none", label: "No export" },
+      { value: "csv", label: "CSV only" },
+      { value: "csv+pdf", label: "CSV + PDF" },
+    ],
+  },
+  {
+    key: "salesReports",
+    label: "Sales reports",
+    options: [
+      { value: "basic", label: "Basic totals" },
+      { value: "advanced", label: "Advanced breakdowns" },
+    ],
+  },
+  {
+    key: "storeCustomization",
+    label: "Storefront",
+    options: [
+      { value: "basic", label: "Basic" },
+      { value: "enhanced", label: "Enhanced" },
+      { value: "full", label: "Full customisation" },
+    ],
+  },
+  {
+    key: "promotionalCampaigns",
+    label: "Campaigns",
+    options: [
+      { value: "none", label: "None" },
+      { value: "limited", label: "Limited" },
+      { value: "priority", label: "Priority" },
+    ],
+  },
+  {
+    key: "storeVisibility",
+    label: "Visibility",
+    options: [
+      { value: "standard", label: "Standard" },
+      { value: "enhanced", label: "Enhanced" },
+      { value: "priority", label: "Priority" },
+    ],
+  },
+  {
+    key: "support",
+    label: "Support",
+    options: [
+      { value: "standard", label: "Standard" },
+      { value: "priority", label: "Priority" },
+    ],
+  },
 ] as const;
 
 type CapabilityKey = (typeof CAPABILITY_FIELDS)[number]["key"];
@@ -58,9 +124,9 @@ interface PlanForm {
   featuredDurationDays: number;
   activeCoupons: number;
   commissionPercent: number;
-  gracePeriodDays: number;
-  sortOrder: number;
-  highlights: string;
+  offerPercent: number;
+  offerReason: string;
+  offerEndsAt: string;
   isActive: boolean;
   billingCycles: BillingCycle[];
   capabilities: Record<CapabilityKey, string>;
@@ -75,15 +141,15 @@ const BLANK_FORM: PlanForm = {
   featuredDurationDays: 0,
   activeCoupons: 0,
   commissionPercent: 0,
-  gracePeriodDays: 0,
-  sortOrder: 0,
-  highlights: "",
+  offerPercent: 0,
+  offerReason: "",
+  offerEndsAt: "",
   isActive: true,
   billingCycles: ["monthly", "yearly"],
   capabilities: {
     analytics: "basic",
     salesReports: "basic",
-    exports: "limited",
+    exports: "none",
     storeCustomization: "basic",
     promotionalCampaigns: "none",
     storeVisibility: "standard",
@@ -101,15 +167,15 @@ function formFromPlan(plan: VendorPlan): PlanForm {
     featuredDurationDays: Number(plan.featuredDurationDays) || 0,
     activeCoupons: Number(plan.activeCoupons) || 0,
     commissionPercent: Number(plan.commissionPercent) || 0,
-    gracePeriodDays: Number(plan.gracePeriodDays) || 0,
-    sortOrder: Number(plan.sortOrder) || 0,
-    highlights: (plan.highlights || []).join("\n"),
+    offerPercent: Number(plan.offerPercent) || 0,
+    offerReason: plan.offerReason || "",
+    offerEndsAt: plan.offerEndsAt || "",
     isActive: plan.isActive !== false,
     billingCycles: planCycles(plan),
     capabilities: {
       analytics: plan.analytics || "basic",
       salesReports: plan.salesReports || "basic",
-      exports: plan.exports || "limited",
+      exports: plan.exports || "none",
       storeCustomization: plan.storeCustomization || "basic",
       promotionalCampaigns: plan.promotionalCampaigns || "none",
       storeVisibility: plan.storeVisibility || "standard",
@@ -128,13 +194,11 @@ function payloadFromForm(form: PlanForm): VendorPlanPayload {
     featuredDurationDays: Math.max(0, Number(form.featuredDurationDays) || 0),
     activeCoupons: Math.max(0, Number(form.activeCoupons) || 0),
     commissionPercent: Math.min(100, Math.max(0, Number(form.commissionPercent) || 0)),
-    gracePeriodDays: Math.max(0, Number(form.gracePeriodDays) || 0),
-    sortOrder: Number(form.sortOrder) || 0,
-    highlights: form.highlights
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .slice(0, 12),
+    // Zero means no offer; a cleared deadline keeps the offer open until the
+    // store team turns the percentage back to zero.
+    offerPercent: Math.min(99, Math.max(0, Number(form.offerPercent) || 0)),
+    offerReason: form.offerReason.trim(),
+    offerEndsAt: form.offerEndsAt ? form.offerEndsAt : null,
     isActive: form.isActive,
     billingCycles: form.billingCycles,
     ...form.capabilities,
@@ -177,6 +241,51 @@ interface VendorPlansClientProps {
   currency: string;
 }
 
+/** One capability as a HeroUI select, so every control on the board matches. */
+function CapabilitySelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: readonly { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  const selected = options.find((option) => option.value === value);
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-semibold text-[var(--foreground)]">{label}</label>
+      <Select
+        selectedKey={value}
+        onSelectionChange={(key) => onChange(String(key))}
+        aria-label={label}
+      >
+        <Select.Trigger className="w-full cursor-pointer">
+          <Select.Value>{selected?.label ?? value}</Select.Value>
+          <Select.Indicator />
+        </Select.Trigger>
+        <Select.Popover className="w-56 rounded-xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-1.5 shadow-xl">
+          <ListBox>
+            {options.map((option) => (
+              <ListBox.Item
+                key={option.value}
+                id={option.value}
+                textValue={option.label}
+                className="cursor-pointer"
+              >
+                {option.label}
+              </ListBox.Item>
+            ))}
+          </ListBox>
+        </Select.Popover>
+      </Select>
+    </div>
+  );
+}
+
 export default function VendorPlansClient({ initialPlans, currency }: VendorPlansClientProps) {
   const router = useRouter();
 
@@ -210,7 +319,7 @@ export default function VendorPlansClient({ initialPlans, currency }: VendorPlan
 
   const openNew = () => {
     setEditingId(null);
-    setForm({ ...BLANK_FORM, sortOrder: plans.length });
+    setForm(BLANK_FORM);
     setEditorOpen(true);
   };
 
@@ -366,6 +475,9 @@ export default function VendorPlansClient({ initialPlans, currency }: VendorPlan
             const retired = plan.isActive === false;
             const cycles = planCycles(plan);
             const paid = isPaidPlan(plan);
+            const offer = planOfferLive(plan);
+            const price = planEffectivePrice(plan, "monthly");
+            const listPrice = planPrice(plan, "monthly");
 
             return (
               <article
@@ -396,10 +508,15 @@ export default function VendorPlansClient({ initialPlans, currency }: VendorPlan
                   </span>
                 </div>
 
-                <p className="mt-3 text-lg font-bold text-[var(--foreground)]">
-                  {paid ? money(plan.monthlyPrice) : "Free"}
+                <p className="mt-3 flex flex-wrap items-baseline gap-1.5 text-lg font-bold text-[var(--foreground)]">
+                  {paid ? money(price) : "Free"}
+                  {paid && offer && (
+                    <span className="text-[10px] font-semibold text-[var(--foreground-muted)] line-through">
+                      {money(listPrice)}
+                    </span>
+                  )}
                   {paid && (
-                    <span className="ml-1 text-[10px] font-semibold text-[var(--foreground-muted)]">
+                    <span className="text-[10px] font-semibold text-[var(--foreground-muted)]">
                       / month
                     </span>
                   )}
@@ -409,6 +526,14 @@ export default function VendorPlansClient({ initialPlans, currency }: VendorPlan
                     or {money(plan.yearlyPrice)} / year
                   </p>
                 )}
+                {paid && offer && (
+                  <p className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                    <Percent className="h-3 w-3" />
+                    {Number(plan.offerPercent) || 0}% off
+                    {plan.offerReason ? ` · ${plan.offerReason}` : ""}
+                    {plan.offerEndsAt ? ` · until ${formatOrderDate(plan.offerEndsAt)}` : ""}
+                  </p>
+                )}
 
                 <ul className="mt-3 space-y-1.5">
                   {[
@@ -416,32 +541,31 @@ export default function VendorPlansClient({ initialPlans, currency }: VendorPlan
                     { label: "Featured products", value: plan.featuredProducts },
                     { label: "Active coupons", value: plan.activeCoupons },
                     { label: "Commission", value: `${Number(plan.commissionPercent) || 0}%` },
-                    { label: "Grace period", value: `${Number(plan.gracePeriodDays) || 0}d` },
-                    { label: "Sold", value: cycles.map((cycle) => cycle).join(" · ") },
+                    { label: "Analytics", value: plan.analytics },
+                    { label: "Exports", value: EXPORT_LABELS[plan.exports] ?? "None" },
+                    { label: "Sold", value: cycles.join(" · ") },
                   ].map((fact) => (
                     <li
                       key={fact.label}
                       className="flex items-center justify-between gap-2 text-[10px]"
                     >
                       <span className="text-[var(--foreground-muted)]">{fact.label}</span>
-                      <span className="font-semibold text-[var(--foreground)]">{fact.value}</span>
+                      <span className="font-semibold capitalize text-[var(--foreground)]">{fact.value}</span>
                     </li>
                   ))}
                 </ul>
 
-                {plan.highlights?.length > 0 && (
-                  <ul className="mt-3 space-y-1">
-                    {plan.highlights.slice(0, 3).map((line) => (
-                      <li
-                        key={line}
-                        className="flex items-start gap-1 text-[10px] leading-relaxed text-[var(--foreground-muted)]"
-                      >
-                        <Check className="mt-0.5 h-2.5 w-2.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                        {line}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <ul className="mt-3 space-y-1">
+                  {planFeatureList(plan).slice(0, 4).map((line) => (
+                    <li
+                      key={line}
+                      className="flex items-start gap-1 text-[10px] leading-relaxed text-[var(--foreground-muted)]"
+                    >
+                      <Check className="mt-0.5 h-2.5 w-2.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                      {line}
+                    </li>
+                  ))}
+                </ul>
 
                 <div className="mt-auto flex items-center gap-1.5 pt-4">
                   <button
@@ -570,18 +694,77 @@ export default function VendorPlansClient({ initialPlans, currency }: VendorPlan
                         setForm((prev) => ({ ...prev, commissionPercent: value }))
                       }
                     />
-                    <NumberField
-                      label="Grace period (days)"
-                      hint="Benefits kept after a period ends."
-                      value={form.gracePeriodDays}
-                      onChange={(value) => setForm((prev) => ({ ...prev, gracePeriodDays: value }))}
-                    />
-                    <NumberField
-                      label="Position"
-                      hint="Lower numbers sit first on the pricing page."
-                      value={form.sortOrder}
-                      onChange={(value) => setForm((prev) => ({ ...prev, sortOrder: value }))}
-                    />
+                  </div>
+
+                  {/* A price offer: the real price stays, the discount is
+                      applied while the deadline is ahead. */}
+                  <div className="space-y-3 rounded-2xl border border-[var(--border-color)] bg-[var(--surface-alt)]/60 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="flex items-center gap-1.5 text-xs font-bold text-[var(--foreground)]">
+                        <Percent className="h-3.5 w-3.5 text-[var(--brand-flat)]" />
+                        Price offer
+                      </p>
+                      <span className="text-[10px] text-[var(--foreground-muted)]">
+                        Applies to both cycles
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-semibold text-[var(--foreground)]">
+                          Discount (%)
+                        </label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={99}
+                          step={1}
+                          value={String(form.offerPercent)}
+                          onChange={(event) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              offerPercent: Number(event.target.value),
+                            }))
+                          }
+                        />
+                        <p className="text-[10px] text-[var(--foreground-muted)]">
+                          0 runs no offer. The checkout charges the discounted price.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-semibold text-[var(--foreground)]">
+                          Reason
+                        </label>
+                        <Input
+                          type="text"
+                          value={form.offerReason}
+                          placeholder="e.g. New vendor week"
+                          onChange={(event) =>
+                            setForm((prev) => ({ ...prev, offerReason: event.target.value }))
+                          }
+                        />
+                        <p className="text-[10px] text-[var(--foreground-muted)]">
+                          Shown on the pricing card next to the discount.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--foreground)]">
+                        <Timer className="h-3.5 w-3.5 text-[var(--brand-flat)]" />
+                        Offer ends
+                      </label>
+                      <HeroUIDateTimePicker
+                        label="Offer ends"
+                        value={form.offerEndsAt}
+                        onChange={(isoString) =>
+                          setForm((prev) => ({ ...prev, offerEndsAt: isoString }))
+                        }
+                        helperText="After this moment the full price returns on its own. Clear it for an open-ended offer."
+                        showPresets
+                      />
+                    </div>
                   </div>
 
                   <div className="flex flex-col gap-1.5">
@@ -613,38 +796,14 @@ export default function VendorPlansClient({ initialPlans, currency }: VendorPlan
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {CAPABILITY_FIELDS.map((field) => (
-                      <div key={field.key} className="flex flex-col gap-1">
-                        <label className="text-xs font-semibold text-[var(--foreground)]">
-                          {field.label}
-                        </label>
-                        <select
-                          value={form.capabilities[field.key]}
-                          onChange={(event) => setCapability(field.key, event.target.value)}
-                          className="h-9 w-full rounded-xl border border-[var(--border-color)] bg-[var(--surface)] px-2 text-[11px] capitalize text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-flat)]/35"
-                        >
-                          {field.options.map((option) => (
-                            <option key={option} value={option} className="capitalize">
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <CapabilitySelect
+                        key={field.key}
+                        label={field.label}
+                        value={form.capabilities[field.key]}
+                        options={field.options}
+                        onChange={(value) => setCapability(field.key, value)}
+                      />
                     ))}
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-[var(--foreground)]">
-                      Highlights
-                    </label>
-                    <textarea
-                      value={form.highlights}
-                      onChange={(event) =>
-                        setForm((prev) => ({ ...prev, highlights: event.target.value }))
-                      }
-                      rows={4}
-                      placeholder={"One per line, e.g. Priority placement in search"}
-                      className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--surface)] px-3 py-2 text-[11px] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--brand-flat)]/35"
-                    />
                   </div>
 
                   <div className="flex items-center justify-between rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)]/60 px-3 py-2">
