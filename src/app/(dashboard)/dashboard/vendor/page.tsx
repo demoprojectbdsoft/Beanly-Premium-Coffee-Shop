@@ -93,10 +93,14 @@ export default async function VendorOverviewPage() {
             </span>
           )}
         </div>
-        <div className="px-5 pb-5">
+        {/* This block has to be positioned: the cover band above it is
+            `relative`, and a positioned sibling paints over in-flow content,
+            so without `relative` here the lifted logo would slide behind the
+            image instead of sitting on top of it. */}
+        <div className="relative px-5 pb-5">
           {/* Only the logo is lifted over the cover; the store name sits below
               the band so the image never covers it. */}
-          <div className="-mt-10 w-fit">
+          <div className="relative z-10 -mt-10 w-fit">
             <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border-4 border-[var(--surface-elevated)] bg-[var(--surface-alt)] text-[var(--brand-flat)] shadow-md">
               {logo ? (
                 // The logo is a URL the applicant supplied; next/image would
