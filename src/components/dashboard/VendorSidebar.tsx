@@ -12,6 +12,7 @@ import {
   LogOut,
   Package,
   Settings,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
   Store,
@@ -55,6 +56,7 @@ const NAV_GROUPS: { title: string; items: { name: string; href: string; icon: Lu
     title: "Sales & Marketing",
     items: [
       { name: "Orders", href: "/dashboard/vendor/orders", icon: ShoppingBag },
+      { name: "Warranties", href: "/dashboard/vendor/warranties", icon: ShieldCheck },
       { name: "Analytics", href: "/dashboard/vendor/analytics", icon: BarChart3 },
       { name: "Coupons", href: "/dashboard/vendor/coupons", icon: Ticket },
       { name: "Promotions", href: "/dashboard/vendor/promotions", icon: Sparkles },

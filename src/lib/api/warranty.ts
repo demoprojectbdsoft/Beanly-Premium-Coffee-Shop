@@ -11,6 +11,16 @@ export const getWarranties = async (
   return serverFetch(withQuery("/warranties", params), true);
 };
 
+/**
+ * The warranties issued on one seller's own products. The server resolves the
+ * scope from the caller, so no id travels in the query.
+ */
+export const getVendorWarranties = async (
+  params?: Record<string, string | number | boolean | undefined>
+) => {
+  return serverFetch(withQuery("/warranties/vendor", params), true);
+};
+
 export const getMyWarranties = async (params?: { page?: number; limit?: number }) => {
   return serverFetch(withQuery("/warranties/mine", params), true);
 };

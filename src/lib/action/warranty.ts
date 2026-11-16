@@ -2,7 +2,17 @@
 
 import { serverMutation } from "../core/server";
 import { getUserSession } from "../core/session";
-import { isAdminRole } from "../core/roles";
+import { isAdminRole, rolesOf } from "../core/roles";
+
+/**
+ * Who may work a warranty claim.
+ *
+ * The store team works any of them; a seller works the ones on their own
+ * products. The API is the one that checks the product's owner, so this only
+ * decides whether the call is worth making.
+ */
+const canWorkWarranties = (user: Parameters<typeof isAdminRole>[0]) =>
+  isAdminRole(user) || rolesOf(user).includes("vendor");
 
 /**
  * Customer: submit a warranty claim for one of their own warranties.
@@ -36,8 +46,8 @@ export const adminUpdateClaim = async (
   }
 ) => {
   const user = await getUserSession();
-  if (!isAdminRole(user)) {
-    return { success: false, message: "Admin access required." };
+  if (!canWorkWarranties(user)) {
+    return { success: false, message: "Store access required." };
   }
   return serverMutation(`/warranties/claim/${warrantyId}`, data, "PATCH");
 };
@@ -51,8 +61,8 @@ export const adminExtendWarranty = async (
   data: { months: number; reason: string }
 ) => {
   const user = await getUserSession();
-  if (!isAdminRole(user)) {
-    return { success: false, message: "Admin access required." };
+  if (!canWorkWarranties(user)) {
+    return { success: false, message: "Store access required." };
   }
   return serverMutation(`/warranties/${warrantyId}/extend`, data, "PATCH");
 };
@@ -66,8 +76,8 @@ export const emailWarrantyCustomer = async (
   data: { subject: string; message: string }
 ) => {
   const user = await getUserSession();
-  if (!isAdminRole(user)) {
-    return { success: false, message: "Admin access required." };
+  if (!canWorkWarranties(user)) {
+    return { success: false, message: "Store access required." };
   }
   return serverMutation(`/warranties/email/${warrantyId}`, data, "POST");
 };

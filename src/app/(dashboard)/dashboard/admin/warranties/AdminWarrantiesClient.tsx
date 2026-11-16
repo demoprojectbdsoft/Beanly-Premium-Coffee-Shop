@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useTransition, useCallback } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
   Input,
@@ -189,8 +189,16 @@ export default function AdminWarrantiesClient({
   pagination,
 }: AdminWarrantiesClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+
+  // This board serves both desks. The URL says which one is looking, so a
+  // vendor filter never navigates to the store team's route (and back).
+  const isVendorBoard = Boolean(pathname?.startsWith("/dashboard/vendor"));
+  const basePath = isVendorBoard ? "/dashboard/vendor/warranties" : "/dashboard/admin/warranties";
+  const homePath = isVendorBoard ? "/dashboard/vendor" : "/dashboard/admin";
+  const homeLabel = isVendorBoard ? "Vendor Dashboard" : "Admin Dashboard";
 
   const [warranties, setWarranties] = useState<WarrantyItem[]>(initialWarranties);
   const [selectedWarranty, setSelectedWarranty] = useState<WarrantyItem | null>(null);
@@ -259,10 +267,10 @@ export default function AdminWarrantiesClient({
 
       const qs = params.toString();
       startTransition(() => {
-        router.push(`/dashboard/admin/warranties${qs ? `?${qs}` : ""}`, { scroll: false });
+        router.push(`${basePath}${qs ? `?${qs}` : ""}`, { scroll: false });
       });
     },
-    [router, searchParams]
+    [router, searchParams, basePath]
   );
 
   const handleSearchSubmit = (e?: React.FormEvent) => {
@@ -273,7 +281,7 @@ export default function AdminWarrantiesClient({
   const handleResetFilters = () => {
     setSearchInput("");
     startTransition(() => {
-      router.push("/dashboard/admin/warranties", { scroll: false });
+      router.push(basePath, { scroll: false });
     });
   };
 
@@ -486,7 +494,7 @@ export default function AdminWarrantiesClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-[var(--foreground-muted)] mb-1">
-            <Link href="/dashboard/admin" className="hover:text-primary transition-colors">Admin Dashboard</Link>
+            <Link href={homePath} className="hover:text-primary transition-colors">{homeLabel}</Link>
             <span>/</span>
             <span className="text-primary">Warranties</span>
           </div>
