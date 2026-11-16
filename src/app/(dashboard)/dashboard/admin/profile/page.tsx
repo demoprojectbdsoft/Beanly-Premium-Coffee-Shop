@@ -15,6 +15,7 @@ const INITIAL_ADMIN_PROFILE: AdminProfileData = {
   department: "Management & Operations",
   bio: "",
   joinedDate: "Recently",
+  warehouse: { label: "", address: "", city: "", area: "", postalCode: "", phone: "" },
 };
 
 async function getAdminProfileData(): Promise<AdminProfileData> {
@@ -68,6 +69,16 @@ async function getAdminProfileData(): Promise<AdminProfileData> {
       department: merged.department || (session as any).department || "Management & Operations",
       bio: merged.bio || (session as any).bio || "",
       joinedDate,
+      // The hand-over desk is read back so the form shows what the riders get;
+      // a missing record is an empty form, never a missing section.
+      warehouse: {
+        label: merged.warehouse?.label || "",
+        address: merged.warehouse?.address || "",
+        city: merged.warehouse?.city || "",
+        area: merged.warehouse?.area || "",
+        postalCode: merged.warehouse?.postalCode || "",
+        phone: merged.warehouse?.phone || "",
+      },
     };
   } catch (error) {
     console.error("Failed to fetch admin profile:", error);

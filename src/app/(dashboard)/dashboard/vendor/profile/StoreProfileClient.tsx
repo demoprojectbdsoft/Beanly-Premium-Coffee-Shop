@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Store,
   User,
+  Warehouse,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import ImageUploader from "@/components/shared/ImageUploader";
@@ -58,6 +59,12 @@ type Draft = {
   area: string;
   street: string;
   postalCode: string;
+  warehouseLabel: string;
+  warehouseStreet: string;
+  warehouseCity: string;
+  warehouseArea: string;
+  warehousePostalCode: string;
+  warehousePhone: string;
   facebook: string;
   instagram: string;
   x: string;
@@ -74,6 +81,7 @@ type Draft = {
 function toDraft(store: VendorStore, application?: VendorApplication | null): Draft {
   const file = application?.storeInfo;
   const address = store.address ?? application?.businessAddress;
+  const stock = store.warehouse ?? application?.warehouseAddress;
   const links = store.socialLinks ?? file?.socialLinks;
   return {
     name: store.name || file?.name || "",
@@ -91,6 +99,12 @@ function toDraft(store: VendorStore, application?: VendorApplication | null): Dr
     area: address?.area || "",
     street: address?.address || "",
     postalCode: address?.postalCode || "",
+    warehouseLabel: stock?.label || "",
+    warehouseStreet: stock?.address || "",
+    warehouseCity: stock?.city || "",
+    warehouseArea: stock?.area || "",
+    warehousePostalCode: stock?.postalCode || "",
+    warehousePhone: stock?.phone || "",
     facebook: links?.facebook || "",
     instagram: links?.instagram || "",
     x: links?.x || "",
@@ -176,6 +190,16 @@ export default function StoreProfileClient({
         x: draft.x.trim(),
         linkedin: draft.linkedin.trim(),
       };
+      // Where the rider collects. Every line is sent, so clearing a box on this
+      // form really empties it instead of leaving the old street for a rider.
+      const warehouse = {
+        label: draft.warehouseLabel.trim(),
+        address: draft.warehouseStreet.trim(),
+        city: draft.warehouseCity.trim(),
+        area: draft.warehouseArea.trim(),
+        postalCode: draft.warehousePostalCode.trim(),
+        phone: draft.warehousePhone.trim(),
+      };
 
       // With a file on record, one call writes it and the API mirrors the
       // storefront, the address and the visibility onto the store row. Without
@@ -190,6 +214,7 @@ export default function StoreProfileClient({
             },
             storeInfo: { ...storefront, socialLinks },
             businessAddress: address,
+            warehouseAddress: warehouse,
             verification: {
               businessType: draft.businessType.trim(),
               registrationNumber: draft.registrationNumber.trim(),
@@ -202,6 +227,7 @@ export default function StoreProfileClient({
             ...storefront,
             isVisible: draft.isVisible,
             address,
+            warehouse,
             socialLinks,
           });
 
@@ -515,6 +541,74 @@ export default function StoreProfileClient({
                 className={inputClass}
               />
             </Field>
+          </section>
+
+          <section className="space-y-3 rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-4 shadow-2xs">
+            <h2 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+              <Warehouse className="h-3.5 w-3.5 text-[var(--brand-flat)]" />
+              Warehouse
+            </h2>
+            <p className="text-[11px] text-[var(--foreground-muted)]">
+              Where the rider collects the parcel. Leave the street empty when the stock leaves from the
+              business address above.
+            </p>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Name">
+                <input
+                  value={draft.warehouseLabel}
+                  onChange={(event) => set("warehouseLabel", event.target.value)}
+                  placeholder="Uttara warehouse"
+                  maxLength={120}
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="Phone at the gate">
+                <input
+                  value={draft.warehousePhone}
+                  onChange={(event) => set("warehousePhone", event.target.value)}
+                  placeholder="+880…"
+                  maxLength={30}
+                  className={inputClass}
+                />
+              </Field>
+            </div>
+
+            <Field label="Street">
+              <input
+                value={draft.warehouseStreet}
+                onChange={(event) => set("warehouseStreet", event.target.value)}
+                maxLength={400}
+                className={inputClass}
+              />
+            </Field>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Field label="Area">
+                <input
+                  value={draft.warehouseArea}
+                  onChange={(event) => set("warehouseArea", event.target.value)}
+                  maxLength={120}
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="City">
+                <input
+                  value={draft.warehouseCity}
+                  onChange={(event) => set("warehouseCity", event.target.value)}
+                  maxLength={120}
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="Postal code">
+                <input
+                  value={draft.warehousePostalCode}
+                  onChange={(event) => set("warehousePostalCode", event.target.value)}
+                  maxLength={20}
+                  className={inputClass}
+                />
+              </Field>
+            </div>
           </section>
 
           <section className="space-y-3 rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-4 shadow-2xs">

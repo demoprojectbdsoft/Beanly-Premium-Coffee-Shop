@@ -14,12 +14,29 @@ import {
   Building2,
   BadgeCheck,
   Activity,
+  Warehouse,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { authClient } from "@/lib/auth-client";
 import { updateUser } from "@/lib/action/user";
 import ImageUploader from "@/components/shared/ImageUploader";
 import { useDemoAdmin } from "@/hooks/useDemoAdmin";
+
+/**
+ * The place the store team hands parcels over.
+ *
+ * Kept on the admin's own account because it is a desk, not a shop: a rider
+ * picking up an order whose seller filled no warehouse of their own is sent
+ * here. Empty means the site address stays the last answer.
+ */
+export interface AdminWarehouse {
+  label?: string;
+  address?: string;
+  city?: string;
+  area?: string;
+  postalCode?: string;
+  phone?: string;
+}
 
 export interface AdminProfileData {
   id: string;
@@ -33,6 +50,7 @@ export interface AdminProfileData {
   department: string;
   bio: string;
   joinedDate: string;
+  warehouse: AdminWarehouse;
 }
 
 interface AdminProfileClientProps {
@@ -46,6 +64,9 @@ export default function AdminProfileClient({
   const [profile, setProfile] = useState<AdminProfileData>(initialProfile);
   const [avatarUrl, setAvatarUrl] = useState<string>(initialProfile.avatar || "");
   const [isSaving, setIsSaving] = useState(false);
+
+  const setWarehouse = <K extends keyof AdminWarehouse>(key: K, value: string) =>
+    setProfile((prev) => ({ ...prev, warehouse: { ...prev.warehouse, [key]: value } }));
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,6 +84,16 @@ export default function AdminProfileClient({
         phone: profile.phone,
         bio: profile.bio,
         department: profile.department,
+        // Every line is sent, so clearing the hand-over desk really unsets it
+        // and the site address answers for the riders again.
+        warehouse: {
+          label: (profile.warehouse?.label || "").trim(),
+          address: (profile.warehouse?.address || "").trim(),
+          city: (profile.warehouse?.city || "").trim(),
+          area: (profile.warehouse?.area || "").trim(),
+          postalCode: (profile.warehouse?.postalCode || "").trim(),
+          phone: (profile.warehouse?.phone || "").trim(),
+        },
       });
       setProfile((prev) => ({
         ...prev,
@@ -249,6 +280,91 @@ export default function AdminProfileClient({
                 placeholder="e.g. Operations, Catalog, Finance"
                 className="w-full h-10 rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)] focus:border-primary text-xs"
               />
+            </div>
+
+            {/*
+              The hand-over desk. A marketplace order is collected from a shop,
+              not from the site address, so the one point the store team owns
+              has to live on an account the rider lookup can read.
+            */}
+            <div className="space-y-4 rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)] p-3.5">
+              <div className="flex items-start gap-2">
+                <Warehouse className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-[var(--foreground)]">Parcel hand-over</p>
+                  <p className="text-[11px] text-[var(--foreground-muted)]">
+                    Where riders collect an order whose seller has no warehouse of their own.
+                    Leave the street empty to keep the site address as the last answer.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="font-semibold text-[var(--foreground)]">Name</label>
+                  <Input
+                    type="text"
+                    value={profile.warehouse?.label || ""}
+                    onChange={(e) => setWarehouse("label", e.target.value)}
+                    placeholder="Uttara warehouse"
+                    className="w-full h-10 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] focus:border-primary text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-[var(--foreground)]">Phone at the gate</label>
+                  <Input
+                    type="tel"
+                    value={profile.warehouse?.phone || ""}
+                    onChange={(e) => setWarehouse("phone", e.target.value)}
+                    placeholder="+880..."
+                    className="w-full h-10 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] focus:border-primary text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-[var(--foreground)]">Street</label>
+                <textarea
+                  rows={2}
+                  value={profile.warehouse?.address || ""}
+                  onChange={(e) => setWarehouse("address", e.target.value)}
+                  placeholder="House, road, landmark"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] focus:border-primary focus:outline-none text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="font-semibold text-[var(--foreground)]">Area</label>
+                  <Input
+                    type="text"
+                    value={profile.warehouse?.area || ""}
+                    onChange={(e) => setWarehouse("area", e.target.value)}
+                    className="w-full h-10 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] focus:border-primary text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-[var(--foreground)]">City</label>
+                  <Input
+                    type="text"
+                    value={profile.warehouse?.city || ""}
+                    onChange={(e) => setWarehouse("city", e.target.value)}
+                    className="w-full h-10 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] focus:border-primary text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-[var(--foreground)]">Postal code</label>
+                  <Input
+                    type="text"
+                    value={profile.warehouse?.postalCode || ""}
+                    onChange={(e) => setWarehouse("postalCode", e.target.value)}
+                    className="w-full h-10 rounded-xl border border-[var(--border-color)] bg-[var(--surface)] focus:border-primary text-xs"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-1">

@@ -99,6 +99,22 @@ export interface VendorBusinessAddress {
   longitude?: number | null;
 }
 
+/**
+ * Where a rider collects the stock.
+ *
+ * Not the shop address: a seller can sell from a counter downtown while the
+ * boxes sit in a warehouse across town. An empty record means "collect from
+ * the shop itself", which is what the rider then reads instead.
+ */
+export interface VendorWarehouse {
+  label?: string;
+  address?: string;
+  city?: string;
+  area?: string;
+  postalCode?: string;
+  phone?: string;
+}
+
 export interface VendorVerification {
   businessType?: string;
   registrationNumber?: string;
@@ -128,6 +144,7 @@ export interface VendorApplication {
   personalInfo: VendorPersonalInfo;
   storeInfo: VendorStoreInfo;
   businessAddress: VendorBusinessAddress;
+  warehouseAddress?: VendorWarehouse;
   verification?: VendorVerification;
   selectedPlan: VendorPlanId;
   billingCycle: BillingCycle;
@@ -147,6 +164,7 @@ export interface VendorApplicationDraft {
   personalInfo: VendorPersonalInfo;
   storeInfo: VendorStoreInfo;
   businessAddress: VendorBusinessAddress;
+  warehouseAddress: VendorWarehouse;
   verification: VendorVerification;
   selectedPlan: VendorPlanId;
   billingCycle: BillingCycle;
@@ -165,6 +183,8 @@ export interface VendorStore {
   website?: string;
   socialLinks?: VendorSocialLinks;
   address?: VendorBusinessAddress;
+  /** The collection point the rider is sent to; private to the dashboard. */
+  warehouse?: VendorWarehouse;
   status?: "active" | "suspended" | "closed";
   isVisible?: boolean;
   isFeatured?: boolean;

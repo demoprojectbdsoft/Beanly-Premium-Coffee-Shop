@@ -15,11 +15,13 @@ import {
   MapPinned,
   Send,
   Store,
+  Warehouse,
 } from "lucide-react";
 import type {
   BillingCycle,
   VendorApplicationDraft,
   VendorPlanId,
+  VendorWarehouse,
 } from "@/types/vendor";
 import { VENDOR_BUSINESS_TYPES } from "@/types/vendor";
 import { submitVendorApplication } from "@/lib/action/vendor";
@@ -167,6 +169,12 @@ export default function VendorApplicationWizard({
       businessAddress: { ...current.businessAddress, ...patch },
     }));
 
+  const patchWarehouse = (patch: Partial<VendorWarehouse>) =>
+    setDraft((current) => ({
+      ...current,
+      warehouseAddress: { ...(current.warehouseAddress || {}), ...patch },
+    }));
+
   const patchVerification = (patch: Partial<VendorApplicationDraft["verification"]>) =>
     setDraft((current) => ({
       ...current,
@@ -230,6 +238,16 @@ export default function VendorApplicationWizard({
           area: draft.businessAddress.area?.trim() || "",
           address: draft.businessAddress.address?.trim() || "",
           postalCode: draft.businessAddress.postalCode?.trim() || "",
+        },
+        // Optional: an empty street here means the rider collects from the
+        // business address, which is what the API falls back to by itself.
+        warehouseAddress: {
+          label: draft.warehouseAddress?.label?.trim() || "",
+          address: draft.warehouseAddress?.address?.trim() || "",
+          city: draft.warehouseAddress?.city?.trim() || "",
+          area: draft.warehouseAddress?.area?.trim() || "",
+          postalCode: draft.warehouseAddress?.postalCode?.trim() || "",
+          phone: draft.warehouseAddress?.phone?.trim() || "",
         },
         verification: {
           businessType: draft.verification.businessType?.trim() || "",
@@ -507,10 +525,76 @@ export default function VendorApplicationWizard({
               />
             </Field>
 
+            <div className="space-y-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)] p-3">
+              <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+                <Warehouse className="h-3.5 w-3.5 text-[var(--brand-flat)]" />
+                Warehouse
+              </p>
+              <p className="text-[10px] text-[var(--foreground-muted)]">
+                Optional. Where the stock waits for the rider, when that is not the shop itself.
+                Leave the street empty to send riders to the address above.
+              </p>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Warehouse name">
+                  <input
+                    className={INPUT_CLASS}
+                    value={draft.warehouseAddress?.label || ""}
+                    onChange={(event) => patchWarehouse({ label: event.target.value })}
+                    placeholder="Uttara warehouse"
+                  />
+                </Field>
+                <Field label="Phone at the gate">
+                  <input
+                    className={INPUT_CLASS}
+                    value={draft.warehouseAddress?.phone || ""}
+                    onChange={(event) => patchWarehouse({ phone: event.target.value })}
+                    placeholder="+880…"
+                  />
+                </Field>
+              </div>
+
+              <Field label="Street">
+                <input
+                  className={INPUT_CLASS}
+                  value={draft.warehouseAddress?.address || ""}
+                  onChange={(event) => patchWarehouse({ address: event.target.value })}
+                  placeholder="House, road, landmark"
+                />
+              </Field>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label="Area">
+                  <input
+                    className={INPUT_CLASS}
+                    value={draft.warehouseAddress?.area || ""}
+                    onChange={(event) => patchWarehouse({ area: event.target.value })}
+                    placeholder="Uttara"
+                  />
+                </Field>
+                <Field label="City">
+                  <input
+                    className={INPUT_CLASS}
+                    value={draft.warehouseAddress?.city || ""}
+                    onChange={(event) => patchWarehouse({ city: event.target.value })}
+                    placeholder="Dhaka"
+                  />
+                </Field>
+                <Field label="Postal code">
+                  <input
+                    className={INPUT_CLASS}
+                    value={draft.warehouseAddress?.postalCode || ""}
+                    onChange={(event) => patchWarehouse({ postalCode: event.target.value })}
+                    placeholder="1230"
+                  />
+                </Field>
+              </div>
+            </div>
+
             <p className="flex items-start gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-alt)] p-3 text-[10px] text-[var(--foreground-muted)]">
               <MapPinned className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[var(--brand-flat)]" />
-              This address is where the store operates and where a rider collects parcels.
-              It is shown to buyers only as the store location.
+              The business address is where the shop operates. Buyers see it as the store
+              location; the warehouse stays between you, the store team and the rider.
             </p>
           </div>
         );
@@ -605,6 +689,18 @@ export default function VendorApplicationWizard({
                 { label: "Area", value: draft.businessAddress.area },
                 { label: "Address", value: draft.businessAddress.address },
                 { label: "Postal code", value: draft.businessAddress.postalCode },
+              ]}
+            />
+
+            <SummaryBlock
+              title="Warehouse"
+              rows={[
+                { label: "Name", value: draft.warehouseAddress?.label },
+                { label: "Address", value: draft.warehouseAddress?.address },
+                { label: "Area", value: draft.warehouseAddress?.area },
+                { label: "City", value: draft.warehouseAddress?.city },
+                { label: "Postal code", value: draft.warehouseAddress?.postalCode },
+                { label: "Phone", value: draft.warehouseAddress?.phone },
               ]}
             />
 

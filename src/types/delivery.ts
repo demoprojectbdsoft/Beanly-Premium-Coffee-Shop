@@ -239,6 +239,18 @@ export interface DeliveryOrderDetails {
   };
 }
 
+/** One shop's collection point, when the order was sold by a seller. */
+export interface DeliveryPickupWarehouse {
+  name: string;
+  /** The warehouse's own name, e.g. "Uttara warehouse". */
+  label: string;
+  address: string;
+  city: string;
+  area: string;
+  postalCode: string;
+  phone: string;
+}
+
 /** Where the parcel is picked up, and who to call if it does not scan. */
 export interface DeliveryPickupPoint {
   name: string;
@@ -246,6 +258,11 @@ export interface DeliveryPickupPoint {
   phone: string;
   email: string;
   currency: string;
+  /**
+   * Every shop behind the order, each with the place its stock waits. Empty on
+   * an order the platform itself ships, where the fields above are the answer.
+   */
+  warehouses?: DeliveryPickupWarehouse[];
 }
 
 /**

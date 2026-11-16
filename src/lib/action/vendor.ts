@@ -11,6 +11,7 @@ import type {
   VendorProductDraft,
   VendorStoreInfo,
   VendorVerification,
+  VendorWarehouse,
 } from "@/types/vendor";
 
 /**
@@ -56,6 +57,8 @@ export interface VendorApplicationPayload {
     latitude?: number | null;
     longitude?: number | null;
   };
+  /** Optional: a seller whose stock leaves from the counter skips this. */
+  warehouseAddress?: VendorWarehouse;
   verification?: {
     businessType?: string;
     registrationNumber?: string;
@@ -133,6 +136,8 @@ export interface VendorStoreUpdate {
     latitude?: number | null;
     longitude?: number | null;
   };
+  /** Where the rider collects; private, unlike the shop address above. */
+  warehouse?: VendorWarehouse;
   socialLinks?: {
     facebook?: string;
     instagram?: string;
@@ -170,6 +175,8 @@ export interface VendorProfileUpdate {
   personalInfo?: Partial<VendorPersonalInfo>;
   storeInfo?: Partial<Omit<VendorStoreInfo, "slug">>;
   businessAddress?: Partial<VendorBusinessAddress>;
+  /** The collection point, saved with the rest of the file. */
+  warehouseAddress?: Partial<VendorWarehouse>;
   verification?: Partial<VendorVerification>;
   isVisible?: boolean;
 }

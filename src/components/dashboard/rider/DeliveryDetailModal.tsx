@@ -18,6 +18,7 @@ import {
   ReceiptText,
   Store,
   User as UserIcon,
+  Warehouse,
   X,
 } from "lucide-react";
 import { toast } from "react-toastify";
@@ -241,6 +242,53 @@ export default function DeliveryDetailModal({
                       </p>
                     </div>
                   </div>
+
+                  {/*
+                    Every shop behind the order, with the place its stock waits.
+                    A seller that never filled a warehouse in answers with the
+                    shop itself, so the rider still knows where to go.
+                  */}
+                  {(pickup?.warehouses?.length ?? 0) > 0 && (
+                    <div className="p-3.5 rounded-2xl bg-[var(--surface-alt)] border border-[var(--border-color)] space-y-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)] flex items-center gap-1.5">
+                        <Warehouse className="w-3.5 h-3.5" />
+                        Pick up from
+                      </p>
+                      <ul className="space-y-2">
+                        {pickup!.warehouses!.map((place, index) => (
+                          <li
+                            key={`${place.name}-${index}`}
+                            className="rounded-xl bg-[var(--surface)] border border-[var(--border-color)] p-2.5 space-y-1"
+                          >
+                            <p className="text-xs font-bold text-[var(--foreground)]">
+                              {place.name}
+                              {place.label && (
+                                <span className="font-semibold text-[var(--foreground-muted)]">
+                                  {" "}
+                                  · {place.label}
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-[11px] text-[var(--foreground-muted)] flex items-start gap-1">
+                              <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
+                              {[place.address, place.area, place.city, place.postalCode]
+                                .filter(Boolean)
+                                .join(", ") || "No street address — call before riding out"}
+                            </p>
+                            {place.phone && (
+                              <a
+                                href={`tel:${place.phone}`}
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary"
+                              >
+                                <Phone className="w-3 h-3" />
+                                {place.phone}
+                              </a>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[var(--surface)] border border-[var(--border-color)]">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
