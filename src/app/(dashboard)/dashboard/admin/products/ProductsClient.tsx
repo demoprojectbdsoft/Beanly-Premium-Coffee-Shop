@@ -178,7 +178,6 @@ export default function ProductsClient({
     subCategoryIds: new Set<string>(),
     badges: new Set<string>(),
     inStock: true,
-    isFeatured: false,
     warrantyPeriodMonths: "",
     warrantyType: "manufacturer-warranty",
     warrantyTerms: "",
@@ -290,7 +289,6 @@ export default function ProductsClient({
       subCategoryIds: subSet,
       badges: badgeSet,
       inStock: p.inStock,
-      isFeatured: !!p.isFeatured,
       warrantyPeriodMonths:
         p.warrantyPeriodMonths != null ? String(p.warrantyPeriodMonths) : "",
       warrantyType: p.warrantyType || "manufacturer-warranty",
@@ -401,7 +399,6 @@ export default function ProductsClient({
       subCategoryIds: Array.from(editForm.subCategoryIds),
       badges: Array.from(editForm.badges),
       inStock: hasEditPositiveStock ? true : editForm.inStock,
-      isFeatured: editForm.isFeatured,
       warrantyPeriodMonths: editForm.warrantyPeriodMonths
         ? parseInt(editForm.warrantyPeriodMonths, 10)
         : undefined,
@@ -1226,29 +1223,17 @@ export default function ProductsClient({
                       )}
                     </div>
 
-                    {/* Featured toggle */}
-                    <div className="flex items-center justify-between gap-3 p-3 bg-[var(--surface-alt)] rounded-xl border border-[var(--border-color)]/60 cursor-pointer">
+                    {/* A shelf is lit from the promotions desk, where the
+                        placement carries an end date. */}
+                    <div className="flex items-center justify-between gap-3 p-3 bg-[var(--surface-alt)] rounded-xl border border-[var(--border-color)]/60">
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold text-[var(--foreground)] flex items-center gap-1">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" /> Featured Item
+                          <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" /> Featured placement
                         </p>
                         <p className="text-[10px] text-[var(--foreground-muted)]">
-                          Promote in featured grids & hero sections
+                          Granted from the Promotions desk, where every placement has an end date
                         </p>
                       </div>
-                      <Switch
-                        isSelected={editForm.isFeatured}
-                        onChange={(val) =>
-                          setEditForm((prev) => ({ ...prev, isFeatured: !!val }))
-                        }
-                        className="shrink-0 cursor-pointer"
-                      >
-                        <Switch.Content className="cursor-pointer">
-                          <Switch.Control className="cursor-pointer">
-                            <Switch.Thumb className="cursor-pointer" />
-                          </Switch.Control>
-                        </Switch.Content>
-                      </Switch>
                     </div>
                   </div>
 

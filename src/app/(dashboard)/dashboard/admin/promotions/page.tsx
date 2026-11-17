@@ -44,8 +44,8 @@ const asProductOptions = (payload: unknown): GrantProductOption[] => {
     .map((raw) => {
       const row = raw as ProductRow;
       // The shop is read from the populated store row (or the seller join). A
-      // row without either is the store's own stock, which this board cannot
-      // lift from here.
+      // row without either is the store's own stock, which this board lifts just
+      // as well — its placement simply has no seller behind it.
       const storeName =
         row.seller?.name ||
         (row.storeId && typeof row.storeId === "object"
@@ -60,9 +60,6 @@ const asProductOptions = (payload: unknown): GrantProductOption[] => {
         isFeatured: Boolean(row.isFeatured),
         sellCount: Number(row.sellCount) || 0,
         sellerName: storeName,
-        // `vendorId` / `storeId` are what tell a seller's listing from the
-        // store's own stock, which the board cannot lift from here.
-        sellerOwned: Boolean(row.vendorId || row.storeId || row.vendorProductStatus),
       };
     })
     .filter((option) => option._id && option.title);

@@ -54,8 +54,6 @@ export interface GrantProductOption {
   sellCount: number;
   /** The shop that sells it; empty for the store's own stock. */
   sellerName: string;
-  /** False for the store's own stock, which this board cannot lift. */
-  sellerOwned: boolean;
 }
 
 /** One row of the shop picker. `userId` is what a store grant is made to. */
@@ -276,8 +274,10 @@ export default function AdminPromotionsClient({
           } · ${product.sellCount.toLocaleString()} sold${
             product.isFeatured ? " · already on the shelves" : ""
           }`,
-          blocked: !product.sellerOwned,
-          blockedNote: "Feature it from the Products desk — it has no seller behind it",
+          // Every listing can be lifted here, the store's own stock included:
+          // its placement is dated the same way, it just has no seller behind it.
+          blocked: false,
+          blockedNote: "",
           label: product.title,
           draft: { kind: "product" as PromotionKind, productId: product._id },
         }))
@@ -349,7 +349,7 @@ export default function AdminPromotionsClient({
               </p>
               <p className="mt-0.5 max-w-2xl text-[10px] leading-relaxed text-[var(--foreground-muted)]">
                 {panel === "product"
-                  ? "The seller the product belongs to is read from the row, never typed here. The store's own stock is listed but cannot be granted from this board — it has no dated placement behind it."
+                  ? "A seller's listing is read along with its shop, never typed here. The store's own stock is on the list too — it is featured for the days you choose and goes dark on its own date, with no seller to notify."
                   : "Only an active shop can be lifted, and a seller cannot feature their own storefront from their desk. This is the one place that decision is made."}
               </p>
             </div>
@@ -400,7 +400,7 @@ export default function AdminPromotionsClient({
             <input
               value={reason}
               onChange={(event) => setReason(event.target.value.slice(0, 200))}
-              placeholder="Why, for the note the seller reads (optional)"
+              placeholder="Why (optional) — the seller reads it when there is one"
               className="h-9 w-full rounded-xl border border-[var(--border-color)] bg-[var(--surface)] px-3 text-[11px] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]/70 focus:outline-none focus:ring-2 focus:ring-[var(--brand-flat)]/35"
             />
           </div>
@@ -520,8 +520,9 @@ export default function AdminPromotionsClient({
 
           <p className="mt-3 flex items-center gap-1.5 text-[10px] text-[var(--foreground-muted)]">
             <Wand2 className="h-3 w-3" />
-            A grant is a placement like any other: it holds no slot the shop paid for, and the
-            daily sweep turns it off when its date passes.
+            A grant is a placement like any other: it holds no slot the shop paid for, a better
+            plan&apos;s placement sits higher on the shelf, and the daily sweep turns it off when
+            its date passes.
           </p>
         </section>
       )}

@@ -23,6 +23,24 @@ const refId = (ref: unknown) => {
   return String(row._id ?? row.id ?? "");
 };
 
+/**
+ * The length a placement actually gets.
+ *
+ * The package states the window, and the period that paid for it is the ceiling
+ * — the shelf never outlives the plan, so a subscription in its last days cannot
+ * book a month of shelf space.
+ */
+function placementDays(planDays: number, effectiveUntil?: string | null): number {
+  if (planDays <= 0) return 0;
+  if (!effectiveUntil) return planDays;
+
+  const remaining = Math.max(
+    1,
+    Math.ceil((new Date(effectiveUntil).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+  );
+  return Math.min(planDays, remaining);
+}
+
 interface VendorPromotionsPageProps {
   searchParams: Promise<{
     status?: string;
@@ -58,6 +76,11 @@ export default async function VendorPromotionsPage({ searchParams }: VendorPromo
     ]);
 
   const result = asPromotionList(list);
+
+  const durationDays = placementDays(
+    subscription?.plan.featuredDurationDays ?? 0,
+    subscription?.effectiveUntil
+  );
 
   if (!result) {
     return (
@@ -103,8 +126,10 @@ export default async function VendorPromotionsPage({ searchParams }: VendorPromo
         planName: subscription?.plan.name || "Free",
         limit: subscription?.plan.featuredProducts ?? 0,
         used: subscription?.usage.featuredProducts ?? 0,
-        durationDays: subscription?.plan.featuredDurationDays ?? 0,
+        durationDays,
         isLive: subscription?.isLive ?? false,
+        // What the featured shelf ranks on after the plan tier.
+        billingCycle: subscription?.subscription?.billingCycle || "monthly",
       }}
       products={(catalogue?.products ?? [])
         .filter((product) =>

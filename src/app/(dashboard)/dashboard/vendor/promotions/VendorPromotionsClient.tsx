@@ -46,9 +46,11 @@ interface VendorPromotionsClientProps {
     planName: string;
     limit: number;
     used: number;
-    /** How long one placement stays up on this plan. */
+    /** How long one placement stays up on this plan, capped by the period left. */
     durationDays: number;
     isLive: boolean;
+    /** The period the plan was bought for; a yearly plan outranks a monthly one. */
+    billingCycle: "monthly" | "yearly";
   };
   /** The seller's own buyable listings — all a placement can lift. */
   products: FeatureProductOption[];
@@ -283,11 +285,20 @@ export default function VendorPromotionsClient({
 
         <p className="mt-2 text-[10px] leading-relaxed text-[var(--foreground-muted)]">
           {allowance.durationDays > 0
-            ? `Each placement runs ${allowance.durationDays} day${allowance.durationDays === 1 ? "" : "s"} from the day you pin it, then comes off the shelves on its own. A row that ended or was cancelled is already out of the count.`
+            ? `Each placement runs ${allowance.durationDays} day${allowance.durationDays === 1 ? "" : "s"} from the day you pin it, and never past the end of the period that paid for it — then it comes off the shelves on its own. A row that ended or was cancelled is already out of the count.`
             : "Your plan states no featured window, so there is nothing to buy here yet."}
           {!allowance.isLive &&
             " Your subscription is not running, so new placements are refused until it is renewed."}
         </p>
+
+        {allowance.isLive && allowance.durationDays > 0 && (
+          <p className="mt-1.5 text-[10px] leading-relaxed text-[var(--foreground-muted)]">
+            <span className="font-semibold text-[var(--foreground)]">Shelf order:</span>{" "}
+            {allowance.billingCycle === "yearly"
+              ? "your yearly plan sits above the same tier's monthly placements, and a better plan sits above both."
+              : "a yearly plan on your tier sits above this monthly one, and a better plan sits above both."}
+          </p>
+        )}
       </section>
 
       {/* The picker */}

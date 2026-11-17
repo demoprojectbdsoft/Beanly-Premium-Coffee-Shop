@@ -113,7 +113,6 @@ export default function AddProductClient({
     sku: "",
     description: "",
     inStock: true,
-    isFeatured: false,
     warrantyPeriodMonths: "",
     warrantyType: "manufacturer-warranty",
     warrantyTerms: "",
@@ -333,7 +332,6 @@ export default function AddProductClient({
       badges: Array.from(selectedBadges),
       specifications: Object.keys(specObj).length > 0 ? specObj : undefined,
       inStock: hasPositiveStock ? true : formState.inStock,
-      isFeatured: formState.isFeatured,
       warrantyPeriodMonths: formState.warrantyPeriodMonths
         ? parseInt(formState.warrantyPeriodMonths, 10)
         : undefined,
@@ -407,8 +405,6 @@ export default function AddProductClient({
   const addBtnClass =
     "w-fit text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 border border-primary/20 rounded-xl px-4 py-2 inline-flex items-center gap-1.5 transition-colors cursor-pointer";
 
-  const switchRowClass =
-    "flex items-center justify-between p-3 bg-[var(--surface-alt)] rounded-xl border border-[var(--border-color)] cursor-pointer";
   // The same row without the hand cursor, for a row that only explains itself.
   const switchRowStaticClass =
     "flex items-center justify-between p-3 bg-[var(--surface-alt)] rounded-xl border border-[var(--border-color)]";
@@ -1163,34 +1159,19 @@ export default function AddProductClient({
                   )}
                 </div>
 
-                {/* Featured toggle */}
-                {/* Featured placement is bought or granted by the store team,
-                    not set from a listing form. */}
-                {!isVendor && (
-                  <div className={switchRowClass}>
-                    <div>
-                      <p className="text-xs font-bold text-[var(--foreground)]">
-                        Featured
-                      </p>
-                      <p className="text-[10px] text-[var(--foreground-muted)]">
-                        Promote in featured grids
-                      </p>
-                    </div>
-                    <Switch
-                      isSelected={formState.isFeatured}
-                      onChange={(val) =>
-                        setFormState((prev) => ({ ...prev, isFeatured: val }))
-                      }
-                      className="cursor-pointer"
-                    >
-                      <Switch.Content className="cursor-pointer">
-                        <Switch.Control className="cursor-pointer">
-                          <Switch.Thumb className="cursor-pointer" />
-                        </Switch.Control>
-                      </Switch.Content>
-                    </Switch>
+                {/* A shelf is lit from the promotions desk, where the
+                    placement carries an end date. */}
+                <div className={switchRowStaticClass}>
+                  <div>
+                    <p className="text-xs font-bold text-[var(--foreground)]">
+                      Featured placement
+                    </p>
+                    <p className="text-[10px] text-[var(--foreground-muted)]">
+                      Granted from the Promotions desk, where every placement has an end date
+                    </p>
                   </div>
-                )}
+                  <Sparkles className="w-4 h-4 shrink-0 text-amber-500" />
+                </div>
               </Card.Content>
             </Card>
 
