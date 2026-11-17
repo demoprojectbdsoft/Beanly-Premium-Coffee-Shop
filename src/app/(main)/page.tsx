@@ -55,9 +55,10 @@ async function PopularSection() {
 
 // The listings a running placement is lifting right now, read in the shelf's own
 // paid order: the store's own stock first, then each seller by the plan behind
-// its placement. No placement running, no section.
+// its placement. Three rows' worth, so the shelf's "Show more" has somewhere to
+// go. No placement running, no section.
 async function FeaturedProductsSection() {
-  const res = await getProducts({ isFeatured: true, sort: "featured", limit: 10 });
+  const res = await getProducts({ isFeatured: true, sort: "featured", limit: 15 });
   const products: Product[] = res?.data?.products ?? [];
   return <FeaturedProducts products={products} />;
 }
@@ -120,6 +121,12 @@ export default function Home() {
         <FeaturedProductsSection />
       </Suspense>
 
+      {/* Featured vendors — right under the featured shelf, and only when a
+          storefront placement is running */}
+      <Suspense fallback={null}>
+        <FeaturedVendorsSection />
+      </Suspense>
+
       <WarehouseDeals />
 
       {/* New Arrivals — shows skeleton while fetching */}
@@ -140,11 +147,6 @@ export default function Home() {
       {/* Popular Products — shows skeleton while fetching */}
       <Suspense fallback={<PopularProducts loading />}>
         <PopularSection />
-      </Suspense>
-
-      {/* Featured vendors — disappears when no storefront placement is running */}
-      <Suspense fallback={null}>
-        <FeaturedVendorsSection />
       </Suspense>
 
       {/* Wide promo strip — also disappears when no strip banner is active */}

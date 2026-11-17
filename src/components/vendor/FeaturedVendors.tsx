@@ -1,15 +1,15 @@
 import Link from "next/link";
-import { ArrowUpRight, ChevronRight, Crown } from "lucide-react";
+import { ChevronRight, Crown } from "lucide-react";
 import VendorCard from "./VendorCard";
 import type { PublicStore } from "@/types/stores";
 
 /**
- * The featured-vendors rail.
+ * The featured-vendors shelf.
  *
- * The rows are the shops a paid placement is lighting up right now. The band
- * above them is the same reusable marquee the featured listings use, with the
- * shops' own words: the home page introduces the sellers, a product page says
- * "shops like this one", and both hand the component the copy.
+ * The rows are the shops a paid placement is lighting up right now. The header
+ * is the same one every other homepage section uses, and the words are the
+ * caller's: the home page introduces the sellers, a product page says "shops
+ * like this one".
  *
  * When nothing is promoted the section is not rendered at all — an empty
  * "Featured" header over an empty box would advertise a feature the marketplace
@@ -36,58 +36,40 @@ export default function FeaturedVendors({
 
   return (
     <section className="w-full max-w-7xl mx-auto px-4 my-10">
-      {/* ── The band: eyebrow, promise, way out ── */}
-      <div className="relative overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] shadow-xs">
-        {/* A hairline of amber along the top edge: the featured shops carry the
-            same marquee mark the cards do. */}
-        <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-amber-400 via-primary to-amber-400" />
-        <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-amber-400/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -left-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
-
-        <div className="relative flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:p-6">
-          <div className="min-w-0">
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/60 bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:border-amber-600/50 dark:text-amber-400">
-              <Crown className="h-3 w-3" /> {eyebrow}
+      {/* ── Section header, the same one the other homepage sections draw ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[var(--border-color)] pb-3 mb-6 gap-3">
+        <div className="relative inline-block min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl md:text-2xl font-light text-[var(--foreground)]">{title}</h2>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/25 dark:text-amber-400">
+              <Crown className="w-3 h-3" /> {eyebrow}
             </span>
-
-            <h2 className="mt-2 text-2xl font-light tracking-tight text-[var(--foreground)] md:text-3xl">
-              {title}
-            </h2>
-
-            <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-[var(--foreground-muted)] md:text-[13px]">
-              {slogan}
-            </p>
-
-            <p className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--foreground-muted)]/80">
-              {vendors.length} shop{vendors.length === 1 ? "" : "s"} in the spotlight
-            </p>
           </div>
+          <p className="mt-1 max-w-2xl text-[11px] leading-relaxed text-[var(--foreground-muted)]">
+            {slogan}
+          </p>
+          <div className="absolute -bottom-[13px] left-0 w-full h-[2.5px] bg-gradient-to-r from-primary to-primary-hover rounded-full" />
+        </div>
 
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="hidden sm:inline text-[10px] font-semibold uppercase tracking-wider text-[var(--foreground-muted)]">
+            {vendors.length} shop{vendors.length === 1 ? "" : "s"} in the spotlight
+          </span>
           <Link
             href={href}
-            className="group inline-flex shrink-0 items-center gap-1.5 self-start rounded-xl border border-[var(--border-color)] bg-[var(--surface)] px-3.5 py-2 text-[11px] font-bold text-[var(--foreground)] transition-colors hover:border-primary/40 hover:text-primary md:self-auto"
+            className="group text-xs text-[var(--foreground-muted)] hover:text-primary transition-colors flex items-center gap-1 font-medium cursor-pointer"
           >
-            {linkLabel}
-            <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            <span>{linkLabel}</span>
+            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>
       </div>
 
       {/* ── Vendor cards ── */}
-      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {vendors.map((vendor) => (
           <VendorCard key={vendor._id} vendor={vendor} compact={compact} />
         ))}
-      </div>
-
-      <div className="mt-3 flex items-center justify-end">
-        <Link
-          href={href}
-          className="flex items-center gap-1 text-[11px] font-semibold text-[var(--foreground-muted)] transition-colors hover:text-primary"
-        >
-          {linkLabel}
-          <ChevronRight className="h-3.5 w-3.5" />
-        </Link>
       </div>
     </section>
   );
