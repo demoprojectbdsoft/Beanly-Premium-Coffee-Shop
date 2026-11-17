@@ -9,14 +9,18 @@ import {
   Info,
   Briefcase,
   Mail,
+  Store,
   Truck,
 } from "lucide-react";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 
-// Pages shown in desktop bottom nav
+// Pages shown in desktop bottom nav. The vendor directory sits directly after
+// the shop, because it is the other half of the same question: what is for
+// sale, and who is selling it.
 export const NAV_LINKS = [
   { label: "Home",     href: "/",         icon: Home },
   { label: "Shop",     href: "/shop",     icon: ShoppingBag },
+  { label: "Vendors",  href: "/vendors",  icon: Store },
   { label: "About",    href: "/about",    icon: Info },
   { label: "Services", href: "/services", icon: Briefcase },
   { label: "Contact",  href: "/contact",  icon: Mail },

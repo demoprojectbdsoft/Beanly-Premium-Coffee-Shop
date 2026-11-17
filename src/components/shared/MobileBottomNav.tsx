@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ShoppingBag, UserCircle, Settings, LayoutDashboard } from "lucide-react";
+import { Home, ShoppingBag, UserCircle, Settings, LayoutDashboard, Store } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useDashboardRole } from "@/hooks/useDashboardRole";
 import {
@@ -31,6 +31,10 @@ export default function MobileBottomNav({ isHidden = false }: { isHidden?: boole
   const NAV_ITEMS = [
     { label: "Home", href: "/", icon: Home },
     { label: "Shop", href: "/shop", icon: ShoppingBag },
+    // The vendor directory rides in the fixed row on every layout — storefront
+    // and dashboards alike — because it is the other half of the shop, and the
+    // bar is the only navigation a phone always has on screen.
+    { label: "Vendors", href: "/vendors", icon: Store },
     { label: "Profile", href: profileHref, icon: UserCircle },
     { label: "Settings", href: settingsHref, icon: Settings },
     { label: "Dashboard", href: dashboardHref, icon: LayoutDashboard },
@@ -103,7 +107,7 @@ export default function MobileBottomNav({ isHidden = false }: { isHidden?: boole
                 </div>
 
                 <span
-                  className={`text-[10px] font-medium tracking-tight mt-0.5 truncate transition-all duration-200 ${
+                  className={`text-[9px] font-medium tracking-tight mt-0.5 truncate transition-all duration-200 ${
                     isActive
                       ? "font-bold text-primary dark:text-primary"
                       : "text-[var(--foreground-secondary)] dark:text-[var(--foreground-muted)]"
