@@ -7,14 +7,17 @@ import {
   ArrowUpRight,
   ChevronLeft,
   ChevronRight,
+  Layers,
   Loader2,
   Search,
   Sparkles,
   Store,
+  Tag,
   TriangleAlert,
   X,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import AppSelect from "@/components/shared/AppSelect";
 import type { FeaturedPlacement, PromotionState } from "@/types";
 import type { VendorPagination } from "@/types/vendor";
 import { formatPrice } from "@/lib/currency";
@@ -49,6 +52,15 @@ interface VendorPromotionsClientProps {
   };
   /** The seller's own buyable listings — all a placement can lift. */
   products: FeatureProductOption[];
+  /** The catalogue's departments and their shelves, for the picker's filters. */
+  categories: { _id?: string; id?: string; name: string; slug: string }[];
+  subCategories: {
+    _id?: string;
+    id?: string;
+    categoryId: string;
+    name: string;
+    slug: string;
+  }[];
   currency: string;
 }
 
@@ -63,6 +75,11 @@ export interface FeatureProductOption {
   image: string;
   price: number;
   vendorProductStatus: string;
+  /** How many of this listing have been sold, from the catalogue's own count. */
+  sellCount: number;
+  /** The department the listing sits in, so the picker can be narrowed. */
+  categoryId: string;
+  subCategoryIds: string[];
 }
 
 const STATE_TABS: { key: PromotionState | "all"; label: string }[] = [
@@ -85,11 +102,15 @@ export default function VendorPromotionsClient({
   filters,
   allowance,
   products,
+  categories,
+  subCategories,
   currency,
 }: VendorPromotionsClientProps) {
   const router = useRouter();
   const [picking, setPicking] = useState(false);
   const [pickSearch, setPickSearch] = useState("");
+  const [pickCategory, setPickCategory] = useState("");
+  const [pickSubCategory, setPickSubCategory] = useState("");
   const [pickedId, setPickedId] = useState<string>("");
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -112,11 +133,44 @@ export default function VendorPromotionsClient({
     );
   };
 
+  // The picker's two shelf filters, read off the catalogue once so the lists
+  // stay in step with what the shop actually stocks.
+  const categoryOptions = useMemo(
+    () =>
+      categories
+        .map((category) => ({
+          value: String(category._id ?? category.id ?? ""),
+          label: category.name,
+        }))
+        .filter((option) => option.value),
+    [categories]
+  );
+
+  const subCategoryOptions = useMemo(() => {
+    const rows = subCategories.filter(
+      (sub) => !pickCategory || String(sub.categoryId) === pickCategory
+    );
+
+    return rows
+      .map((sub) => ({
+        value: String(sub._id ?? sub.id ?? ""),
+        label: sub.name,
+      }))
+      .filter((option) => option.value);
+  }, [subCategories, pickCategory]);
+
   const options = useMemo(() => {
     const q = pickSearch.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((product) => product.title.toLowerCase().includes(q));
-  }, [pickSearch, products]);
+    return products.filter((product) => {
+      // Shelf filters first: a listing is found by where it sits, then narrowed
+      // by what the seller types. Both are local — the catalogue is already
+      // this shop's own rows, so no reading of everyone else's stock is needed.
+      if (pickCategory && product.categoryId !== pickCategory) return false;
+      if (pickSubCategory && !product.subCategoryIds.includes(pickSubCategory)) return false;
+      if (!q) return true;
+      return product.title.toLowerCase().includes(q);
+    });
+  }, [pickSearch, pickCategory, pickSubCategory, products]);
 
   const feature = async () => {
     if (!pickedId || busyId) return;
@@ -134,6 +188,8 @@ export default function VendorPromotionsClient({
       setPicking(false);
       setPickedId("");
       setPickSearch("");
+      setPickCategory("");
+      setPickSubCategory("");
       router.refresh();
     } catch (err) {
       toast.error((err as Error).message || "An error occurred");
@@ -262,6 +318,37 @@ export default function VendorPromotionsClient({
             </button>
           </div>
 
+          {/* Shelf filters: find a listing by where it sits, then by its name. */}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <AppSelect
+              value={pickCategory}
+              onChange={(value) => {
+                setPickCategory(value);
+                // The shelf's siblings belong to another department's list, so
+                // a stale pick is dropped rather than left filtering nothing.
+                setPickSubCategory("");
+              }}
+              options={[{ value: "", label: "All categories" }, ...categoryOptions]}
+              placeholder="All categories"
+              size="sm"
+              ariaLabel="Filter by category"
+              icon={<Tag />}
+            />
+            <AppSelect
+              value={pickSubCategory}
+              onChange={setPickSubCategory}
+              options={[
+                { value: "", label: pickCategory ? "All subcategories" : "Pick a category first" },
+                ...subCategoryOptions,
+              ]}
+              placeholder="All subcategories"
+              size="sm"
+              isDisabled={!pickCategory || subCategoryOptions.length === 0}
+              ariaLabel="Filter by subcategory"
+              icon={<Layers />}
+            />
+          </div>
+
           <div className="relative mt-3">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--foreground-muted)]" />
             <input
@@ -276,7 +363,7 @@ export default function VendorPromotionsClient({
             <p className="mt-3 rounded-xl bg-[var(--surface-alt)] px-3 py-4 text-center text-[11px] text-[var(--foreground-muted)]">
               {products.length === 0
                 ? "None of your listings is on sale right now, so there is nothing to feature. Publish one from the Products desk first."
-                : "No listing matches that search."}
+                : "No listing matches these filters."}
             </p>
           ) : (
             <ul className="mt-3 max-h-64 space-y-1 overflow-y-auto pr-1">
@@ -316,7 +403,8 @@ export default function VendorPromotionsClient({
                           {formatPrice(product.price, currency)} ·{" "}
                           {product.vendorProductStatus === "out_of_stock"
                             ? "Out of stock — still buyable on request"
-                            : "On sale"}
+                            : "On sale"}{" "}
+                          · {product.sellCount.toLocaleString()} sold
                         </span>
                       </span>
 

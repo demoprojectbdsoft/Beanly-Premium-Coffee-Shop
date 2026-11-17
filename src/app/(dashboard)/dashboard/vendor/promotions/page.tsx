@@ -5,6 +5,8 @@ import { getRequiredRole } from "@/lib/core/session";
 import { asPromotionList, getMyPromotions } from "@/lib/api/vendorPromotions";
 import { asSubscription, getMySubscription } from "@/lib/api/vendorSubscription";
 import { asProductList, getMyProducts } from "@/lib/api/vendorProducts";
+import { getCategories } from "@/lib/api/categories";
+import { getSubCategories } from "@/lib/api/subCategories";
 import { getSiteSettings } from "@/lib/api/siteSettings";
 import VendorPromotionsClient from "./VendorPromotionsClient";
 
@@ -13,6 +15,13 @@ export const dynamic = "force-dynamic";
 /** The three readings of a placement, which is what the tabs switch between. */
 const STATUS_CHOICES = ["all", "live", "ended", "cancelled"];
 const KIND_CHOICES = ["all", "product", "store"];
+
+/** A populated or bare reference, read back as the id it points at. */
+const refId = (ref: unknown) => {
+  if (!ref || typeof ref !== "object") return String(ref ?? "");
+  const row = ref as { _id?: string; id?: string };
+  return String(row._id ?? row.id ?? "");
+};
 
 interface VendorPromotionsPageProps {
   searchParams: Promise<{
@@ -38,12 +47,15 @@ export default async function VendorPromotionsPage({ searchParams }: VendorPromo
   const status = STATUS_CHOICES.includes(params?.status || "") ? params!.status! : "all";
   const kind = KIND_CHOICES.includes(params?.kind || "") ? params!.kind! : "all";
 
-  const [list, subscription, catalogue, settingsRes] = await Promise.all([
-    getMyPromotions({ status, kind, page, limit: 20 }),
-    getMySubscription().then(asSubscription),
-    getMyProducts({ status: "all", limit: 100 }).then(asProductList),
-    getSiteSettings(),
-  ]);
+  const [list, subscription, catalogue, settingsRes, categoriesRes, subCategoriesRes] =
+    await Promise.all([
+      getMyPromotions({ status, kind, page, limit: 20 }),
+      getMySubscription().then(asSubscription),
+      getMyProducts({ status: "all", limit: 100 }).then(asProductList),
+      getSiteSettings(),
+      getCategories(),
+      getSubCategories(),
+    ]);
 
   const result = asPromotionList(list);
 
@@ -104,7 +116,23 @@ export default async function VendorPromotionsPage({ searchParams }: VendorPromo
           image: product.image || "",
           price: product.price,
           vendorProductStatus: product.vendorProductStatus || "",
+          sellCount: product.sellCount ?? 0,
+          categoryId: refId(product.categoryId),
+          subCategoryIds: (product.subCategoryIds ?? []).map((sub) => refId(sub)),
         }))}
+      categories={((categoriesRes as { data?: unknown[] } | null)?.data ?? []) as {
+        _id?: string;
+        id?: string;
+        name: string;
+        slug: string;
+      }[]}
+      subCategories={((subCategoriesRes as { data?: unknown[] } | null)?.data ?? []) as {
+        _id?: string;
+        id?: string;
+        categoryId: string;
+        name: string;
+        slug: string;
+      }[]}
       currency={settingsRes?.data?.currency || "BDT"}
     />
   );

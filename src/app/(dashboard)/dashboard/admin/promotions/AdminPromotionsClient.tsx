@@ -7,15 +7,18 @@ import {
   CalendarClock,
   ChevronLeft,
   ChevronRight,
+  Layers,
   Loader2,
   Package,
   Search,
   Sparkles,
   Store,
+  Tag,
   Wand2,
   X,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import AppSelect from "@/components/shared/AppSelect";
 import type { FeaturedPlacement, PromotionKind, PromotionState } from "@/types";
 import type { VendorPagination } from "@/types/vendor";
 import { formatPrice } from "@/lib/currency";
@@ -47,6 +50,10 @@ export interface GrantProductOption {
   image: string;
   price: number;
   isFeatured: boolean;
+  /** How many of this listing have been sold, from the catalogue's own count. */
+  sellCount: number;
+  /** The shop that sells it; empty for the store's own stock. */
+  sellerName: string;
   /** False for the store's own stock, which this board cannot lift. */
   sellerOwned: boolean;
 }
@@ -67,9 +74,25 @@ interface AdminPromotionsClientProps {
   placements: FeaturedPlacement[];
   stateCounts: Record<string, number>;
   pagination: VendorPagination;
-  filters: { status: string; kind: string; panel: string; search: string };
+  filters: {
+    status: string;
+    kind: string;
+    panel: string;
+    search: string;
+    category: string;
+    subCategory: string;
+  };
   products: GrantProductOption[];
   stores: GrantStoreOption[];
+  /** The catalogue's departments and their shelves, for the picker's filters. */
+  categories: { _id?: string; id?: string; name: string; slug: string }[];
+  subCategories: {
+    _id?: string;
+    id?: string;
+    categoryId: string;
+    name: string;
+    slug: string;
+  }[];
   currency: string;
 }
 
@@ -99,6 +122,8 @@ export default function AdminPromotionsClient({
   filters,
   products,
   stores,
+  categories,
+  subCategories,
   currency,
 }: AdminPromotionsClientProps) {
   const router = useRouter();
@@ -118,6 +143,8 @@ export default function AdminPromotionsClient({
     kind?: string;
     panel?: string;
     search?: string;
+    category?: string;
+    subCategory?: string;
   }) => {
     const params = new URLSearchParams();
     const nextStatus = next.status ?? filters.status;
@@ -130,6 +157,15 @@ export default function AdminPromotionsClient({
     if (nextKind && nextKind !== "all") params.set("kind", nextKind);
     if (nextPanel) params.set("panel", nextPanel);
     if (nextSearch) params.set("search", nextSearch);
+    // The shelf filters only mean anything while the product picker is open;
+    // carrying them into the store picker would send the API a filter it has
+    // no branch for.
+    if (nextPanel === "product") {
+      const nextCategory = next.category ?? filters.category;
+      const nextSubCategory = next.subCategory ?? filters.subCategory;
+      if (nextCategory) params.set("category", nextCategory);
+      if (nextSubCategory) params.set("subCategory", nextSubCategory);
+    }
     if (page > 1) params.set("page", String(page));
 
     const query = params.toString();
@@ -140,9 +176,9 @@ export default function AdminPromotionsClient({
   // read on the server: a refresh keeps the panel open on the same search.
   const openPanel = (next: PromotionKind) => {
     setDraftSearch("");
-    go({ panel: next, search: "", page: 1 });
+    go({ panel: next, search: "", category: "", subCategory: "", page: 1 });
   };
-  const closePanel = () => go({ panel: "", search: "", page: 1 });
+  const closePanel = () => go({ panel: "", search: "", category: "", subCategory: "", page: 1 });
 
   const grant = async (target: { label: string; draft: { kind: PromotionKind; productId?: string; vendorId?: string } }) => {
     if (busyId) return;
@@ -218,6 +254,17 @@ export default function AdminPromotionsClient({
     }
   };
 
+  // The picked department, resolved back to its id, so the subcategory list can
+  // be narrowed to that department's own shelves before any of it is rendered.
+  const activeCategory = filters.category
+    ? categories.find(
+        (category) =>
+          (category.slug || "").toLowerCase() === filters.category.toLowerCase() ||
+          category.name.toLowerCase() === filters.category.toLowerCase()
+      )
+    : undefined;
+  const activeCategoryId = String(activeCategory?._id ?? activeCategory?.id ?? "");
+
   const panelOptions =
     panel === "product"
       ? products.map((product) => ({
@@ -225,8 +272,10 @@ export default function AdminPromotionsClient({
           image: product.image,
           title: product.title,
           subtitle: `${formatPrice(product.price, currency)} · ${
-            product.sellerOwned ? "A seller's listing" : "The store's own stock"
-          }${product.isFeatured ? " · already on the shelves" : ""}`,
+            product.sellerName ? `Sold by ${product.sellerName}` : "The store's own stock"
+          } · ${product.sellCount.toLocaleString()} sold${
+            product.isFeatured ? " · already on the shelves" : ""
+          }`,
           blocked: !product.sellerOwned,
           blockedNote: "Feature it from the Products desk — it has no seller behind it",
           label: product.title,
@@ -355,6 +404,44 @@ export default function AdminPromotionsClient({
               className="h-9 w-full rounded-xl border border-[var(--border-color)] bg-[var(--surface)] px-3 text-[11px] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]/70 focus:outline-none focus:ring-2 focus:ring-[var(--brand-flat)]/35"
             />
           </div>
+
+          {/* The catalogue's own shelves, so a listing in a long catalogue is
+              found by where it sits rather than by remembering its name. */}
+          {panel === "product" && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <AppSelect
+                size="sm"
+                ariaLabel="Filter the catalogue by category"
+                icon={<Tag />}
+                value={filters.category}
+                onChange={(next) =>
+                  go({ category: next, subCategory: "", search: filters.search, page: 1 })
+                }
+                options={[
+                  { value: "", label: "All categories" },
+                  ...categories.map((category) => ({
+                    value: category.slug || category.name,
+                    label: category.name,
+                  })),
+                ]}
+              />
+              <AppSelect
+                size="sm"
+                ariaLabel="Filter the catalogue by subcategory"
+                icon={<Layers />}
+                value={filters.subCategory}
+                onChange={(next) => go({ subCategory: next, search: filters.search, page: 1 })}
+                options={[
+                  { value: "", label: "All subcategories" },
+                  ...subCategories
+                    .filter(
+                      (sub) => !activeCategoryId || String(sub.categoryId) === activeCategoryId
+                    )
+                    .map((sub) => ({ value: sub.slug || sub.name, label: sub.name })),
+                ]}
+              />
+            </div>
+          )}
 
           <form
             onSubmit={(event) => {

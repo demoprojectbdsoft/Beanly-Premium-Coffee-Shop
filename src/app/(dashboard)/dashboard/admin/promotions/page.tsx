@@ -4,6 +4,8 @@ import { Sparkles } from "lucide-react";
 import { asPromotionList, getPromotions } from "@/lib/api/promotions";
 import { getAllStores, asStoreList } from "@/lib/api/vendorStore";
 import { getProducts } from "@/lib/api/products";
+import { getCategories } from "@/lib/api/categories";
+import { getSubCategories } from "@/lib/api/subCategories";
 import { getSiteSettings } from "@/lib/api/siteSettings";
 import AdminPromotionsClient, {
   type GrantProductOption,
@@ -26,8 +28,10 @@ type ProductRow = {
   image?: string;
   price?: number;
   isFeatured?: boolean;
+  sellCount?: number;
   vendorId?: unknown;
   storeId?: unknown;
+  seller?: { name?: string };
   vendorProductStatus?: string;
 };
 
@@ -39,12 +43,23 @@ const asProductOptions = (payload: unknown): GrantProductOption[] => {
   return rows
     .map((raw) => {
       const row = raw as ProductRow;
+      // The shop is read from the populated store row (or the seller join). A
+      // row without either is the store's own stock, which this board cannot
+      // lift from here.
+      const storeName =
+        row.seller?.name ||
+        (row.storeId && typeof row.storeId === "object"
+          ? (row.storeId as { name?: string }).name || ""
+          : "");
+
       return {
         _id: String(row._id ?? row.id ?? ""),
         title: row.title || "",
         image: row.image || "",
         price: Number(row.price) || 0,
         isFeatured: Boolean(row.isFeatured),
+        sellCount: Number(row.sellCount) || 0,
+        sellerName: storeName,
         // `vendorId` / `storeId` are what tell a seller's listing from the
         // store's own stock, which the board cannot lift from here.
         sellerOwned: Boolean(row.vendorId || row.storeId || row.vendorProductStatus),
@@ -78,6 +93,8 @@ interface AdminPromotionsPageProps {
     page?: string;
     panel?: string;
     search?: string;
+    category?: string;
+    subCategory?: string;
   }>;
 }
 
@@ -96,15 +113,29 @@ export default async function AdminPromotionsPage({ searchParams }: AdminPromoti
   const kind = KIND_CHOICES.includes(params?.kind || "") ? params!.kind! : "all";
   const panel = PANEL_CHOICES.includes(params?.panel || "") ? params!.panel! : "";
   const search = params?.search?.trim() || "";
+  // Category and subcategory narrow the product picker only; the store picker
+  // searches shops and would have nothing to do with either.
+  const category = panel === "product" ? params?.category?.trim() || "" : "";
+  const subCategory = panel === "product" ? params?.subCategory?.trim() || "" : "";
 
-  const [list, productsRes, storesRes, settingsRes] = await Promise.all([
-    getPromotions({ status, kind, page, limit: 20 }),
-    panel === "product" ? getProducts({ search: search || undefined, limit: 20 }) : Promise.resolve(null),
-    panel === "store"
-      ? getAllStores({ search: search || undefined, status: "active", limit: 20 })
-      : Promise.resolve(null),
-    getSiteSettings(),
-  ]);
+  const [list, productsRes, storesRes, settingsRes, categoriesRes, subCategoriesRes] =
+    await Promise.all([
+      getPromotions({ status, kind, page, limit: 20 }),
+      panel === "product"
+        ? getProducts({
+            search: search || undefined,
+            category: category || undefined,
+            subCategory: subCategory || undefined,
+            limit: 20,
+          })
+        : Promise.resolve(null),
+      panel === "store"
+        ? getAllStores({ search: search || undefined, status: "active", limit: 20 })
+        : Promise.resolve(null),
+      getSiteSettings(),
+      panel === "product" ? getCategories() : Promise.resolve(null),
+      panel === "product" ? getSubCategories() : Promise.resolve(null),
+    ]);
 
   const result = asPromotionList(list);
 
@@ -147,9 +178,22 @@ export default async function AdminPromotionsPage({ searchParams }: AdminPromoti
       placements={result.promotions}
       stateCounts={result.stateCounts}
       pagination={result.pagination}
-      filters={{ status, kind, panel, search }}
+      filters={{ status, kind, panel, search, category, subCategory }}
       products={asProductOptions(productsRes)}
       stores={asStoreOptions(storesRes)}
+      categories={((categoriesRes as { data?: unknown[] } | null)?.data ?? []) as {
+        _id?: string;
+        id?: string;
+        name: string;
+        slug: string;
+      }[]}
+      subCategories={((subCategoriesRes as { data?: unknown[] } | null)?.data ?? []) as {
+        _id?: string;
+        id?: string;
+        categoryId: string;
+        name: string;
+        slug: string;
+      }[]}
       currency={settingsRes?.data?.currency || "BDT"}
     />
   );
