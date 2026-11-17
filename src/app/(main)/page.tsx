@@ -121,12 +121,6 @@ export default function Home() {
         <FeaturedProductsSection />
       </Suspense>
 
-      {/* Featured vendors — right under the featured shelf, and only when a
-          storefront placement is running */}
-      <Suspense fallback={null}>
-        <FeaturedVendorsSection />
-      </Suspense>
-
       <WarehouseDeals />
 
       {/* New Arrivals — shows skeleton while fetching */}
@@ -147,6 +141,11 @@ export default function Home() {
       {/* Popular Products — shows skeleton while fetching */}
       <Suspense fallback={<PopularProducts loading />}>
         <PopularSection />
+      </Suspense>
+
+      {/* Featured vendors — the last shelf before the wide promo strip */}
+      <Suspense fallback={null}>
+        <FeaturedVendorsSection />
       </Suspense>
 
       {/* Wide promo strip — also disappears when no strip banner is active */}
