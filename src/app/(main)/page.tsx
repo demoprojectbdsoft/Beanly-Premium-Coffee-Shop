@@ -53,10 +53,11 @@ async function PopularSection() {
   return <PopularProducts products={products} />;
 }
 
-// The listings a running placement is lifting right now, newest first. No
-// placement running, no section.
+// The listings a running placement is lifting right now, read in the shelf's own
+// paid order: the store's own stock first, then each seller by the plan behind
+// its placement. No placement running, no section.
 async function FeaturedProductsSection() {
-  const res = await getProducts({ isFeatured: true, sort: "newest", limit: 10 });
+  const res = await getProducts({ isFeatured: true, sort: "featured", limit: 10 });
   const products: Product[] = res?.data?.products ?? [];
   return <FeaturedProducts products={products} />;
 }
@@ -114,12 +115,12 @@ export default function Home() {
         </div>
       </section>
 
-      <WarehouseDeals />
-
-      {/* Featured products — the paid placements, newest first */}
+      {/* Featured products — the paid placements, in the shelf's paid order */}
       <Suspense fallback={null}>
         <FeaturedProductsSection />
       </Suspense>
+
+      <WarehouseDeals />
 
       {/* New Arrivals — shows skeleton while fetching */}
       <Suspense fallback={<NewArrivals loading />}>

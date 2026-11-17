@@ -1638,8 +1638,20 @@ export default function ProductDetailsPage({
         </Card>
 
       {/* ── The rest of the marquee: featured listings and featured vendors ── */}
-      <FeaturedProducts products={featuredProducts} />
-      <FeaturedVendors vendors={featuredVendors} />
+      <FeaturedProducts
+        products={featuredProducts}
+        eyebrow="Also on the front shelf"
+        title="More featured picks"
+        slogan="Other listings the store and its top sellers are pushing this week — the same paid shelf this page sits on, one scroll further."
+        linkLabel="Browse all featured"
+      />
+      <FeaturedVendors
+        vendors={featuredVendors}
+        eyebrow="Shops on the marquee"
+        title="Featured vendors"
+        slogan="Verified shops with real delivery records — worth a look before you settle on just this one."
+        linkLabel="All vendors"
+      />
     </div>
 
     <ImageGalleryModal

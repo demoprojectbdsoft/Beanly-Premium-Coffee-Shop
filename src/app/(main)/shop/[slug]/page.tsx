@@ -22,7 +22,7 @@ export default async function ProductSlugPage({ params }: { params: Promise<{ sl
       // its delivery record and a link to the vendor's own page. Platform stock
       // has no shop, so nothing is read and nothing is drawn.
       product.seller?.slug ? getPublicStoreBySlug(product.seller.slug) : Promise.resolve(null),
-      getProducts({ isFeatured: true, sort: "newest", limit: 10 }),
+      getProducts({ isFeatured: true, sort: "featured", limit: 10 }),
       getPublicStores({ featured: true, sort: "latest", limit: 4 }),
     ]);
 
