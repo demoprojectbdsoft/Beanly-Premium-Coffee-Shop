@@ -1,7 +1,9 @@
-import { getProductBySlug } from "@/lib/api/products";
+import { getProductBySlug, getProducts } from "@/lib/api/products";
 import { getReviewsByProductId } from "@/lib/api/reviews";
 import { getOrdersByUserId } from "@/lib/api/orders";
+import { asStore, asStoreList, getPublicStoreBySlug, getPublicStores } from "@/lib/api/stores";
 import { getUserSession } from "@/lib/core/session";
+import type { Product } from "@/types";
 import ProductDetailsPage from "./ProductDetailsPage";
 import ProductNotFound from "./ProductNotFound";
 
@@ -12,10 +14,29 @@ export default async function ProductSlugPage({ params }: { params: Promise<{ sl
 
   if (!product) return <ProductNotFound slug={slug} />;
 
-  const [currentUser, reviewsRes] = await Promise.all([
-    getUserSession(),
-    getReviewsByProductId(product.id),
-  ]);
+  const [currentUser, reviewsRes, sellerStoreRes, featuredProductsRes, featuredVendorsRes] =
+    await Promise.all([
+      getUserSession(),
+      getReviewsByProductId(product.id),
+      // The shop behind a seller's listing, in full: the page draws its rating,
+      // its delivery record and a link to the vendor's own page. Platform stock
+      // has no shop, so nothing is read and nothing is drawn.
+      product.seller?.slug ? getPublicStoreBySlug(product.seller.slug) : Promise.resolve(null),
+      getProducts({ isFeatured: true, sort: "newest", limit: 10 }),
+      getPublicStores({ featured: true, sort: "latest", limit: 4 }),
+    ]);
+
+  const sellerStore = asStore(sellerStoreRes);
+
+  // The rails below the listing never repeat what the reader is already
+  // looking at: the listing itself is dropped from the products, and the shop
+  // that sells it is dropped from the vendors.
+  const featuredProducts: Product[] = (featuredProductsRes?.data?.products ?? []).filter(
+    (row: Product) => String(row.id ?? row._id) !== String(product.id)
+  );
+  const featuredVendors = (asStoreList(featuredVendorsRes)?.stores ?? []).filter(
+    (store) => store.slug !== (product.seller?.slug || "")
+  );
 
   // Check if current user ordered / has delivered order for this product
   let hasOrdered = false;
@@ -56,6 +77,9 @@ export default async function ProductSlugPage({ params }: { params: Promise<{ sl
       hasOrdered={hasOrdered}
       hasPurchased={hasPurchased}
       hasAlreadyReviewed={hasAlreadyReviewed}
+      sellerStore={sellerStore}
+      featuredProducts={featuredProducts}
+      featuredVendors={featuredVendors}
     />
   );
 }

@@ -32,6 +32,9 @@ import {
   X as XIcon,
   Loader2,
   Images,
+  BadgeCheck,
+  Package,
+  Store,
 } from "lucide-react";
 import { Button, Card, Tabs, Tab, TabList, TabPanel, Modal } from "@heroui/react";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
@@ -41,6 +44,9 @@ import SuspendedAccountModal from "@/components/shared/SuspendedAccountModal";
 import ImageGalleryModal from "@/components/shared/ImageGalleryModal";
 import UserAvatar from "@/components/shared/UserAvatar";
 import { Product, ProductReview, User } from "@/types";
+import type { PublicStore } from "@/types/stores";
+import FeaturedVendors from "@/components/vendor/FeaturedVendors";
+import FeaturedProducts from "@/components/vendor/FeaturedProducts";
 import ProductNotFound from "./ProductNotFound";
 import { addReview, editReview } from "@/lib/action/reviews";
 import { addToCart, isCarted as checkIsCartedAction } from "@/lib/action/cart";
@@ -64,6 +70,9 @@ export default function ProductDetailsPage({
   hasOrdered = false,
   hasPurchased = false,
   hasAlreadyReviewed = false,
+  sellerStore = null,
+  featuredProducts = [],
+  featuredVendors = [],
 }: {
   product?: Product | null;
   initialReviews?: ProductReview[];
@@ -71,6 +80,10 @@ export default function ProductDetailsPage({
   hasOrdered?: boolean;
   hasPurchased?: boolean;
   hasAlreadyReviewed?: boolean;
+  /** The shop behind a seller's listing; null for the store's own stock. */
+  sellerStore?: PublicStore | null;
+  featuredProducts?: Product[];
+  featuredVendors?: PublicStore[];
 }) {
   // ⚠️ All hooks must be called unconditionally before any early returns
   const router = useRouter();
@@ -1021,6 +1034,67 @@ export default function ProductDetailsPage({
               </div>
             </div>
 
+            {/*
+              Sold by — only a seller's listing has a shop behind it. The store's
+              own stock draws nothing here, because there is no vendor page to
+              visit and no seller record to read.
+            */}
+            {sellerStore && (
+              <Link
+                href={`/vendors/${sellerStore.slug}`}
+                className="group mt-4 flex items-center gap-3 rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-3.5 shadow-xs hover:border-primary/50 hover:shadow-md hover:shadow-black/5 transition-all duration-300 cursor-pointer"
+              >
+                <span className="relative w-12 h-12 shrink-0 rounded-xl overflow-hidden border border-[var(--border-color)] bg-[var(--surface-alt)] flex items-center justify-center">
+                  {sellerStore.logo ? (
+                    <Image
+                      src={sellerStore.logo}
+                      alt={`${sellerStore.name} logo`}
+                      fill
+                      sizes="48px"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <Store className="w-5 h-5 text-[var(--foreground-muted)]" />
+                  )}
+                </span>
+
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[9px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
+                    Sold by
+                  </span>
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <span className="block truncate text-sm font-bold text-[var(--foreground)] group-hover:text-primary transition-colors">
+                      {sellerStore.name}
+                    </span>
+                    {sellerStore.isFeatured && (
+                      <BadgeCheck className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                    )}
+                  </span>
+                  <span className="flex items-center gap-2.5 text-[10px] text-[var(--foreground-muted)] flex-wrap mt-0.5">
+                    <span className="inline-flex items-center gap-1 font-semibold text-amber-500">
+                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                      {sellerStore.rating > 0 ? sellerStore.rating.toFixed(1) : "New"}
+                    </span>
+                    {sellerStore.successRate > 0 && (
+                      <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                        <BadgeCheck className="w-3 h-3" />
+                        {sellerStore.successRate}% delivered
+                      </span>
+                    )}
+                    <span className="inline-flex items-center gap-1">
+                      <Package className="w-3 h-3" />
+                      {sellerStore.productCount}
+                    </span>
+                  </span>
+                </span>
+
+                <span className="inline-flex items-center gap-1 shrink-0 text-[10px] font-bold text-primary">
+                  Visit vendor
+                  <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </span>
+              </Link>
+            )}
+
           </div>
         </div>
 
@@ -1562,6 +1636,10 @@ export default function ProductDetailsPage({
             </TabPanel>
           </Tabs>
         </Card>
+
+      {/* ── The rest of the marquee: featured listings and featured vendors ── */}
+      <FeaturedProducts products={featuredProducts} />
+      <FeaturedVendors vendors={featuredVendors} />
     </div>
 
     <ImageGalleryModal

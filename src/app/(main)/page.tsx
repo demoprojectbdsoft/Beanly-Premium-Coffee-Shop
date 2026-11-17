@@ -6,7 +6,8 @@ import WarehouseDeals from "@/components/homepage/WarehouseDeals";
 import TrendingProducts from "@/components/homepage/TrendingProducts";
 import PopularProducts from "@/components/homepage/PopularProducts";
 import NewArrivals from "@/components/homepage/NewArrivals";
-import FeaturedStores from "@/components/homepage/FeaturedStores";
+import FeaturedVendors from "@/components/vendor/FeaturedVendors";
+import FeaturedProducts from "@/components/vendor/FeaturedProducts";
 import { Product, Promo } from "@/types";
 import type { PublicStore } from "@/types/stores";
 import PromoStrip from "@/components/homepage/PromoStrip";
@@ -52,12 +53,21 @@ async function PopularSection() {
   return <PopularProducts products={products} />;
 }
 
-// The shops a paid placement is lighting up. No placement running, no section:
-// the rail would otherwise claim a "featured" list that is simply empty.
-async function FeaturedStoresSection() {
-  const result = asStoreList(await getPublicStores({ featured: true, limit: 8 }));
-  const stores: PublicStore[] = result?.stores ?? [];
-  return <FeaturedStores stores={stores} />;
+// The listings a running placement is lifting right now, newest first. No
+// placement running, no section.
+async function FeaturedProductsSection() {
+  const res = await getProducts({ isFeatured: true, sort: "newest", limit: 10 });
+  const products: Product[] = res?.data?.products ?? [];
+  return <FeaturedProducts products={products} />;
+}
+
+// The shops a paid placement is lighting up, the freshest grant first. No
+// placement running, no section: the rail would otherwise claim a "featured"
+// list that is simply empty.
+async function FeaturedVendorsSection() {
+  const result = asStoreList(await getPublicStores({ featured: true, sort: "latest", limit: 8 }));
+  const vendors: PublicStore[] = result?.stores ?? [];
+  return <FeaturedVendors vendors={vendors} />;
 }
 
 // Reads the active "tile" banners. They are drawn two per row by PromoBanners.
@@ -106,6 +116,11 @@ export default function Home() {
 
       <WarehouseDeals />
 
+      {/* Featured products — the paid placements, newest first */}
+      <Suspense fallback={null}>
+        <FeaturedProductsSection />
+      </Suspense>
+
       {/* New Arrivals — shows skeleton while fetching */}
       <Suspense fallback={<NewArrivals loading />}>
         <NewArrivalsSection />
@@ -126,9 +141,9 @@ export default function Home() {
         <PopularSection />
       </Suspense>
 
-      {/* Featured shops — disappears when no storefront placement is running */}
+      {/* Featured vendors — disappears when no storefront placement is running */}
       <Suspense fallback={null}>
-        <FeaturedStoresSection />
+        <FeaturedVendorsSection />
       </Suspense>
 
       {/* Wide promo strip — also disappears when no strip banner is active */}
