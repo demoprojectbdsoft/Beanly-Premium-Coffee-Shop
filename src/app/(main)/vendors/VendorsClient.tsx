@@ -1,45 +1,42 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
   Crown,
-  MapPin,
-  Package,
   Search,
-  Star,
   Store,
   TriangleAlert,
 } from "lucide-react";
+import VendorCard from "@/components/vendor/VendorCard";
 import type { PublicStore } from "@/types/stores";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 
-interface StoresClientProps {
-  stores: PublicStore[];
+interface VendorsClientProps {
+  vendors: PublicStore[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
   filters: { search: string; category: string; featured: boolean; sort: string };
 }
 
 const SORTS = [
   { key: "featured", label: "Featured first" },
+  { key: "latest", label: "Latest placements" },
   { key: "rating", label: "Best rated" },
-  { key: "newest", label: "Newest" },
+  { key: "newest", label: "Newest shops" },
   { key: "popular", label: "Most orders" },
 ];
 
 /**
- * Shop discovery.
+ * The vendor directory.
  *
  * The URL is the state: search, category, sort and page all live in the query
  * string, so a filtered list is a link, the back button behaves, and the
  * server's first render already shows the right rows. The chips only ever name
- * the categories this page's shops use — the list says what it is holding.
+ * the categories this page's vendors use — the list says what it is holding.
  */
-export default function StoresClient({ stores, pagination, filters }: StoresClientProps) {
+export default function VendorsClient({ vendors, pagination, filters }: VendorsClientProps) {
   const router = useRouter();
   const { settings } = useSiteSettings();
   // The box is uncontrolled and seeded from the URL once: the server's render
@@ -69,7 +66,7 @@ export default function StoresClient({ stores, pagination, filters }: StoresClie
     if (merged.featured === "true") params.set("featured", "true");
     if (merged.sort && merged.sort !== "featured") params.set("sort", merged.sort);
     if (Number(merged.page) > 1) params.set("page", String(merged.page));
-    router.push(`/stores${params.toString() ? `?${params.toString()}` : ""}`, { scroll: false });
+    router.push(`/vendors${params.toString() ? `?${params.toString()}` : ""}`, { scroll: false });
   };
 
   const submitSearch = () => {
@@ -78,24 +75,46 @@ export default function StoresClient({ stores, pagination, filters }: StoresClie
   };
 
   const categories = Array.from(
-    new Set(stores.map((store) => store.category).filter(Boolean))
+    new Set(vendors.map((vendor) => vendor.category).filter(Boolean))
   ).sort();
+
+  const featuredOnPage = vendors.filter((vendor) => vendor.isFeatured).length;
 
   return (
     <section className="w-full max-w-7xl mx-auto px-4 py-10 space-y-6">
-      {/* ── Header ── */}
-      <div className="space-y-2">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 text-xs font-semibold tracking-wide uppercase">
-          <Store className="w-4 h-4 stroke-[2.2]" />
-          Sellers
+      {/* ── Hero band ── */}
+      <div className="relative overflow-hidden rounded-3xl border border-[var(--border-color)] bg-[var(--surface-elevated)] px-6 py-8 md:px-10 md:py-10 shadow-2xs">
+        {/* Two soft lights behind the words, so the band reads as a storefront window */}
+        <div className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-primary/15 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-28 -left-10 w-64 h-64 rounded-full bg-amber-400/10 blur-3xl" />
+
+        <div className="relative space-y-3 max-w-3xl">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 text-[11px] font-semibold tracking-wide uppercase">
+            <Store className="w-3.5 h-3.5 stroke-[2.2]" />
+            The marketplace
+          </div>
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-[var(--foreground)]">
+            Meet the <span className="text-gradient-primary">vendors</span>
+          </h1>
+          <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+            Every independent seller trading on {settings.siteName || "Sparq"} right now. Each
+            shopfront carries the numbers the platform keeps honest — its rating, the parcels it
+            delivered, and how many of those actually arrived — so you can pick where to buy from
+            the record, not the pitch.
+          </p>
+          <div className="flex items-center gap-2 flex-wrap pt-1">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--surface-alt)] border border-[var(--border-color)] px-3 py-1 text-[11px] font-semibold text-[var(--foreground)]">
+              <Store className="w-3.5 h-3.5 text-primary" />
+              {pagination.total} {pagination.total === 1 ? "vendor" : "vendors"} trading
+            </span>
+            {featuredOnPage > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-300/60 dark:border-amber-600/50 px-3 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                <Crown className="w-3.5 h-3.5" />
+                {featuredOnPage} featured on this page
+              </span>
+            )}
+          </div>
         </div>
-        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-[var(--foreground)]">
-          Shop the <span className="text-gradient-primary">shops</span>
-        </h1>
-        <p className="text-sm text-[var(--foreground-muted)] max-w-2xl">
-          Every seller trading on {settings.siteName || "Sparq"} right now — browse a
-          storefront, see its rating, and buy straight from the shop that ships it.
-        </p>
       </div>
 
       {/* ── Search & sort ── */}
@@ -111,7 +130,7 @@ export default function StoresClient({ stores, pagination, filters }: StoresClie
             onKeyDown={(e) => {
               if (e.key === "Enter") submitSearch();
             }}
-            placeholder="Search shops by name, description or category..."
+            placeholder="Search vendors by name, description or category..."
             className="w-full pl-10 pr-4 py-2.5 bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-[var(--foreground-muted)]"
           />
         </div>
@@ -146,7 +165,7 @@ export default function StoresClient({ stores, pagination, filters }: StoresClie
         </div>
       </div>
 
-      {/* ── Category chips, from the shops on this page ── */}
+      {/* ── Category chips, from the vendors on this page ── */}
       {categories.length > 0 && (
         <div className="flex items-center gap-1.5 flex-wrap">
           <button
@@ -178,26 +197,26 @@ export default function StoresClient({ stores, pagination, filters }: StoresClie
       )}
 
       <p className="text-xs text-[var(--foreground-muted)]">
-        {pagination.total} {pagination.total === 1 ? "shop" : "shops"} trading
+        {pagination.total} {pagination.total === 1 ? "vendor" : "vendors"} trading
         {filters.search ? ` matching “${filters.search}”` : ""}
         {filters.category ? ` in ${filters.category}` : ""}
         {filters.featured ? " · featured only" : ""}
       </p>
 
-      {/* ── Shop cards ── */}
-      {stores.length === 0 ? (
+      {/* ── Vendor cards ── */}
+      {vendors.length === 0 ? (
         <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] p-10 text-center space-y-3 shadow-2xs">
           <div className="w-12 h-12 mx-auto rounded-full bg-[var(--surface-alt)] flex items-center justify-center">
             <TriangleAlert className="w-5 h-5 text-[var(--foreground-muted)]" />
           </div>
-          <h2 className="text-sm font-bold text-[var(--foreground)]">No shop answers this</h2>
+          <h2 className="text-sm font-bold text-[var(--foreground)]">No vendor answers this</h2>
           <p className="text-xs text-[var(--foreground-muted)] max-w-sm mx-auto">
-            Nobody is trading under these filters. A shop that is hidden, suspended or closed
-            is not listed here — and a typo in a saved link looks exactly the same.
+            Nobody is trading under these filters. A shop that is hidden, suspended or closed is
+            not listed here — and a typo in a saved link looks exactly the same.
           </p>
           <button
             type="button"
-            onClick={() => router.push("/stores", { scroll: false })}
+            onClick={() => router.push("/vendors", { scroll: false })}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-gradient text-[var(--on-grad-text)] text-[11px] font-bold cursor-pointer"
           >
             Clear the filters
@@ -205,92 +224,8 @@ export default function StoresClient({ stores, pagination, filters }: StoresClie
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {stores.map((store) => (
-            <Link
-              key={store._id}
-              href={`/stores/${store.slug}`}
-              className="group flex flex-col rounded-2xl border border-[var(--border-color)] bg-[var(--surface-elevated)] overflow-hidden shadow-2xs hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/40 hover:border-primary/40 transition-all duration-300 cursor-pointer"
-            >
-              <div
-                className={`relative h-24 ${
-                  store.coverImage ? "bg-[var(--surface-alt)]" : "bg-brand-gradient"
-                }`}
-              >
-                {store.coverImage && (
-                  <Image
-                    src={store.coverImage}
-                    alt=""
-                    fill
-                    sizes="(max-width: 640px) 100vw, 25vw"
-                    className="object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                )}
-                {store.isFeatured && (
-                  <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/90 text-white text-[9px] font-extrabold uppercase tracking-wider shadow-sm">
-                    <Crown className="w-2.5 h-2.5" /> Featured
-                  </span>
-                )}
-                <div className="absolute -bottom-5 left-4 w-12 h-12 rounded-xl border border-[var(--border-color)] bg-[var(--surface-elevated)] overflow-hidden shadow-xs flex items-center justify-center">
-                  {store.logo ? (
-                    <Image
-                      src={store.logo}
-                      alt={`${store.name} logo`}
-                      fill
-                      sizes="48px"
-                      className="object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                  ) : (
-                    <Store className="w-5 h-5 text-[var(--foreground-muted)]" />
-                  )}
-                </div>
-              </div>
-
-              <div className="flex-1 flex flex-col gap-1 pt-7 px-4 pb-4">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-sm font-bold text-[var(--foreground)] leading-snug line-clamp-1 group-hover:text-primary transition-colors">
-                    {store.name}
-                  </h3>
-                  {store.category && (
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--foreground-muted)] shrink-0 mt-0.5">
-                      {store.category}
-                    </span>
-                  )}
-                </div>
-                {store.description && (
-                  <p className="text-[11px] text-[var(--foreground-muted)] line-clamp-2 leading-relaxed">
-                    {store.description}
-                  </p>
-                )}
-                {(store.address.city || store.address.area) && (
-                  <p className="text-[10px] text-[var(--foreground-muted)] inline-flex items-center gap-1">
-                    <MapPin className="w-3 h-3 shrink-0" />
-                    {[store.address.area, store.address.city].filter(Boolean).join(", ")}
-                  </p>
-                )}
-                <div className="mt-auto pt-2 flex items-center gap-3 text-[10px] sm:text-[11px] text-[var(--foreground-muted)]">
-                  <span className="inline-flex items-center gap-1 font-semibold text-amber-500">
-                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                    {store.rating > 0 ? store.rating.toFixed(1) : "New"}
-                    {store.reviewCount > 0 && (
-                      <span className="font-normal text-[var(--foreground-muted)]">({store.reviewCount})</span>
-                    )}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Package className="w-3 h-3" />
-                    {store.productCount}
-                  </span>
-                  <span className="ml-auto font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                    Visit shop
-                  </span>
-                </div>
-              </div>
-            </Link>
+          {vendors.map((vendor) => (
+            <VendorCard key={vendor._id} vendor={vendor} />
           ))}
         </div>
       )}
@@ -299,7 +234,7 @@ export default function StoresClient({ stores, pagination, filters }: StoresClie
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-[10px] text-[var(--foreground-muted)]">
-            Page {pagination.page} of {pagination.totalPages} · {pagination.total} shops
+            Page {pagination.page} of {pagination.totalPages} · {pagination.total} vendors
           </p>
           <div className="flex items-center gap-1.5">
             <button

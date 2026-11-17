@@ -400,7 +400,7 @@ export default function ProductCard({
   // has no shop to visit, and a card invented from the id alone would link to
   // a page the API would answer 404 for.
   const sellerName = product.seller?.name || "";
-  const sellerHref = product.seller?.slug ? `/stores/${product.seller.slug}` : "";
+  const sellerHref = product.seller?.slug ? `/vendors/${product.seller.slug}` : "";
   
   const formattedPrice = formatPrice(product.price);
 

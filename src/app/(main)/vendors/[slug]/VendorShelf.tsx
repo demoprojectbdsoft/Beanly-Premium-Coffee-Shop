@@ -8,7 +8,7 @@ import ProductCardSkeleton from "@/components/shared/ProductCardSkeleton";
 import { getProducts } from "@/lib/api/products";
 import type { Product } from "@/types";
 
-interface StoreShelfProps {
+interface VendorShelfProps {
   storeSlug: string;
   /** The first page, rendered by the server before any query runs. */
   initialProducts: Product[];
@@ -25,19 +25,19 @@ const SORTS = [
 ];
 
 /**
- * One shop's shelf.
+ * One vendor's shelf.
  *
- * The page is `/stores/<slug>`, so the shelf lives in the URL's query string
+ * The page is `/vendors/<slug>`, so the shelf lives in the URL's query string
  * (`q`, `sort`, `page`) and refetches through the public products read with
  * `storeSlug` pinned by the server-rendered page — a shopper cannot type a
- * second shop's slug into this box, because the box never sends one.
+ * second vendor's slug into this box, because the box never sends one.
  */
-export default function StoreShelf({
+export default function VendorShelf({
   storeSlug,
   initialProducts,
   initialPagination,
   initialFilters,
-}: StoreShelfProps) {
+}: VendorShelfProps) {
   const router = useRouter();
   const [search, setSearch] = useState(initialFilters.search);
   const [sort, setSort] = useState(initialFilters.sort);
@@ -85,7 +85,7 @@ export default function StoreShelf({
     if (search) params.set("q", search);
     if (sort) params.set("sort", sort);
     if (page > 1) params.set("page", String(page));
-    router.replace(`/stores/${storeSlug}${params.toString() ? `?${params.toString()}` : ""}`, {
+    router.replace(`/vendors/${storeSlug}${params.toString() ? `?${params.toString()}` : ""}`, {
       scroll: false,
     });
   }, [search, sort, page, storeSlug, router]);
@@ -105,7 +105,7 @@ export default function StoreShelf({
               setSearch(e.target.value);
               setPage(1);
             }}
-            placeholder="Search this shop..."
+            placeholder="Search this vendor's shelf..."
             className="w-full pl-10 pr-4 py-2.5 bg-[var(--surface-elevated)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-[var(--foreground-muted)]"
           />
         </div>
@@ -149,7 +149,7 @@ export default function StoreShelf({
             <PackageSearch className="w-5 h-5 text-[var(--foreground-muted)]" />
           </div>
           <h3 className="text-sm font-bold text-[var(--foreground)]">
-            {search ? "Nothing here matches that" : "This shop has nothing on the shelf yet"}
+            {search ? "Nothing here matches that" : "This vendor has nothing on the shelf yet"}
           </h3>
           <p className="text-xs text-[var(--foreground-muted)] max-w-sm mx-auto">
             {search

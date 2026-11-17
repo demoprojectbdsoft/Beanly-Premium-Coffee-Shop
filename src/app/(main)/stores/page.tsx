@@ -1,53 +1,25 @@
-import { asStoreList, getPublicStores } from "@/lib/api/stores";
-import StoresClient from "./StoresClient";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-// The sorts the API answers for, in the order the page offers them.
-const SORT_CHOICES = ["featured", "rating", "newest", "popular"];
-
-interface StoresPageProps {
-  searchParams: Promise<{
-    search?: string;
-    category?: string;
-    featured?: string;
-    sort?: string;
-    page?: string;
-  }>;
+interface StoresRedirectProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 /**
- * Shop discovery.
+ * The old shop directory, kept as a signpost.
  *
- * Everything the page shows is decided by the URL, so a filtered view is a
- * link a shopper can share — and the same reads answer it on a direct hit.
+ * The marketplace's vendors live at `/vendors` now, and every link inside the
+ * app points there. A bookmarked or shared `/stores?category=…` link is still
+ * worth honouring, so the filters are carried across rather than dropped.
  */
-export default async function StoresPage({ searchParams }: StoresPageProps) {
+export default async function StoresRedirect({ searchParams }: StoresRedirectProps) {
   const params = await searchParams;
-  const page = Math.max(1, Number(params.page) || 1);
-  const sort = SORT_CHOICES.includes(params.sort || "") ? params.sort! : "featured";
+  const query = new URLSearchParams();
 
-  const result = asStoreList(
-    await getPublicStores({
-      search: params.search,
-      category: params.category,
-      featured: params.featured === "true" ? true : undefined,
-      sort,
-      page,
-      limit: 12,
-    })
-  );
+  for (const [key, value] of Object.entries(params)) {
+    if (typeof value === "string" && value) query.set(key, value);
+    else if (Array.isArray(value) && value[0]) query.set(key, value[0]);
+  }
 
-  return (
-    <StoresClient
-      stores={result?.stores ?? []}
-      pagination={result?.pagination ?? { page, limit: 12, total: 0, totalPages: 1 }}
-      filters={{
-        search: params.search || "",
-        category: params.category || "",
-        featured: params.featured === "true",
-        sort,
-      }}
-    />
-  );
+  const suffix = query.toString();
+  redirect(`/vendors${suffix ? `?${suffix}` : ""}`);
 }

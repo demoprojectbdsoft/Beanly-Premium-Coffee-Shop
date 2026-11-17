@@ -31,6 +31,12 @@ export interface PublicStore {
   reviewCount: number;
   rating: number;
   completedOrders: number;
+  /**
+   * Delivered parcels against every parcel the shop closed (delivered plus
+   * cancelled or rejected), as a whole percentage. A shop that has not closed
+   * a parcel yet reads 0 — the server never invents a 100% off no parcels.
+   */
+  successRate: number;
   createdAt: string;
 }
 

@@ -380,7 +380,7 @@ export default function LocatorClient({ branch, shops, siteName }: LocatorClient
                 </a>
                 {active.kind === "shop" && active.slug && (
                   <Link
-                    href={`/stores/${active.slug}`}
+                    href={`/vendors/${active.slug}`}
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-elevated)] text-xs font-bold hover:border-primary/50 transition-colors cursor-pointer"
                   >
                     <Store className="w-3.5 h-3.5" />
